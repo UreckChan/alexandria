@@ -1,0 +1,62 @@
+{
+  "name": "@ureck/alexandria",
+  "version": "0.2.3",
+  "description": "Alexandria — bóveda de conocimiento local para agentes de IA (Claude Code, Cursor, OpenCode, Windsurf y más): captura automática, búsqueda semántica offline y grafo de conexiones estilo Obsidian. Ahorra tokens inyectando solo el contexto relevante.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "ale": "dist/cli.js",
+    "alexandria": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build",
+    "release:public": "node scripts/release-public.mjs"
+  },
+  "keywords": [
+    "claude-code",
+    "knowledge-base",
+    "obsidian",
+    "semantic-search",
+    "mcp",
+    "embeddings",
+    "local-first"
+  ],
+  "dependencies": {
+    "@huggingface/transformers": "^3.3.3",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "commander": "^13.1.0",
+    "gray-matter": "^4.0.3",
+    "minisearch": "^7.1.2",
+    "picocolors": "^1.1.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  },
+  "author": "Ureck <urielgomezbecerril@gmail.com>",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UreckChan/alexandria.git"
+  },
+  "homepage": "https://github.com/UreckChan/alexandria#readme",
+  "bugs": {
+    "url": "https://github.com/UreckChan/alexandria/issues"
+  }
+}
