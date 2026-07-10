@@ -144,6 +144,9 @@ function frontmatter(n) {
   const lines = [
     "---",
     `title: ${JSON.stringify(n.title)}`,
+    // aliases: Obsidian resuelve [[wikilinks]] contra alias, no contra el title
+    // del frontmatter — sin esto su graph view muestra los enlaces como rotos
+    `aliases: [${JSON.stringify(n.title)}]`,
     `type: ${n.type}`,
     `tags: [${n.tags.map((t) => JSON.stringify(t)).join(", ")}]`,
     `created: ${(/* @__PURE__ */ new Date()).toISOString()}`,
@@ -152,6 +155,18 @@ function frontmatter(n) {
     ""
   ];
   return lines.join("\n");
+}
+function ensureAlias(absPath) {
+  try {
+    const raw = fs2.readFileSync(absPath, "utf8");
+    const { data, content } = matter(raw);
+    if (!data.title || data.aliases) return false;
+    data.aliases = [String(data.title)];
+    fs2.writeFileSync(absPath, matter.stringify(content, data));
+    return true;
+  } catch {
+    return false;
+  }
 }
 function createNote(managed, n) {
   const dir = path2.join(managed, n.dir ?? "notes");
@@ -207,6 +222,7 @@ function appendToNote(managed, n) {
 }
 
 export {
+  MANAGED_DIR,
   globalConfigPath,
   defaultVaultPath,
   resolveVault,
@@ -217,6 +233,7 @@ export {
   slugify,
   listMarkdownFiles,
   parseNote,
+  ensureAlias,
   createNote,
   touchNote,
   upsertNote,

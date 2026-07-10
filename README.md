@@ -131,12 +131,16 @@ ale add "Deploy en Vercel" -c "Regiones cdg1, ver [[Configuración de Prisma]]" 
 
 ### Ver el grafo de conexiones
 
+**El grafo se mantiene solo** — no hay que generarlo: cada vez que la bóveda cambia (captura automática, `ale add`, reindex), se regenera `<bóveda>/grafo.html`. Doble clic y siempre está al día.
+
 ```bash
-ale graph                    # abre visor interactivo en tu navegador (local)
-ale graph --out grafo.html   # o genera HTML autocontenido para compartir
+ale graph                    # visor EN VIVO en tu navegador: se actualiza solo cada 3s
+ale graph --out otro.html    # copia estática a otra ruta (opcional)
 ```
 
-Nodos = notas (tamaño = conexiones), líneas sólidas = `[[wikilinks]]`, punteadas = similitud semántica. Arrastra, haz zoom, click para detalle. El grafo brilla a partir de ~20-30 notas — es acumulativo por diseño.
+Nodos = notas (tamaño = conexiones, color = tipo), líneas sólidas = `[[wikilinks]]`, punteadas = similitud semántica. Auto-encuadre, hover resalta vecinos, click muestra detalle y conexiones, caja para filtrar por título/tag. El grafo brilla a partir de ~20-30 notas — es acumulativo por diseño.
+
+**En Obsidian**: abre la carpeta de la bóveda como vault y usa su graph view nativo — las notas llevan `aliases` en el frontmatter para que Obsidian resuelva los `[[wikilinks]]` (sin eso los ve como enlaces rotos). Las notas viejas se migran solas en el siguiente reindex. Ojo: `grafo.html` no se abre *dentro* de Obsidian (no renderiza HTML) — es para el navegador.
 
 ### Medir cuánto te está ahorrando
 

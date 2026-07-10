@@ -16,10 +16,13 @@ import {
 } from "./chunk-KHTYRYDR.js";
 import {
   hybridSearch
-} from "./chunk-O7FDC2PB.js";
+} from "./chunk-FID2RAOH.js";
+import {
+  serveGraph
+} from "./chunk-I2ZBQUZD.js";
 import {
   VaultIndex
-} from "./chunk-UWAIMIG2.js";
+} from "./chunk-VN7QOAG2.js";
 import {
   createNote,
   defaultVaultPath,
@@ -29,7 +32,7 @@ import {
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-CZM5NQZJ.js";
+} from "./chunk-CF2GLMR3.js";
 import {
   MODEL_ID,
   getEmbedder,
@@ -37,189 +40,16 @@ import {
 } from "./chunk-EDYBSJSS.js";
 
 // src/cli.ts
-import fs4 from "fs";
-import path4 from "path";
+import fs3 from "fs";
+import path3 from "path";
 import readline from "readline/promises";
 import { Command } from "commander";
 import pc from "picocolors";
 
-// src/graph/viewer.ts
-import fs from "fs";
-import http from "http";
-import path from "path";
-import { spawn } from "child_process";
-function buildGraphData(idx) {
-  const deg = /* @__PURE__ */ new Map();
-  for (const l of idx.meta.links) {
-    deg.set(l.from, (deg.get(l.from) ?? 0) + 1);
-    deg.set(l.to, (deg.get(l.to) ?? 0) + 1);
-  }
-  const nodes = Object.values(idx.meta.notes).map((n) => ({
-    id: n.rel,
-    title: n.title,
-    type: n.type,
-    deg: deg.get(n.rel) ?? 0,
-    hits: n.hits ?? 1
-  }));
-  const edges = idx.meta.links.map((l) => ({ s: l.from, t: l.to, type: l.type }));
-  return { nodes, edges };
-}
-function renderGraphHtml(data) {
-  return `<!doctype html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<title>Alexandria \u2014 grafo de conocimiento</title>
-<style>
-  html,body{margin:0;height:100%;background:#0f1117;color:#e6e6e6;font:14px/1.4 system-ui,sans-serif;overflow:hidden}
-  #hud{position:fixed;top:12px;left:12px;background:#1a1d27cc;padding:10px 14px;border-radius:10px;max-width:340px}
-  #hud h1{font-size:15px;margin:0 0 4px}
-  #hud .leg span{display:inline-block;width:10px;height:10px;border-radius:50%;margin:0 4px 0 10px}
-  #info{position:fixed;bottom:12px;left:12px;background:#1a1d27cc;padding:10px 14px;border-radius:10px;max-width:420px;display:none}
-  canvas{display:block}
-</style>
-</head>
-<body>
-<div id="hud">
-  <h1>\u{1F9E0} Alexandria \u2014 grafo</h1>
-  <div id="counts"></div>
-  <div class="leg">
-    <span style="background:#7aa2f7"></span>nota
-    <span style="background:#9ece6a"></span>sesi\xF3n
-    <span style="background:#e0af68"></span>prompt
-    <span style="background:#f7768e"></span>mapa
-  </div>
-  <div style="opacity:.7;margin-top:4px">arrastra nodos \xB7 rueda = zoom \xB7 click = detalle<br>l\xEDnea s\xF3lida = [[wikilink]] \xB7 punteada = sem\xE1ntica</div>
-</div>
-<div id="info"></div>
-<canvas id="c"></canvas>
-<script>
-const DATA = ${JSON.stringify(data)};
-const COLORS = { note:'#7aa2f7', session:'#9ece6a', prompt:'#e0af68', map:'#f7768e' };
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-let W, H; const fit = () => { W = cv.width = innerWidth; H = cv.height = innerHeight; };
-fit(); addEventListener('resize', fit);
-document.getElementById('counts').textContent = DATA.nodes.length + ' notas \xB7 ' + DATA.edges.length + ' conexiones';
-
-const nodes = DATA.nodes.map((n,i) => ({...n,
-  x: Math.cos(i/DATA.nodes.length*6.283)*Math.min(W,H)*.3 + W/2 + (Math.random()-.5)*40,
-  y: Math.sin(i/DATA.nodes.length*6.283)*Math.min(W,H)*.3 + H/2 + (Math.random()-.5)*40,
-  vx:0, vy:0, r: 4 + Math.min(n.deg,12)*1.2 + Math.min(n.hits,8)*.5
-}));
-const byId = new Map(nodes.map(n=>[n.id,n]));
-const edges = DATA.edges.filter(e=>byId.has(e.s)&&byId.has(e.t)).map(e=>({a:byId.get(e.s), b:byId.get(e.t), type:e.type}));
-
-let zoom = 1, panX = 0, panY = 0, dragNode = null, hot = true, heat = 300;
-function step(){
-  if(!hot) return;
-  // repulsi\xF3n O(n\xB2) \u2014 bien hasta ~1500 nodos
-  for(let i=0;i<nodes.length;i++) for(let j=i+1;j<nodes.length;j++){
-    const a=nodes[i], b=nodes[j];
-    let dx=b.x-a.x, dy=b.y-a.y, d2=dx*dx+dy*dy+0.01, d=Math.sqrt(d2);
-    const f = Math.min(1800/d2, 8);
-    dx/=d; dy/=d;
-    a.vx-=dx*f; a.vy-=dy*f; b.vx+=dx*f; b.vy+=dy*f;
-  }
-  for(const e of edges){
-    let dx=e.b.x-e.a.x, dy=e.b.y-e.a.y, d=Math.sqrt(dx*dx+dy*dy)+0.01;
-    const want = e.type==='wikilink'?110:160;
-    const f=(d-want)*0.004*(e.type==='wikilink'?1.4:0.7);
-    dx/=d; dy/=d;
-    e.a.vx+=dx*f*d; e.a.vy+=dy*f*d; e.b.vx-=dx*f*d; e.b.vy-=dy*f*d;
-  }
-  for(const n of nodes){
-    n.vx += (W/2-n.x)*0.0004; n.vy += (H/2-n.y)*0.0004; // gravedad al centro
-    n.vx*=0.85; n.vy*=0.85;
-    if(n!==dragNode){ n.x+=n.vx; n.y+=n.vy; }
-  }
-  if(--heat<=0 && !dragNode) hot=false;
-}
-function draw(){
-  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
-  ctx.setTransform(zoom,0,0,zoom,panX,panY);
-  for(const e of edges){
-    ctx.beginPath();
-    ctx.setLineDash(e.type==='semantic'?[4,4]:[]);
-    ctx.strokeStyle = e.type==='semantic' ? '#3b4261' : '#565f89';
-    ctx.lineWidth = 1;
-    ctx.moveTo(e.a.x,e.a.y); ctx.lineTo(e.b.x,e.b.y); ctx.stroke();
-  }
-  ctx.setLineDash([]);
-  for(const n of nodes){
-    ctx.beginPath(); ctx.fillStyle = COLORS[n.type]||'#7aa2f7';
-    ctx.arc(n.x,n.y,n.r,0,6.283); ctx.fill();
-  }
-  if(zoom>0.6){
-    ctx.fillStyle='#c0caf5'; ctx.font = (11/Math.max(zoom,1))+'px system-ui';
-    for(const n of nodes){ if(n.deg>0||zoom>1.1) ctx.fillText(n.title.slice(0,28), n.x+n.r+3, n.y+3); }
-  }
-}
-(function loop(){ step(); draw(); requestAnimationFrame(loop); })();
-
-const toWorld = (x,y)=>[(x-panX)/zoom,(y-panY)/zoom];
-const pick = (x,y)=>{ const [wx,wy]=toWorld(x,y); return nodes.find(n=>{const dx=n.x-wx,dy=n.y-wy;return dx*dx+dy*dy<=(n.r+4)*(n.r+4);}); };
-let panning=false, px=0, py=0;
-cv.addEventListener('mousedown',e=>{ const n=pick(e.clientX,e.clientY); if(n){dragNode=n;hot=true;heat=150;} else {panning=true;px=e.clientX;py=e.clientY;} });
-addEventListener('mousemove',e=>{
-  if(dragNode){ const [wx,wy]=toWorld(e.clientX,e.clientY); dragNode.x=wx; dragNode.y=wy; }
-  else if(panning){ panX+=e.clientX-px; panY+=e.clientY-py; px=e.clientX; py=e.clientY; }
-});
-addEventListener('mouseup',e=>{
-  if(dragNode===null && !panning) return;
-  if(dragNode){ dragNode=null; }
-  panning=false;
-});
-cv.addEventListener('click',e=>{
-  const n=pick(e.clientX,e.clientY); const info=document.getElementById('info');
-  if(n){ info.style.display='block'; info.innerHTML='<b>'+n.title+'</b><br><span style="opacity:.7">'+n.id+'</span><br>tipo: '+n.type+' \xB7 conexiones: '+n.deg+' \xB7 usos: '+n.hits; }
-  else info.style.display='none';
-});
-cv.addEventListener('wheel',e=>{
-  e.preventDefault();
-  const f = e.deltaY<0?1.1:0.9;
-  panX = e.clientX-(e.clientX-panX)*f; panY = e.clientY-(e.clientY-panY)*f; zoom*=f;
-},{passive:false});
-</script>
-</body>
-</html>`;
-}
-function openBrowser(url) {
-  const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
-  const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
-  try {
-    spawn(cmd, args, { detached: true, stdio: "ignore" }).unref();
-  } catch {
-  }
-}
-async function serveGraph(vault, opts = {}) {
-  const idx = VaultIndex.load(vault);
-  await idx.refresh(false).catch(() => {
-  });
-  const html = renderGraphHtml(buildGraphData(idx));
-  if (opts.out) {
-    const file = path.resolve(opts.out);
-    fs.writeFileSync(file, html);
-    return file;
-  }
-  return new Promise((resolve) => {
-    const server = http.createServer((_req, res) => {
-      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-      res.end(html);
-    });
-    server.listen(0, "127.0.0.1", () => {
-      const addr = server.address();
-      const port = typeof addr === "object" && addr ? addr.port : 0;
-      const url = `http://127.0.0.1:${port}`;
-      if (opts.open !== false) openBrowser(url);
-      resolve(url);
-    });
-  });
-}
-
 // src/skills/recommend.ts
-import fs2 from "fs";
+import fs from "fs";
 import os from "os";
-import path2 from "path";
+import path from "path";
 import { execFileSync } from "child_process";
 var RULES = [
   { skill: "pdf-report-gen", keywords: ["pdf", "reporte pdf", "membrete"] },
@@ -239,7 +69,7 @@ var RULES = [
 ];
 var MIN_MENTIONS = 3;
 function localSkillsRepo() {
-  return path2.join(os.homedir(), "Documents", "Projects", "Skills");
+  return path.join(os.homedir(), "Documents", "Projects", "Skills");
 }
 function recommendSkills(vault, installedDirs) {
   const idx = VaultIndex.load(vault);
@@ -247,7 +77,7 @@ function recommendSkills(vault, installedDirs) {
   const installed = /* @__PURE__ */ new Set();
   for (const dir of installedDirs) {
     try {
-      for (const e of fs2.readdirSync(dir)) installed.add(e);
+      for (const e of fs.readdirSync(dir)) installed.add(e);
     } catch {
     }
   }
@@ -263,7 +93,7 @@ function recommendSkills(vault, installedDirs) {
       mentions += count;
     }
     if (mentions >= MIN_MENTIONS) {
-      const local = fs2.existsSync(path2.join(localSkillsRepo(), rule.skill));
+      const local = fs.existsSync(path.join(localSkillsRepo(), rule.skill));
       out.push({
         skill: rule.skill,
         mentions,
@@ -275,12 +105,12 @@ function recommendSkills(vault, installedDirs) {
   return out.sort((a, b) => b.mentions - a.mentions);
 }
 function installSkill(rec, targetDir) {
-  fs2.mkdirSync(targetDir, { recursive: true });
-  const dest = path2.join(targetDir, rec.skill);
-  if (fs2.existsSync(dest)) return { ok: true, detail: "ya instalada" };
+  fs.mkdirSync(targetDir, { recursive: true });
+  const dest = path.join(targetDir, rec.skill);
+  if (fs.existsSync(dest)) return { ok: true, detail: "ya instalada" };
   if (rec.source === "local") {
     try {
-      fs2.cpSync(path2.join(localSkillsRepo(), rec.skill), dest, { recursive: true });
+      fs.cpSync(path.join(localSkillsRepo(), rec.skill), dest, { recursive: true });
       return { ok: true, detail: `copiada desde ${localSkillsRepo()}` };
     } catch (e) {
       return { ok: false, detail: `error copiando: ${e.message}` };
@@ -290,7 +120,7 @@ function installSkill(rec, targetDir) {
     execFileSync("npx", ["--yes", "skills", "add", rec.skill, "--yes"], {
       stdio: "pipe",
       timeout: 12e4,
-      cwd: path2.dirname(targetDir)
+      cwd: path.dirname(targetDir)
     });
     return { ok: true, detail: "instalada desde skills.sh" };
   } catch {
@@ -302,22 +132,22 @@ function installSkill(rec, targetDir) {
 }
 
 // src/core/agents.ts
-import fs3 from "fs";
+import fs2 from "fs";
 import os2 from "os";
-import path3 from "path";
+import path2 from "path";
 import { execFileSync as execFileSync2 } from "child_process";
-var serverScript = () => path3.join(distDir(), "mcp", "server.js");
+var serverScript = () => path2.join(distDir(), "mcp", "server.js");
 function readJsonSafe(file) {
   try {
-    return JSON.parse(fs3.readFileSync(file, "utf8"));
+    return JSON.parse(fs2.readFileSync(file, "utf8"));
   } catch {
-    if (fs3.existsSync(file)) throw new Error(`no pude parsear ${file} \u2014 rev\xEDsalo manualmente`);
+    if (fs2.existsSync(file)) throw new Error(`no pude parsear ${file} \u2014 rev\xEDsalo manualmente`);
     return {};
   }
 }
 function writeJson(file, data) {
-  fs3.mkdirSync(path3.dirname(file), { recursive: true });
-  fs3.writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
+  fs2.mkdirSync(path2.dirname(file), { recursive: true });
+  fs2.writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
 }
 function mergeMcpServers(file, key = "mcpServers") {
   try {
@@ -332,11 +162,11 @@ function mergeMcpServers(file, key = "mcpServers") {
   }
 }
 function home(...p) {
-  return path3.join(os2.homedir(), ...p);
+  return path2.join(os2.homedir(), ...p);
 }
 function vscodeUserDir() {
   if (process.platform === "darwin") return home("Library", "Application Support", "Code", "User");
-  if (process.platform === "win32") return path3.join(process.env.APPDATA ?? home("AppData", "Roaming"), "Code", "User");
+  if (process.platform === "win32") return path2.join(process.env.APPDATA ?? home("AppData", "Roaming"), "Code", "User");
   return home(".config", "Code", "User");
 }
 var AGENTS = [
@@ -344,9 +174,9 @@ var AGENTS = [
     id: "claude",
     name: "Claude Code",
     supportsProject: true,
-    detect: () => fs3.existsSync(home(".claude")),
+    detect: () => fs2.existsSync(home(".claude")),
     register(scope, projectDir) {
-      if (scope === "project") return mergeMcpServers(path3.join(projectDir, ".mcp.json"));
+      if (scope === "project") return mergeMcpServers(path2.join(projectDir, ".mcp.json"));
       return mergeMcpServers(home(".claude.json"));
     }
   },
@@ -354,9 +184,9 @@ var AGENTS = [
     id: "cursor",
     name: "Cursor",
     supportsProject: true,
-    detect: () => fs3.existsSync(home(".cursor")),
+    detect: () => fs2.existsSync(home(".cursor")),
     register(scope, projectDir) {
-      const file = scope === "project" ? path3.join(projectDir, ".cursor", "mcp.json") : home(".cursor", "mcp.json");
+      const file = scope === "project" ? path2.join(projectDir, ".cursor", "mcp.json") : home(".cursor", "mcp.json");
       return mergeMcpServers(file);
     }
   },
@@ -364,9 +194,9 @@ var AGENTS = [
     id: "opencode",
     name: "OpenCode",
     supportsProject: true,
-    detect: () => fs3.existsSync(home(".config", "opencode")) || fs3.existsSync(home(".opencode")),
+    detect: () => fs2.existsSync(home(".config", "opencode")) || fs2.existsSync(home(".opencode")),
     register(scope, projectDir) {
-      const file = scope === "project" ? path3.join(projectDir, "opencode.json") : home(".config", "opencode", "opencode.json");
+      const file = scope === "project" ? path2.join(projectDir, "opencode.json") : home(".config", "opencode", "opencode.json");
       try {
         const cfg = readJsonSafe(file);
         cfg["$schema"] ??= "https://opencode.ai/config.json";
@@ -384,7 +214,7 @@ var AGENTS = [
     id: "windsurf",
     name: "Windsurf",
     supportsProject: false,
-    detect: () => fs3.existsSync(home(".codeium", "windsurf")),
+    detect: () => fs2.existsSync(home(".codeium", "windsurf")),
     register() {
       return mergeMcpServers(home(".codeium", "windsurf", "mcp_config.json"));
     }
@@ -393,9 +223,9 @@ var AGENTS = [
     id: "cline",
     name: "Cline (VS Code)",
     supportsProject: false,
-    detect: () => fs3.existsSync(path3.join(vscodeUserDir(), "globalStorage", "saoudrizwan.claude-dev")),
+    detect: () => fs2.existsSync(path2.join(vscodeUserDir(), "globalStorage", "saoudrizwan.claude-dev")),
     register() {
-      const file = path3.join(
+      const file = path2.join(
         vscodeUserDir(),
         "globalStorage",
         "saoudrizwan.claude-dev",
@@ -409,7 +239,7 @@ var AGENTS = [
     id: "codex",
     name: "Codex CLI (OpenAI)",
     supportsProject: false,
-    detect: () => fs3.existsSync(home(".codex")),
+    detect: () => fs2.existsSync(home(".codex")),
     register() {
       const file = home(".codex", "config.toml");
       const block = `[mcp_servers.alexandria]
@@ -419,7 +249,7 @@ args = ["${serverScript().replace(/\\/g, "\\\\")}"]
       try {
         let text = "";
         try {
-          text = fs3.readFileSync(file, "utf8");
+          text = fs2.readFileSync(file, "utf8");
         } catch {
         }
         if (/^\[mcp_servers\.alexandria\]/m.test(text)) {
@@ -427,8 +257,8 @@ args = ["${serverScript().replace(/\\/g, "\\\\")}"]
         } else {
           text = text.trimEnd() + (text.trim() ? "\n\n" : "") + block;
         }
-        fs3.mkdirSync(path3.dirname(file), { recursive: true });
-        fs3.writeFileSync(file, text);
+        fs2.mkdirSync(path2.dirname(file), { recursive: true });
+        fs2.writeFileSync(file, text);
         return { ok: true, file };
       } catch (e) {
         return { ok: false, file, detail: e.message };
@@ -439,9 +269,9 @@ args = ["${serverScript().replace(/\\/g, "\\\\")}"]
     id: "gemini",
     name: "Gemini CLI",
     supportsProject: true,
-    detect: () => fs3.existsSync(home(".gemini")),
+    detect: () => fs2.existsSync(home(".gemini")),
     register(scope, projectDir) {
-      const file = scope === "project" ? path3.join(projectDir, ".gemini", "settings.json") : home(".gemini", "settings.json");
+      const file = scope === "project" ? path2.join(projectDir, ".gemini", "settings.json") : home(".gemini", "settings.json");
       return mergeMcpServers(file);
     }
   },
@@ -449,7 +279,7 @@ args = ["${serverScript().replace(/\\/g, "\\\\")}"]
     id: "openclaw",
     name: "OpenClaw",
     supportsProject: false,
-    detect: () => fs3.existsSync(home(".openclaw")),
+    detect: () => fs2.existsSync(home(".openclaw")),
     register() {
       const file = home(".openclaw", "openclaw.json");
       try {
@@ -468,7 +298,7 @@ args = ["${serverScript().replace(/\\/g, "\\\\")}"]
     id: "hermes",
     name: "Hermes Agent (Nous)",
     supportsProject: false,
-    detect: () => fs3.existsSync(home(".hermes")),
+    detect: () => fs2.existsSync(home(".hermes")),
     register() {
       const file = home(".hermes", "config.yaml");
       try {
@@ -482,7 +312,7 @@ args = ["${serverScript().replace(/\\/g, "\\\\")}"]
       try {
         let text = "";
         try {
-          text = fs3.readFileSync(file, "utf8");
+          text = fs2.readFileSync(file, "utf8");
         } catch {
         }
         if (/^\s*alexandria:/m.test(text)) return { ok: true, file, detail: "ya registrado" };
@@ -500,8 +330,8 @@ ${entry.trimEnd()}`);
         } else {
           text = text.trimEnd() + (text.trim() ? "\n\n" : "") + "mcp_servers:\n" + entry;
         }
-        fs3.mkdirSync(path3.dirname(file), { recursive: true });
-        fs3.writeFileSync(file, text);
+        fs2.mkdirSync(path2.dirname(file), { recursive: true });
+        fs2.writeFileSync(file, text);
         return { ok: true, file };
       } catch (e) {
         return { ok: false, file, detail: e.message };
@@ -512,9 +342,9 @@ ${entry.trimEnd()}`);
     id: "vscode",
     name: "VS Code (Copilot)",
     supportsProject: true,
-    detect: () => fs3.existsSync(vscodeUserDir()),
+    detect: () => fs2.existsSync(vscodeUserDir()),
     register(scope, projectDir) {
-      const file = scope === "project" ? path3.join(projectDir, ".vscode", "mcp.json") : path3.join(vscodeUserDir(), "mcp.json");
+      const file = scope === "project" ? path2.join(projectDir, ".vscode", "mcp.json") : path2.join(vscodeUserDir(), "mcp.json");
       try {
         const cfg = readJsonSafe(file);
         const servers = cfg["servers"] ?? {};
@@ -660,7 +490,7 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
 ).action(async (opts) => {
   const isProject = Boolean(opts.project) && !opts.global;
   const cwd = process.cwd();
-  const vaultPath = path4.resolve(opts.path ?? (isProject ? path4.join(cwd, "KnowledgeVault") : defaultVaultPath()));
+  const vaultPath = path3.resolve(opts.path ?? (isProject ? path3.join(cwd, "KnowledgeVault") : defaultVaultPath()));
   await showBanner();
   console.log(pc.bold(`Instalaci\xF3n ${isProject ? "por proyecto" : "global"}
 `));
@@ -718,7 +548,7 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
   const { vault } = await ensureReady();
   let content = opts.content;
   if (!content && !process.stdin.isTTY) {
-    content = fs4.readFileSync(0, "utf8");
+    content = fs3.readFileSync(0, "utf8");
   }
   const file = createNote(vault.managed, {
     title,
@@ -726,7 +556,7 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
     tags: opts.tags ? opts.tags.split(",").map((t) => t.trim()) : []
   });
   await VaultIndex.load(vault).refresh();
-  console.log(pc.green(`\u2713 ${path4.relative(vault.root, file)}`));
+  console.log(pc.green(`\u2713 ${path3.relative(vault.root, file)}`));
 });
 program.command("search").description("B\xFAsqueda h\xEDbrida (sem\xE1ntica + keyword) en la b\xF3veda").argument("<query...>", "qu\xE9 buscar").option("-k <n>", "n\xFAmero de resultados", "6").option("--expand", "incluir vecinos del grafo").action(async (query, opts) => {
   const vault = getVault();
@@ -800,7 +630,7 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
 async function runSkills(opts) {
   const { vault } = await ensureReady();
   const cwd = process.cwd();
-  const targetDir = opts.project ? path4.join(cwd, ".claude", "skills") : path4.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
+  const targetDir = opts.project ? path3.join(cwd, ".claude", "skills") : path3.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
   const recs = recommendSkills(vault, [targetDir]);
   if (recs.length === 0) {
     console.log(pc.dim("Sin recomendaciones nuevas: la b\xF3veda a\xFAn no tiene suficientes patrones (o ya est\xE1 todo instalado)."));

@@ -9,7 +9,7 @@ import {
   ensureVaultStructure,
   resolveVault,
   vaultExists
-} from "../chunk-CZM5NQZJ.js";
+} from "../chunk-CF2GLMR3.js";
 
 // src/hooks/on-stop.ts
 import fs from "fs";

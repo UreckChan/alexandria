@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 import {
+  MANAGED_DIR,
+  ensureAlias,
   listMarkdownFiles,
   parseNote
-} from "./chunk-CZM5NQZJ.js";
+} from "./chunk-CF2GLMR3.js";
 import {
   DIM,
   MODEL_ID,
@@ -104,6 +106,9 @@ var VaultIndex = class _VaultIndex {
     for (const rel of changed) {
       const info = onDisk.get(rel);
       try {
+        if (rel.startsWith(`${MANAGED_DIR}/`) && ensureAlias(info.abs)) {
+          info.mtime = fs.statSync(info.abs).mtimeMs;
+        }
         const note = parseNote(this.vault.root, info.abs);
         this.meta.notes[rel] = {
           rel,
@@ -160,6 +165,11 @@ ${c.text}`),
     }
     this.rebuildLinks();
     this.save();
+    try {
+      const { writeStaticGraph } = await import("./viewer-LD4RTZE7.js");
+      writeStaticGraph(this);
+    } catch {
+    }
     return { changed: changed.length, removed: removed.length, embedded: this.emb !== null };
   }
   /** Wikilinks (título → nota) + links semánticos (similitud entre notas). */

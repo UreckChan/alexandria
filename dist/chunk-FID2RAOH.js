@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-UWAIMIG2.js";
+} from "./chunk-VN7QOAG2.js";
 import {
   dot,
   embed,
