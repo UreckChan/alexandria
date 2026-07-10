@@ -38,7 +38,7 @@ Confirma que quedó instalado:
 
 ```bash
 $ ale --version
-0.2.3
+0.4.0
 ```
 
 ## Primeros pasos
@@ -46,10 +46,10 @@ $ ale --version
 Un solo comando instala todo (modelo de embeddings ~130MB una única vez, hooks, MCP, índice):
 
 ```bash
-# Global — una bóveda compartida para todas tus sesiones (~/KnowledgeVault)
+# Global — una bóveda compartida para todas tus sesiones (~/Alexandria)
 ale init
 
-# Por proyecto — bóveda DENTRO del repo (./KnowledgeVault)
+# Por proyecto — bóveda DENTRO del repo (./Alexandria)
 cd mi-proyecto
 ale init --project
 
@@ -72,7 +72,7 @@ ale init --agents claude,cursor,opencode   # solo esos
 
 Instalación por proyecto
 
-✓ Bóveda en /Users/tu/mi-proyecto/KnowledgeVault (vault Obsidian válido)
+✓ Bóveda en /Users/tu/mi-proyecto/Alexandria (vault Obsidian válido)
 ✓ Config del proyecto: /Users/tu/mi-proyecto/.vault.json
 ✓ Hooks registrados en /Users/tu/mi-proyecto/.claude/settings.json
   SessionStart (digest) · UserPromptSubmit (contexto+captura) · Stop/PreCompact (sesiones)
@@ -88,7 +88,7 @@ Instalación por proyecto
 
 Después de `init` no hay nada que reconectar, nunca. Importante: los hooks cargan **al arrancar** una sesión — abre una sesión *nueva* de tu agente en esa carpeta (una que ya estaba abierta no los verá). Desde ahí, cada prompt busca en la bóveda antes de gastar tokens y cada cierre de sesión guarda lo aprendido.
 
-> 💡 **Tip**: si la bóveda vive dentro de un repo git, agrega `KnowledgeVault/` a tu `.gitignore` — los digests de sesión son conocimiento personal tuyo, no del repo.
+> `ale init --project` también agrega la bóveda a tu `.gitignore` automáticamente, escanea el proyecto (stack, estructura, comandos → mapa inicial) y te ofrece configurar en `CLAUDE.md` que Claude use Alexandria por default en cada sesión (`--auto` / `--manual` para decidir sin pregunta).
 
 ## Uso diario — ejemplos
 
@@ -138,7 +138,7 @@ ale graph                    # visor EN VIVO en tu navegador: se actualiza solo 
 ale graph --out otro.html    # copia estática a otra ruta (opcional)
 ```
 
-Nodos = notas (tamaño = conexiones, color = tipo), líneas sólidas = `[[wikilinks]]`, punteadas = similitud semántica. Auto-encuadre, hover resalta vecinos, click muestra detalle y conexiones, caja para filtrar por título/tag. El grafo brilla a partir de ~20-30 notas — es acumulativo por diseño.
+Nodos = notas (tamaño = conexiones, color = tipo), líneas sólidas = `[[wikilinks]]`, punteadas = similitud semántica. Auto-encuadre, hover resalta vecinos, click muestra detalle y conexiones, caja para filtrar por título/tag, y **filtros por tipo estilo Obsidian** (los prompts vienen ocultos por default — son ruido visual; actívalos con su checkbox). El grafo brilla a partir de ~20-30 notas — es acumulativo por diseño.
 
 **En Obsidian**: abre la carpeta de la bóveda como vault y usa su graph view nativo — las notas llevan `aliases` en el frontmatter para que Obsidian resuelva los `[[wikilinks]]` (sin eso los ve como enlaces rotos). Las notas viejas se migran solas en el siguiente reindex. Ojo: `grafo.html` no se abre *dentro* de Obsidian (no renderiza HTML) — es para el navegador.
 
@@ -147,7 +147,7 @@ Nodos = notas (tamaño = conexiones, color = tipo), líneas sólidas = `[[wikili
 ```bash
 $ ale stats
 
-🧠 Bóveda: /Users/tu/KnowledgeVault (global)
+🧠 Bóveda: /Users/tu/Alexandria (global)
   Notas: 142 {"note":80,"prompt":38,"session":22,"map":2}
   Chunks indexados: 385 · Conexiones: 91
   Búsqueda semántica: activa
@@ -242,7 +242,7 @@ En cualquier agente conectado, pídele cosas como *"busca en mi bóveda cómo co
 
 | Comando | Qué hace |
 |---|---|
-| `ale init [--project] [--path <dir>] [--agents <ids>] [--skills]` | Instala todo (una vez). Bóveda default: `./KnowledgeVault` con `--project`, `~/KnowledgeVault` en global |
+| `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual]` | Instala todo: bóveda (default `./Alexandria` / `~/Alexandria`), hooks, MCP, .gitignore, escaneo inicial y CLAUDE.md |
 | `ale agents [ids] [--project]` | Lista agentes / registra el MCP en ellos |
 | `ale search <query> [-k n] [--expand]` | Búsqueda híbrida; `--expand` trae vecinos del grafo |
 | `ale add <título> [-c texto] [-t tags]` | Guardar nota manual (o por stdin) |
@@ -251,6 +251,7 @@ En cualquier agente conectado, pídele cosas como *"busca en mi bóveda cómo co
 | `ale stats` | Notas, conexiones y tokens ahorrados estimados |
 | `ale reindex [--force]` | Reindexar (incremental por default) |
 | `ale doctor [--project]` | Verifica y repara: modelo, hooks, MCP, índice |
+| `ale consolidate [--days n] [--dry]` | Archiva prompts viejos sin reuso — fuera del grafo/inyección, siguen buscables: nada se pierde |
 | `ale uninstall [--project]` | Quita hooks (las notas quedan intactas) |
 | `ale --vault <ruta> <comando>` | Cualquier comando contra otra bóveda |
 
@@ -266,7 +267,7 @@ En cualquier agente conectado, pídele cosas como *"busca en mi bóveda cómo co
 ## V2 (roadmap)
 
 - Bot de Telegram (grammY, polling local — sin servidor público): `/search`, `/save` desde el teléfono.
-- `ale consolidate`: detección de duplicados y clusters → notas-resumen.
+
 
 ## Código y contribuciones
 

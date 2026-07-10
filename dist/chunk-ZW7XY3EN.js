@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import {
-  MANAGED_DIR,
   ensureAlias,
   listMarkdownFiles,
   parseNote
-} from "./chunk-CF2GLMR3.js";
+} from "./chunk-JPHL2JHE.js";
 import {
   DIM,
   MODEL_ID,
@@ -106,7 +105,9 @@ var VaultIndex = class _VaultIndex {
     for (const rel of changed) {
       const info = onDisk.get(rel);
       try {
-        if (rel.startsWith(`${MANAGED_DIR}/`) && ensureAlias(info.abs)) {
+        const managedRel = path.relative(this.vault.root, this.vault.managed).split(path.sep).join("/");
+        const inManaged = managedRel === "" || rel.startsWith(`${managedRel}/`);
+        if (inManaged && ensureAlias(info.abs)) {
           info.mtime = fs.statSync(info.abs).mtimeMs;
         }
         const note = parseNote(this.vault.root, info.abs);
@@ -166,7 +167,7 @@ ${c.text}`),
     this.rebuildLinks();
     this.save();
     try {
-      const { writeStaticGraph } = await import("./viewer-LD4RTZE7.js");
+      const { writeStaticGraph } = await import("./viewer-FRJYOK3S.js");
       writeStaticGraph(this);
     } catch {
     }

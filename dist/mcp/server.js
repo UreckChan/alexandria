@@ -4,17 +4,19 @@ import {
 } from "../chunk-KHTYRYDR.js";
 import {
   hybridSearch
-} from "../chunk-FID2RAOH.js";
+} from "../chunk-ADHRHLX7.js";
+import {
+  ensureVaultStructure,
+  resolveVault
+} from "../chunk-KB6KYZFQ.js";
 import {
   VaultIndex
-} from "../chunk-VN7QOAG2.js";
+} from "../chunk-ZW7XY3EN.js";
 import {
   createNote,
-  ensureVaultStructure,
-  resolveVault,
   slugify,
   upsertNote
-} from "../chunk-CF2GLMR3.js";
+} from "../chunk-JPHL2JHE.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/mcp/server.ts
@@ -50,6 +52,15 @@ server.tool(
   },
   async ({ title, content, tags }) => {
     ensureVaultStructure(vault);
+    if (!title.startsWith("Mapa - ") && !/\[\[/.test(content)) {
+      const idxPre = VaultIndex.load(vault);
+      const map = Object.values(idxPre.meta.notes).find(
+        (n) => n.type === "map" || n.title.startsWith("Mapa - ")
+      );
+      if (map) content = `${content.trim()}
+
+Proyecto: [[${map.title}]]`;
+    }
     let file;
     if (title.startsWith("Mapa - ")) {
       file = upsertNote(vault.managed, {

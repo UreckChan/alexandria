@@ -16,15 +16,8 @@ import {
 } from "./chunk-KHTYRYDR.js";
 import {
   hybridSearch
-} from "./chunk-FID2RAOH.js";
+} from "./chunk-ADHRHLX7.js";
 import {
-  serveGraph
-} from "./chunk-I2ZBQUZD.js";
-import {
-  VaultIndex
-} from "./chunk-VN7QOAG2.js";
-import {
-  createNote,
   defaultVaultPath,
   ensureVaultStructure,
   globalConfigPath,
@@ -32,7 +25,18 @@ import {
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-CF2GLMR3.js";
+} from "./chunk-KB6KYZFQ.js";
+import {
+  serveGraph
+} from "./chunk-WPNU64MA.js";
+import {
+  VaultIndex
+} from "./chunk-ZW7XY3EN.js";
+import {
+  createNote,
+  slugify,
+  upsertNote
+} from "./chunk-JPHL2JHE.js";
 import {
   MODEL_ID,
   getEmbedder,
@@ -40,8 +44,8 @@ import {
 } from "./chunk-EDYBSJSS.js";
 
 // src/cli.ts
-import fs3 from "fs";
-import path3 from "path";
+import fs4 from "fs";
+import path4 from "path";
 import readline from "readline/promises";
 import { Command } from "commander";
 import pc from "picocolors";
@@ -428,6 +432,114 @@ async function showBanner(animate) {
   }
 }
 
+// src/core/setup.ts
+import fs3 from "fs";
+import os3 from "os";
+import path3 from "path";
+function ensureGitignore(projectDir, vaultRoot) {
+  if (!fs3.existsSync(path3.join(projectDir, ".git"))) return null;
+  const rel = path3.relative(projectDir, vaultRoot);
+  if (rel.startsWith("..")) return null;
+  const file = path3.join(projectDir, ".gitignore");
+  const entries = [`${rel.split(path3.sep).join("/")}/`];
+  let text = "";
+  try {
+    text = fs3.readFileSync(file, "utf8");
+  } catch {
+  }
+  const missing = entries.filter((e) => !text.split("\n").some((l) => l.trim() === e || l.trim() === e.slice(0, -1)));
+  if (missing.length === 0) return null;
+  const block = `${text.trimEnd()}
+
+# Alexandria (conocimiento personal, no del repo)
+${missing.join("\n")}
+`;
+  fs3.writeFileSync(file, text.trim() ? block : block.trimStart());
+  return file;
+}
+var CLAUDE_MD_START = "<!-- alexandria:start -->";
+var CLAUDE_MD_END = "<!-- alexandria:end -->";
+function configureClaudeMd(scope, projectDir) {
+  const file = scope === "project" ? path3.join(projectDir, "CLAUDE.md") : path3.join(os3.homedir(), ".claude", "CLAUDE.md");
+  const block = [
+    CLAUDE_MD_START,
+    "## Alexandria \u2014 b\xF3veda de conocimiento (uso por default)",
+    "- ANTES de explorar c\xF3digo o re-derivar contexto: busca con la tool MCP `vault_search`; si la b\xF3veda ya lo sabe, \xFAsalo.",
+    "- Al descubrir arquitectura, decisiones o soluciones: gu\xE1rdalas con `vault_save` (usa `[[wikilinks]]` a notas relacionadas; el t\xEDtulo `Mapa - <proyecto>` actualiza el mapa que se inyecta al inicio de cada sesi\xF3n).",
+    "- Usa `vault_related` para traer conocimiento conectado sin releer archivos.",
+    CLAUDE_MD_END
+  ].join("\n");
+  fs3.mkdirSync(path3.dirname(file), { recursive: true });
+  let text = "";
+  try {
+    text = fs3.readFileSync(file, "utf8");
+  } catch {
+  }
+  if (text.includes(CLAUDE_MD_START)) {
+    const re = new RegExp(`${CLAUDE_MD_START}[\\s\\S]*?${CLAUDE_MD_END}`);
+    text = text.replace(re, block);
+  } else {
+    text = (text.trimEnd() + "\n\n" + block + "\n").trimStart();
+  }
+  fs3.writeFileSync(file, text);
+  return file;
+}
+var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", ".next", "dist", "build", ".vault", ".claude", "coverage", "Alexandria", "KnowledgeVault"]);
+function scanProject(vault, projectDir) {
+  const name = path3.basename(projectDir);
+  const mapFile = path3.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
+  if (fs3.existsSync(mapFile)) return null;
+  const parts = [`Mapa inicial generado por \`ale init\` (escaneo autom\xE1tico). Actual\xEDzalo con vault_save.`];
+  try {
+    const pkg = JSON.parse(fs3.readFileSync(path3.join(projectDir, "package.json"), "utf8"));
+    const deps = Object.keys({ ...pkg.dependencies }).slice(0, 18);
+    const dev = Object.keys({ ...pkg.devDependencies }).slice(0, 10);
+    parts.push(`## Stack
+${pkg.name ? `Paquete: ${pkg.name}` : ""}
+- deps: ${deps.join(", ") || "\u2014"}
+- dev: ${dev.join(", ") || "\u2014"}`);
+    const scripts = Object.entries(pkg.scripts ?? {}).slice(0, 12);
+    if (scripts.length) {
+      parts.push(`## Comandos
+${scripts.map(([k, v]) => `- \`npm run ${k}\` \u2014 ${v}`).join("\n")}`);
+    }
+  } catch {
+  }
+  const tree = [];
+  const walk = (dir, depth, prefix) => {
+    if (depth > 2 || tree.length > 60) return;
+    let entries = [];
+    try {
+      entries = fs3.readdirSync(dir, { withFileTypes: true }).filter((e) => !e.name.startsWith(".") && !SKIP_DIRS.has(e.name));
+    } catch {
+      return;
+    }
+    for (const e of entries.filter((x) => x.isDirectory()).slice(0, 14)) {
+      tree.push(`${prefix}${e.name}/`);
+      walk(path3.join(dir, e.name), depth + 1, prefix + "  ");
+    }
+  };
+  walk(projectDir, 1, "");
+  if (tree.length) parts.push(`## Estructura
+\`\`\`
+${tree.join("\n")}
+\`\`\``);
+  try {
+    const readme = fs3.readFileSync(path3.join(projectDir, "README.md"), "utf8");
+    parts.push(`## README (extracto)
+${readme.split("\n").slice(0, 15).join("\n")}`);
+  } catch {
+  }
+  return upsertNote(vault.managed, {
+    fixedName: `mapa-${slugify(name)}`,
+    title: `Mapa - ${name}`,
+    type: "map",
+    tags: [name, "mapa"],
+    dir: "notes",
+    content: parts.join("\n\n")
+  });
+}
+
 // src/cli.ts
 function registerAgentsMcp(agents, scope, cwd) {
   for (const agent of agents) {
@@ -483,14 +595,14 @@ async function ensureReady(vault = getVault()) {
 }
 program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: modelo, hooks (Claude Code) y MCP en tus agentes de IA (una sola vez, persiste entre sesiones)").option("--project", "registrar para este proyecto (cwd): .vault.json + .claude/settings.json + .mcp.json").option("--global", "registrar para todas las sesiones del usuario (default)").option(
   "--path <dir>",
-  "ruta del vault Obsidian (existente o nuevo). Default: ./KnowledgeVault con --project, ~/KnowledgeVault en global"
-).option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
+  "ruta del vault Obsidian (existente o nuevo). Default: ./Alexandria con --project, ~/Alexandria en global"
+).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
   "--agents <ids>",
   `agentes de IA donde registrar el MCP: "all", "detected" o csv de ${AGENTS.map((a) => a.id).join(",")} (default: claude + detectados)`
 ).action(async (opts) => {
   const isProject = Boolean(opts.project) && !opts.global;
   const cwd = process.cwd();
-  const vaultPath = path3.resolve(opts.path ?? (isProject ? path3.join(cwd, "KnowledgeVault") : defaultVaultPath()));
+  const vaultPath = path4.resolve(opts.path ?? (isProject ? path4.join(cwd, "Alexandria") : defaultVaultPath()));
   await showBanner();
   console.log(pc.bold(`Instalaci\xF3n ${isProject ? "por proyecto" : "global"}
 `));
@@ -515,6 +627,31 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   if (skipped.length > 0) {
     console.log(pc.dim(`  Otros agentes disponibles: ${skipped.map((a) => a.id).join(", ")} \u2192 ale agents <ids>`));
   }
+  if (isProject) {
+    const gi = ensureGitignore(cwd, vault.root);
+    if (gi) console.log(pc.green(`\u2713 B\xF3veda agregada a ${gi}`));
+  }
+  let auto = opts.auto ? true : opts.manual ? false : void 0;
+  if (auto === void 0) {
+    if (process.stdin.isTTY) {
+      const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+      const ans = (await rl.question(pc.bold("\xBFConfigurar a Claude para usar Alexandria autom\xE1ticamente (CLAUDE.md)? [S/n] "))).trim().toLowerCase();
+      rl.close();
+      auto = ans === "" || ans === "s" || ans === "si" || ans === "s\xED" || ans === "y";
+    } else {
+      auto = true;
+    }
+  }
+  if (auto) {
+    const file = configureClaudeMd(isProject ? "project" : "global", cwd);
+    console.log(pc.green(`\u2713 Uso autom\xE1tico configurado en ${file}`));
+  } else {
+    console.log(pc.dim("  Sin auto-configuraci\xF3n (act\xEDvala luego con: ale init --auto)"));
+  }
+  if (isProject) {
+    const map = scanProject(vault, cwd);
+    if (map) console.log(pc.green(`\u2713 Proyecto escaneado \u2192 ${path4.relative(vault.root, map)} (mapa inicial)`));
+  }
   await downloadModelIfMissing();
   const idx = VaultIndex.load(vault);
   const res = await idx.refresh();
@@ -523,6 +660,37 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   console.log(pc.dim("   Hooks (captura autom\xE1tica) solo en Claude Code; los dem\xE1s agentes usan las tools MCP."));
   console.log(pc.dim('   Prueba: ale search "algo" \xB7 ale graph \xB7 ale stats \xB7 ale agents\n'));
   if (opts.skills) await runSkills({ yes: false, project: isProject });
+});
+program.command("consolidate").description("Archiva prompts viejos sin reuso: salen del grafo y de la inyecci\xF3n, pero NUNCA se pierden \u2014 siguen buscables (contexto infinito)").option("--days <n>", "antig\xFCedad m\xEDnima en d\xEDas", "45").option("--dry", "solo mostrar qu\xE9 se archivar\xEDa").action(async (opts) => {
+  const { vault, idx } = await ensureReady();
+  const cutoff = Date.now() - (parseInt(opts.days, 10) || 45) * 864e5;
+  const stale = Object.values(idx.meta.notes).filter(
+    (n) => n.type === "prompt" && (n.hits ?? 1) <= 1 && !n.rel.split("/").includes("archive") && n.created !== void 0 && Date.parse(n.created) < cutoff
+  );
+  if (stale.length === 0) {
+    console.log(pc.dim("Nada que consolidar: sin prompts viejos sin uso."));
+    return;
+  }
+  const archiveDir = path4.join(vault.managed, "archive");
+  if (!opts.dry) fs4.mkdirSync(archiveDir, { recursive: true });
+  for (const n of stale) {
+    console.log(
+      `${opts.dry ? pc.yellow("se archivar\xEDa") : pc.cyan("archivado")}  ${n.rel} ${pc.dim(`(${(n.created ?? "").slice(0, 10)}, hits ${n.hits})`)}`
+    );
+    if (!opts.dry) {
+      fs4.renameSync(path4.join(vault.root, n.rel), path4.join(archiveDir, path4.basename(n.rel)));
+    }
+  }
+  if (!opts.dry) {
+    await VaultIndex.load(vault).refresh();
+    console.log(
+      pc.green(`
+\u2713 ${stale.length} prompts archivados en ${path4.relative(vault.root, archiveDir)}/ \u2014 fuera del grafo, siguen buscables. Nada se pierde.`)
+    );
+  } else {
+    console.log(pc.dim(`
+${stale.length} candidatos. Corre sin --dry para archivarlos.`));
+  }
 });
 program.command("agents").description("Lista los agentes de IA soportados y registra el MCP de Alexandria en los que elijas").argument("[ids]", `"all", "detected" o csv (${AGENTS.map((a) => a.id).join(",")})`).option("--project", "registrar a nivel proyecto (cwd) cuando el agente lo soporte").action((ids, opts) => {
   if (!ids) {
@@ -548,7 +716,7 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
   const { vault } = await ensureReady();
   let content = opts.content;
   if (!content && !process.stdin.isTTY) {
-    content = fs3.readFileSync(0, "utf8");
+    content = fs4.readFileSync(0, "utf8");
   }
   const file = createNote(vault.managed, {
     title,
@@ -556,7 +724,7 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
     tags: opts.tags ? opts.tags.split(",").map((t) => t.trim()) : []
   });
   await VaultIndex.load(vault).refresh();
-  console.log(pc.green(`\u2713 ${path3.relative(vault.root, file)}`));
+  console.log(pc.green(`\u2713 ${path4.relative(vault.root, file)}`));
 });
 program.command("search").description("B\xFAsqueda h\xEDbrida (sem\xE1ntica + keyword) en la b\xF3veda").argument("<query...>", "qu\xE9 buscar").option("-k <n>", "n\xFAmero de resultados", "6").option("--expand", "incluir vecinos del grafo").action(async (query, opts) => {
   const vault = getVault();
@@ -630,7 +798,7 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
 async function runSkills(opts) {
   const { vault } = await ensureReady();
   const cwd = process.cwd();
-  const targetDir = opts.project ? path3.join(cwd, ".claude", "skills") : path3.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
+  const targetDir = opts.project ? path4.join(cwd, ".claude", "skills") : path4.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
   const recs = recommendSkills(vault, [targetDir]);
   if (recs.length === 0) {
     console.log(pc.dim("Sin recomendaciones nuevas: la b\xF3veda a\xFAn no tiene suficientes patrones (o ya est\xE1 todo instalado)."));

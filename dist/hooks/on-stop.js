@@ -5,11 +5,13 @@ import {
   truncate
 } from "../chunk-DEDAOKAV.js";
 import {
-  appendToNote,
   ensureVaultStructure,
   resolveVault,
   vaultExists
-} from "../chunk-CF2GLMR3.js";
+} from "../chunk-KB6KYZFQ.js";
+import {
+  appendToNote
+} from "../chunk-JPHL2JHE.js";
 
 // src/hooks/on-stop.ts
 import fs from "fs";

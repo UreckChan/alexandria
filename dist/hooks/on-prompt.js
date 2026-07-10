@@ -9,14 +9,16 @@ import {
 } from "../chunk-DEDAOKAV.js";
 import {
   hybridSearch
-} from "../chunk-FID2RAOH.js";
-import "../chunk-VN7QOAG2.js";
+} from "../chunk-ADHRHLX7.js";
+import {
+  resolveVault,
+  vaultExists
+} from "../chunk-KB6KYZFQ.js";
+import "../chunk-ZW7XY3EN.js";
 import {
   createNote,
-  resolveVault,
-  touchNote,
-  vaultExists
-} from "../chunk-CF2GLMR3.js";
+  touchNote
+} from "../chunk-JPHL2JHE.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-prompt.ts
@@ -33,7 +35,14 @@ runHook(25e3, async (input) => {
   if (prompt.length < MIN_PROMPT_CHARS || prompt.startsWith("/")) return;
   const vault = resolveVault({ cwd: input.cwd });
   if (!vaultExists(vault)) return;
-  const results = await hybridSearch(vault, prompt, 5, { expand: true });
+  const rawResults = await hybridSearch(vault, prompt, 5, { expand: true });
+  const STALE_DAYS = 60;
+  const results = rawResults.filter((r) => {
+    if (r.note.type !== "prompt" && r.note.type !== "session") return true;
+    if ((r.note.hits ?? 1) > 1) return true;
+    const age = r.note.created ? (Date.now() - Date.parse(r.note.created)) / 864e5 : 0;
+    return age <= STALE_DAYS;
+  });
   const maxCos = results.reduce((m, r) => Math.max(m, r.cosine), 0);
   const relevant = maxCos > 0 ? results.filter((r) => r.cosine >= RELEVANT_COSINE && r.cosine >= maxCos - RELEVANT_MARGIN) : results.filter((r) => r.score > 0.02);
   let injected = "";
@@ -66,7 +75,7 @@ Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o r
       promptChars: prompt.length
     });
   }
-  const dupe = results.find((r) => r.note.type === "prompt" && r.cosine >= DEDUP_COSINE);
+  const dupe = rawResults.find((r) => r.note.type === "prompt" && r.cosine >= DEDUP_COSINE);
   if (dupe) {
     try {
       touchNote(path.join(vault.root, dupe.note.rel));

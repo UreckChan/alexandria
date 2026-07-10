@@ -8,12 +8,13 @@ import {
   truncate
 } from "../chunk-DEDAOKAV.js";
 import {
-  VaultIndex
-} from "../chunk-VN7QOAG2.js";
-import {
   resolveVault,
   vaultExists
-} from "../chunk-CF2GLMR3.js";
+} from "../chunk-KB6KYZFQ.js";
+import {
+  VaultIndex
+} from "../chunk-ZW7XY3EN.js";
+import "../chunk-JPHL2JHE.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-session-start.ts

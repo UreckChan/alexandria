@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-VN7QOAG2.js";
+} from "./chunk-ZW7XY3EN.js";
 
 // src/graph/viewer.ts
 import fs from "fs";
@@ -15,7 +15,7 @@ function buildGraphData(idx) {
     deg.set(l.to, (deg.get(l.to) ?? 0) + 1);
   }
   return {
-    nodes: Object.values(idx.meta.notes).map((n) => ({
+    nodes: Object.values(idx.meta.notes).filter((n) => !n.rel.split("/").includes("archive")).map((n) => ({
       id: n.rel,
       title: n.title,
       type: n.type,
@@ -44,6 +44,8 @@ function renderGraphHtml(data, live) {
   #hud .sub{color:var(--dim);font-size:12px}
   .leg{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:var(--dim)}
   .leg b{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .leg label{cursor:pointer;user-select:none}
+  .leg input{accent-color:#7aa2f7;margin-right:4px;vertical-align:-2px}
   #hint{color:var(--dim);font-size:11px;margin-top:6px}
   #info{bottom:14px;left:14px;padding:12px 16px;max-width:440px;display:none}
   #info b{font-size:14px}
@@ -60,13 +62,13 @@ function renderGraphHtml(data, live) {
 <div id="hud" class="card">
   <h1>\u{1F3DB}\uFE0F Alexandria</h1>
   <div class="sub" id="counts"></div>
-  <div class="leg">
-    <span><b style="background:#7aa2f7"></b>nota</span>
-    <span><b style="background:#9ece6a"></b>sesi\xF3n</span>
-    <span><b style="background:#e0af68"></b>prompt</span>
-    <span><b style="background:#f7768e"></b>mapa</span>
+  <div class="leg" id="leg">
+    <label><input type="checkbox" data-type="note" checked><b style="background:#7aa2f7"></b>nota</label>
+    <label><input type="checkbox" data-type="map" checked><b style="background:#f7768e"></b>mapa</label>
+    <label><input type="checkbox" data-type="session" checked><b style="background:#9ece6a"></b>sesi\xF3n</label>
+    <label><input type="checkbox" data-type="prompt"><b style="background:#e0af68"></b>prompt</label>
   </div>
-  <div id="hint">arrastra \xB7 rueda = zoom \xB7 hover = conexiones \xB7 click = detalle<br>\u2014 s\xF3lida = [[wikilink]] \xB7 \u2025 punteada = sem\xE1ntica</div>
+  <div id="hint">filtros por tipo (prompts ocultos por default \u2014 ruido) \xB7 arrastra \xB7 rueda = zoom<br>hover = conexiones \xB7 click = detalle \xB7 \u2014 s\xF3lida = [[wikilink]] \xB7 \u2025 punteada = sem\xE1ntica</div>
 </div>
 <div id="search"><input id="q" placeholder="filtrar notas\u2026" autocomplete="off"></div>
 <div id="live" class="card">\u25CF <b>en vivo</b> \u2014 se actualiza solo</div>
@@ -88,6 +90,11 @@ fit(); addEventListener('resize', () => { fit(); fitView(); });
 let nodes = [], byId = new Map(), edges = [];
 let zoom = 1, panX = 0, panY = 0, dragNode = null, hot = true, heat = 300;
 let didFit = false, hover = null, filter = '';
+// filtros por tipo (estilo Obsidian) \u2014 prompts ocultos por default: son ruido visual
+const typeOn = { note: true, map: true, session: true, prompt: false };
+document.querySelectorAll('#leg input').forEach(cb => cb.addEventListener('change', e => {
+  typeOn[e.target.dataset.type] = e.target.checked; heat = Math.max(heat, 30); hot = true;
+}));
 function radius(n){ return 5 + Math.min(n.deg,14)*1.1 + Math.min(n.hits,8)*0.6; }
 function loadData(data, keepPositions){
   const old = keepPositions ? byId : new Map();
@@ -125,14 +132,20 @@ function step(){
     let dx = e.b.x-e.a.x, dy = e.b.y-e.a.y;
     const d = Math.sqrt(dx*dx+dy*dy) + 0.01;
     const want = e.type === 'wikilink' ? 120 : 175;
-    const k = (d - want) * (e.type === 'wikilink' ? 0.006 : 0.003);
+    // resorte lineal ACOTADO \u2014 jam\xE1s multiplicar por d otra vez (explota a NaN)
+    const f = Math.max(-6, Math.min(6, (d - want) * (e.type === 'wikilink' ? 0.03 : 0.015)));
     dx /= d; dy /= d;
-    e.a.vx += dx*k*d; e.a.vy += dy*k*d; e.b.vx -= dx*k*d; e.b.vy -= dy*k*d;
+    e.a.vx += dx*f; e.a.vy += dy*f; e.b.vx -= dx*f; e.b.vy -= dy*f;
   }
+  const VMAX = 14;
   for (const n of nodes){
     n.vx += (W/2 - n.x) * 0.0005; n.vy += (H/2 - n.y) * 0.0005;
     n.vx *= 0.86; n.vy *= 0.86;
+    // velocidad acotada + saneo: la simulaci\xF3n no puede reventar con ning\xFAn grafo
+    n.vx = Math.max(-VMAX, Math.min(VMAX, n.vx)) || 0;
+    n.vy = Math.max(-VMAX, Math.min(VMAX, n.vy)) || 0;
     if (n !== dragNode){ n.x += n.vx; n.y += n.vy; }
+    if (!Number.isFinite(n.x) || !Number.isFinite(n.y)){ n.x = W/2; n.y = H/2; n.vx = n.vy = 0; }
   }
   if (--heat <= 0 && !dragNode) { hot = false; if (!didFit) fitView(); }
 }
@@ -161,9 +174,11 @@ function draw(){
 
   const active = hover ? new Set([hover, ...edges.filter(e=>e.a===hover||e.b===hover).flatMap(e=>[e.a,e.b])]) : null;
   const match = filter ? new Set(nodes.filter(n => n.title.toLowerCase().includes(filter) || n.tags.join(' ').toLowerCase().includes(filter))) : null;
+  const shown = (n) => typeOn[n.type] !== false;
   const visible = (n) => (!active || active.has(n)) && (!match || match.has(n));
 
   for (const e of edges){
+    if (!shown(e.a) || !shown(e.b)) continue;
     const on = visible(e.a) && visible(e.b) && (!active || e.a===hover || e.b===hover);
     ctx.beginPath();
     ctx.setLineDash(e.type === 'semantic' ? [5,5] : []);
@@ -177,6 +192,7 @@ function draw(){
   ctx.setLineDash([]);
 
   for (const n of nodes){
+    if (!shown(n)) continue;
     const on = visible(n);
     const color = COLORS[n.type] || '#7aa2f7';
     ctx.globalAlpha = on ? 1 : 0.12;
@@ -195,7 +211,7 @@ function draw(){
   ctx.font = (12/Math.max(zoom,0.8)) + 'px -apple-system,system-ui,sans-serif';
   ctx.lineWidth = 3/Math.max(zoom,0.8); ctx.strokeStyle = '#0b0d13';
   for (const n of nodes){
-    if (!visible(n)) continue;
+    if (!shown(n) || !visible(n)) continue;
     if (!(showAll || n.deg > 1 || n === hover)) continue;
     const label = n.title.length > 34 ? n.title.slice(0,33)+'\u2026' : n.title;
     ctx.globalAlpha = n === hover ? 1 : 0.85;
@@ -209,7 +225,7 @@ function draw(){
 
 // ---------- interacci\xF3n ----------
 const toWorld = (x,y) => [(x-panX)/zoom, (y-panY)/zoom];
-const pick = (x,y) => { const [wx,wy] = toWorld(x,y); return nodes.find(n => { const dx=n.x-wx, dy=n.y-wy; return dx*dx+dy*dy <= (n.r+6)*(n.r+6); }); };
+const pick = (x,y) => { const [wx,wy] = toWorld(x,y); return nodes.find(n => { if (typeOn[n.type] === false) return false; const dx=n.x-wx, dy=n.y-wy; return dx*dx+dy*dy <= (n.r+6)*(n.r+6); }); };
 let panning = false, px = 0, py = 0, moved = false;
 const tip = document.getElementById('tip');
 cv.addEventListener('mousedown', e => { moved = false; const n = pick(e.clientX, e.clientY); if (n){ dragNode = n; hot = true; heat = 120; } else { panning = true; px = e.clientX; py = e.clientY; } cv.classList.add('dragging'); });
