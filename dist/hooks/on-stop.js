@@ -8,10 +8,10 @@ import {
   ensureVaultStructure,
   resolveVault,
   vaultExists
-} from "../chunk-KB6KYZFQ.js";
+} from "../chunk-DYCARGQR.js";
 import {
   appendToNote
-} from "../chunk-JPHL2JHE.js";
+} from "../chunk-XWR74BQ2.js";
 
 // src/hooks/on-stop.ts
 import fs from "fs";

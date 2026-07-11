@@ -4,6 +4,17 @@
 import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
+var NOTE_TYPES = [
+  "note",
+  "prompt",
+  "session",
+  "map",
+  "plan",
+  "task",
+  "verification",
+  "lesson",
+  "solution"
+];
 var SKIP_DIRS = /* @__PURE__ */ new Set([".obsidian", ".vault", ".trash", ".git", "node_modules"]);
 function extractWikilinks(content) {
   const out = /* @__PURE__ */ new Set();
@@ -42,12 +53,14 @@ function parseNote(root, absPath) {
   const { data, content } = matter(raw);
   const rel = path.relative(root, absPath).split(path.sep).join("/");
   const title = typeof data.title === "string" && data.title || path.basename(absPath, ".md");
-  const type = ["note", "prompt", "session", "map"].includes(data.type) ? data.type : "note";
+  const type = NOTE_TYPES.includes(data.type) ? data.type : "note";
+  const status = ["active", "completed", "failed"].includes(data.status) ? data.status : void 0;
   const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
   return {
     rel,
     title,
     type,
+    status,
     tags,
     created: data.created ? String(data.created) : void 0,
     hits: typeof data.hits === "number" ? data.hits : 1,
@@ -63,6 +76,7 @@ function frontmatter(n) {
     // del frontmatter — sin esto su graph view muestra los enlaces como rotos
     `aliases: [${JSON.stringify(n.title)}]`,
     `type: ${n.type}`,
+    ...n.status ? [`status: ${n.status}`] : [],
     `tags: [${n.tags.map((t) => JSON.stringify(t)).join(", ")}]`,
     `created: ${(/* @__PURE__ */ new Date()).toISOString()}`,
     `hits: ${n.hits ?? 1}`,
@@ -93,9 +107,16 @@ function createNote(managed, n) {
   while (fs.existsSync(file)) file = path.join(dir, `${base}-${i++}.md`);
   fs.writeFileSync(
     file,
-    frontmatter({ title: n.title, type: n.type ?? "note", tags: n.tags ?? [] }) + n.content.trim() + "\n"
+    frontmatter({ title: n.title, type: n.type ?? "note", tags: n.tags ?? [], status: n.status }) + n.content.trim() + "\n"
   );
   return file;
+}
+function setNoteStatus(absPath, status) {
+  const raw = fs.readFileSync(absPath, "utf8");
+  const { data, content } = matter(raw);
+  data.status = status;
+  data.updated = (/* @__PURE__ */ new Date()).toISOString();
+  fs.writeFileSync(absPath, matter.stringify(content, data));
 }
 function touchNote(absPath) {
   const raw = fs.readFileSync(absPath, "utf8");
@@ -116,7 +137,7 @@ function upsertNote(managed, n) {
   } else {
     fs.writeFileSync(
       file,
-      frontmatter({ title: n.title, type: n.type ?? "note", tags: n.tags ?? [] }) + n.content.trim() + "\n"
+      frontmatter({ title: n.title, type: n.type ?? "note", tags: n.tags ?? [], status: n.status }) + n.content.trim() + "\n"
     );
   }
   return file;
@@ -130,7 +151,7 @@ function appendToNote(managed, n) {
   } else {
     fs.writeFileSync(
       file,
-      frontmatter({ title: n.title, type: n.type ?? "session", tags: n.tags ?? [] }) + n.content.trim() + "\n"
+      frontmatter({ title: n.title, type: n.type ?? "session", tags: n.tags ?? [], status: n.status }) + n.content.trim() + "\n"
     );
   }
   return file;
@@ -142,6 +163,7 @@ export {
   parseNote,
   ensureAlias,
   createNote,
+  setNoteStatus,
   touchNote,
   upsertNote,
   appendToNote

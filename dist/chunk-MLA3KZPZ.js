@@ -3,7 +3,7 @@ import {
   ensureAlias,
   listMarkdownFiles,
   parseNote
-} from "./chunk-JPHL2JHE.js";
+} from "./chunk-XWR74BQ2.js";
 import {
   DIM,
   MODEL_ID,
@@ -115,6 +115,7 @@ var VaultIndex = class _VaultIndex {
           rel,
           title: note.title,
           type: note.type,
+          status: note.status,
           tags: note.tags,
           created: note.created,
           hits: note.hits,
@@ -167,7 +168,7 @@ ${c.text}`),
     this.rebuildLinks();
     this.save();
     try {
-      const { writeStaticGraph } = await import("./viewer-FRJYOK3S.js");
+      const { writeStaticGraph } = await import("./viewer-57T7UOFE.js");
       writeStaticGraph(this);
     } catch {
     }

@@ -78,7 +78,22 @@ function ensureVaultStructure(v) {
 }
 function writeGlobalConfig(vaultPath) {
   fs.mkdirSync(configDir(), { recursive: true });
-  fs.writeFileSync(globalConfigPath(), JSON.stringify({ vaultPath }, null, 2) + "\n");
+  const current = readJson(globalConfigPath()) ?? {};
+  fs.writeFileSync(globalConfigPath(), JSON.stringify({ ...current, vaultPath }, null, 2) + "\n");
+}
+function getConfigKey(key) {
+  const cfg = readJson(globalConfigPath()) ?? {};
+  return cfg[key];
+}
+function setConfigKey(key, value) {
+  fs.mkdirSync(configDir(), { recursive: true });
+  const cfg = readJson(globalConfigPath()) ?? {};
+  cfg[key] = value;
+  fs.writeFileSync(globalConfigPath(), JSON.stringify(cfg, null, 2) + "\n");
+}
+function protocolEnabled() {
+  const v = getConfigKey("protocol");
+  return v !== false && v !== "false";
 }
 function writeProjectConfig(projectDir, vaultPath) {
   const file = path.join(projectDir, ".vault.json");
@@ -95,5 +110,8 @@ export {
   vaultExists,
   ensureVaultStructure,
   writeGlobalConfig,
+  getConfigKey,
+  setConfigKey,
+  protocolEnabled,
   writeProjectConfig
 };

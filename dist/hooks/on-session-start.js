@@ -8,13 +8,14 @@ import {
   truncate
 } from "../chunk-DEDAOKAV.js";
 import {
+  protocolEnabled,
   resolveVault,
   vaultExists
-} from "../chunk-KB6KYZFQ.js";
+} from "../chunk-DYCARGQR.js";
 import {
   VaultIndex
-} from "../chunk-ZW7XY3EN.js";
-import "../chunk-JPHL2JHE.js";
+} from "../chunk-MLA3KZPZ.js";
+import "../chunk-XWR74BQ2.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-session-start.ts
@@ -31,6 +32,14 @@ runHook(15e3, async (input) => {
   if (notes.length === 0) return;
   const proj = projectName(input.cwd);
   const parts = [];
+  if (protocolEnabled()) {
+    const openPlans = notes.filter((n) => n.type === "plan" && n.status === "active");
+    parts.push(
+      `## Protocolo Alexandria (activo)
+El protocolo es PALANCA, no l\xEDmite: \xFAsalo para rendir m\xE1s con menos tokens, nunca como burocracia. Tareas simples \u2192 responde directo, sin ceremonia. Tareas no triviales \u2192 ciclo con las tools MCP: 1) plan_create (objetivo + Definition of Done) \u2192 2) ejecuta con toda tu capacidad \u2192 3) task_verify con evidencia real (tests/build \u2014 la evidencia elimina errores, no te frena) \u2192 si algo falla, vault_search por lecciones ANTES de re-debuggear (conocimiento previo = tokens gratis) \u2192 4) lesson_extract si resolviste algo no obvio. Reutiliza lo cacheado con criterio: valida que siga aplicando si el c\xF3digo cambi\xF3.` + (openPlans.length > 0 ? `
+**Planes abiertos:** ${openPlans.map((p) => p.title).join(" \xB7 ")} \u2014 ret\xF3malos, no dupliques.` : "")
+    );
+  }
   const map = notes.find(
     (n) => (n.type === "map" || n.title.toLowerCase().startsWith("mapa - ")) && n.title.toLowerCase().includes(proj.toLowerCase())
   );

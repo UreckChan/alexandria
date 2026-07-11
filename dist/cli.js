@@ -16,27 +16,29 @@ import {
 } from "./chunk-KHTYRYDR.js";
 import {
   hybridSearch
-} from "./chunk-ADHRHLX7.js";
+} from "./chunk-BCLBZ7NX.js";
 import {
   defaultVaultPath,
   ensureVaultStructure,
+  getConfigKey,
   globalConfigPath,
   resolveVault,
+  setConfigKey,
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-KB6KYZFQ.js";
+} from "./chunk-DYCARGQR.js";
 import {
   serveGraph
-} from "./chunk-WPNU64MA.js";
+} from "./chunk-RLVCH6CZ.js";
 import {
   VaultIndex
-} from "./chunk-ZW7XY3EN.js";
+} from "./chunk-MLA3KZPZ.js";
 import {
   createNote,
   slugify,
   upsertNote
-} from "./chunk-JPHL2JHE.js";
+} from "./chunk-XWR74BQ2.js";
 import {
   MODEL_ID,
   getEmbedder,
@@ -463,10 +465,11 @@ function configureClaudeMd(scope, projectDir) {
   const file = scope === "project" ? path3.join(projectDir, "CLAUDE.md") : path3.join(os3.homedir(), ".claude", "CLAUDE.md");
   const block = [
     CLAUDE_MD_START,
-    "## Alexandria \u2014 b\xF3veda de conocimiento (uso por default)",
+    "## Alexandria \u2014 b\xF3veda de conocimiento y Protocolo (uso por default)",
     "- ANTES de explorar c\xF3digo o re-derivar contexto: busca con la tool MCP `vault_search`; si la b\xF3veda ya lo sabe, \xFAsalo.",
-    "- Al descubrir arquitectura, decisiones o soluciones: gu\xE1rdalas con `vault_save` (usa `[[wikilinks]]` a notas relacionadas; el t\xEDtulo `Mapa - <proyecto>` actualiza el mapa que se inyecta al inicio de cada sesi\xF3n).",
-    "- Usa `vault_related` para traer conocimiento conectado sin releer archivos.",
+    "- El Protocolo Alexandria es palanca, no l\xEDmite: tareas simples se responden directo, sin ceremonia. En tareas no triviales: `plan_create` (objetivo + Definition of Done) \u2192 ejecutar con toda tu capacidad \u2192 `task_verify` con evidencia real (la evidencia elimina errores, no frena) \u2192 si algo falla, `vault_search` por lecciones previas antes de re-debuggear \u2192 `lesson_extract` al resolver algo no obvio. Soluciones cacheadas se validan contra el c\xF3digo actual antes de reutilizarse.",
+    "- Al descubrir arquitectura o decisiones: `vault_save` (con `[[wikilinks]]`; el t\xEDtulo `Mapa - <proyecto>` actualiza el mapa que se inyecta al iniciar sesi\xF3n).",
+    "- `vault_related` trae conocimiento conectado sin releer archivos.",
     CLAUDE_MD_END
   ].join("\n");
   fs3.mkdirSync(path3.dirname(file), { recursive: true });
@@ -596,7 +599,7 @@ async function ensureReady(vault = getVault()) {
 program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: modelo, hooks (Claude Code) y MCP en tus agentes de IA (una sola vez, persiste entre sesiones)").option("--project", "registrar para este proyecto (cwd): .vault.json + .claude/settings.json + .mcp.json").option("--global", "registrar para todas las sesiones del usuario (default)").option(
   "--path <dir>",
   "ruta del vault Obsidian (existente o nuevo). Default: ./Alexandria con --project, ~/Alexandria en global"
-).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
+).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--no-protocol", "instalar sin el Protocolo Alexandria (solo b\xF3veda cl\xE1sica)").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
   "--agents <ids>",
   `agentes de IA donde registrar el MCP: "all", "detected" o csv de ${AGENTS.map((a) => a.id).join(",")} (default: claude + detectados)`
 ).action(async (opts) => {
@@ -648,6 +651,10 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   } else {
     console.log(pc.dim("  Sin auto-configuraci\xF3n (act\xEDvala luego con: ale init --auto)"));
   }
+  setConfigKey("protocol", opts.protocol !== false);
+  console.log(
+    opts.protocol !== false ? pc.green("\u2713 Protocolo Alexandria activo (plan_create \xB7 task_verify \xB7 lesson_extract) \u2014 ap\xE1galo con: ale config set protocol false") : pc.dim("  Protocolo desactivado (b\xF3veda cl\xE1sica) \u2014 act\xEDvalo con: ale config set protocol true")
+  );
   if (isProject) {
     const map = scanProject(vault, cwd);
     if (map) console.log(pc.green(`\u2713 Proyecto escaneado \u2192 ${path4.relative(vault.root, map)} (mapa inicial)`));
@@ -660,6 +667,72 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   console.log(pc.dim("   Hooks (captura autom\xE1tica) solo en Claude Code; los dem\xE1s agentes usan las tools MCP."));
   console.log(pc.dim('   Prueba: ale search "algo" \xB7 ale graph \xB7 ale stats \xB7 ale agents\n'));
   if (opts.skills) await runSkills({ yes: false, project: isProject });
+});
+program.command("plan").description("Crear un plan del Protocolo desde un archivo .md/.txt (en vez de escribirlo en la terminal)").argument("<file>", 'archivo con el plan (los checkboxes "- [ ]" se toman como Definition of Done)').option("--title <t>", "t\xEDtulo del plan (default: nombre del archivo o primer heading)").action(async (file, opts) => {
+  const { vault } = await ensureReady();
+  const abs = path4.resolve(file);
+  const raw = fs4.readFileSync(abs, "utf8");
+  const heading = raw.match(/^#\s+(.+)$/m)?.[1]?.trim();
+  const title = opts.title ?? heading ?? path4.basename(abs).replace(/\.(md|txt)$/i, "");
+  const dod = [...raw.matchAll(/^[-*]\s*\[[ x]\]\s*(.+)$/gim)].map((m) => m[1].trim());
+  const noteFile = createNote(vault.managed, {
+    title: title.startsWith("Plan - ") ? title : `Plan - ${title}`,
+    type: "plan",
+    status: "active",
+    tags: ["plan"],
+    content: raw.trim()
+  });
+  await VaultIndex.load(vault).refresh();
+  console.log(pc.green(`\u2713 Plan creado: ${path4.relative(vault.root, noteFile)}`));
+  console.log(pc.dim(`  DoD detectada: ${dod.length} criterios${dod.length ? " \u2014 " + dod.slice(0, 3).join(" \xB7 ") + (dod.length > 3 ? " \u2026" : "") : ' (agrega checkboxes "- [ ]" para criterios verificables)'}`));
+  console.log(pc.dim("  El agente lo ver\xE1 como plan abierto al iniciar sesi\xF3n y lo retomar\xE1 con task_verify."));
+});
+program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD, planes abiertos, fallos sin lecci\xF3n, notas sueltas").action(async () => {
+  const { vault, idx } = await ensureReady();
+  const notes = Object.values(idx.meta.notes).filter((n) => !n.rel.split("/").includes("archive"));
+  const plans = notes.filter((n) => n.type === "plan");
+  const linked = new Set(idx.meta.links.flatMap((l) => [l.from, l.to]));
+  console.log(pc.bold("\n\u{1F3DB}\uFE0F  Auditor\xEDa del Protocolo Alexandria\n"));
+  const openPlans = plans.filter((p) => p.status === "active");
+  console.log(`  Planes: ${plans.length} (${pc.yellow(`${openPlans.length} abiertos`)}, ${plans.filter((p) => p.status === "completed").length} completados, ${plans.filter((p) => p.status === "failed").length} fallidos)`);
+  for (const p of openPlans.slice(0, 8)) console.log(pc.dim(`    \u25CB ${p.title}`));
+  const chunksByNote = /* @__PURE__ */ new Map();
+  for (const c of idx.meta.chunks) chunksByNote.set(c.note, (chunksByNote.get(c.note) ?? "") + "\n" + c.text);
+  const noDod = plans.filter((p) => !/\[[ x]\]/i.test(chunksByNote.get(p.rel) ?? ""));
+  if (noDod.length > 0) {
+    console.log(pc.yellow(`  \u26A0 Planes sin Definition of Done: ${noDod.length}`));
+    for (const p of noDod.slice(0, 5)) console.log(pc.dim(`    - ${p.title}`));
+  }
+  const fails = notes.filter((n) => n.type === "verification" && n.status === "failed");
+  const lessons = notes.filter((n) => n.type === "lesson");
+  console.log(`  Verificaciones: ${notes.filter((n) => n.type === "verification").length} (${pc.red(`${fails.length} fallos`)}) \xB7 Lecciones: ${pc.green(String(lessons.length))}`);
+  if (fails.length > lessons.length) {
+    console.log(pc.yellow(`  \u26A0 Hay m\xE1s fallos (${fails.length}) que lecciones (${lessons.length}) \u2014 fallos resueltos sin destilar aprendizaje.`));
+  }
+  const loose = notes.filter((n) => n.type !== "prompt" && n.type !== "session" && !linked.has(n.rel));
+  if (loose.length > 0) {
+    console.log(pc.yellow(`  \u26A0 Notas sin conexiones (invisibles para vault_related): ${loose.length}`));
+    for (const n of loose.slice(0, 5)) console.log(pc.dim(`    - ${n.title} \u2192 con\xE9ctala con vault_link o [[wikilinks]]`));
+  }
+  if (noDod.length === 0 && loose.length === 0 && fails.length <= lessons.length) {
+    console.log(pc.green("\n  \u2713 B\xF3veda sana: planes con DoD, conocimiento conectado, fallos con lecci\xF3n."));
+  }
+  console.log();
+});
+program.command("config").description("Configuraci\xF3n de Alexandria (ej. protocol true/false)").argument("<accion>", "get | set").argument("<clave>", "ej. protocol").argument("[valor]", "para set: true/false o texto").action((accion, clave, valor) => {
+  const key = clave.replace(/^protocol\.enabled$/, "protocol");
+  if (accion === "get") {
+    const v = getConfigKey(key);
+    console.log(v === void 0 ? pc.dim(`${key} sin definir (default: ${key === "protocol" ? "true" : "\u2014"})`) : `${key} = ${JSON.stringify(v)}`);
+    return;
+  }
+  if (accion === "set") {
+    const parsed = valor === "true" ? true : valor === "false" ? false : valor;
+    setConfigKey(key, parsed);
+    console.log(pc.green(`\u2713 ${key} = ${JSON.stringify(parsed)}`));
+    return;
+  }
+  console.log(pc.yellow("Acci\xF3n inv\xE1lida: usa get o set"));
 });
 program.command("consolidate").description("Archiva prompts viejos sin reuso: salen del grafo y de la inyecci\xF3n, pero NUNCA se pierden \u2014 siguen buscables (contexto infinito)").option("--days <n>", "antig\xFCedad m\xEDnima en d\xEDas", "45").option("--dry", "solo mostrar qu\xE9 se archivar\xEDa").action(async (opts) => {
   const { vault, idx } = await ensureReady();
@@ -712,9 +785,12 @@ program.command("agents").description("Lista los agentes de IA soportados y regi
   registerAgentsMcp(chosen, opts.project ? "project" : "global", process.cwd());
   console.log(pc.dim("\n  Reinicia el agente (o recarga sus MCP) para que tome el servidor.\n"));
 });
-program.command("add").description("Guardar una nota manualmente").argument("<title>", "t\xEDtulo").option("-c, --content <text>", "contenido markdown (o se lee de stdin)").option("-t, --tags <tags>", "tags separados por coma").action(async (title, opts) => {
+program.command("add").description("Guardar una nota manualmente").argument("<title>", "t\xEDtulo").option("-c, --content <text>", "contenido markdown (o se lee de stdin)").option("-f, --file <path>", "leer el contenido desde un archivo .md/.txt del proyecto").option("-t, --tags <tags>", "tags separados por coma").action(async (title, opts) => {
   const { vault } = await ensureReady();
   let content = opts.content;
+  if (!content && opts.file) {
+    content = fs4.readFileSync(path4.resolve(opts.file), "utf8");
+  }
   if (!content && !process.stdin.isTTY) {
     content = fs4.readFileSync(0, "utf8");
   }
@@ -789,6 +865,14 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
   console.log(`  Notas: ${notes.length} ${pc.dim(JSON.stringify(byType))}`);
   console.log(`  Chunks indexados: ${idx.meta.chunks.length} \xB7 Conexiones: ${idx.meta.links.length}`);
   console.log(`  B\xFAsqueda sem\xE1ntica: ${idx.emb ? pc.green("activa") : pc.yellow("keyword-only (corre ale reindex con internet)")}`);
+  console.log(pc.bold("\n\u{1F3DB}\uFE0F  Protocolo"));
+  const plans = notes.filter((n) => n.type === "plan");
+  const verifs = notes.filter((n) => n.type === "verification");
+  const lessons = notes.filter((n) => n.type === "lesson");
+  const reused = lessons.filter((n) => (n.hits ?? 1) > 1).length;
+  const passed = verifs.filter((n) => n.status === "completed").length;
+  console.log(`  Planes: ${plans.length} (${plans.filter((p) => p.status === "active").length} abiertos) \xB7 Verificaciones: ${verifs.length}${verifs.length ? ` (${Math.round(passed / verifs.length * 100)}% \u2713)` : ""}`);
+  console.log(`  Lecciones: ${lessons.length} (${reused} reutilizadas \u2014 cada reuso = debug que no se repiti\xF3)`);
   console.log(pc.bold("\n\u{1F4B0} Ahorro estimado"));
   console.log(`  Inyecciones de contexto: ${s.injections} (${s.solutionCacheHits} con soluci\xF3n cacheada)`);
   console.log(`  Tokens inyectados: ~${s.injectedTokens.toLocaleString()}`);

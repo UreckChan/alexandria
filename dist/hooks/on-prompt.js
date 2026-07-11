@@ -9,16 +9,16 @@ import {
 } from "../chunk-DEDAOKAV.js";
 import {
   hybridSearch
-} from "../chunk-ADHRHLX7.js";
+} from "../chunk-BCLBZ7NX.js";
 import {
   resolveVault,
   vaultExists
-} from "../chunk-KB6KYZFQ.js";
-import "../chunk-ZW7XY3EN.js";
+} from "../chunk-DYCARGQR.js";
+import "../chunk-MLA3KZPZ.js";
 import {
   createNote,
   touchNote
-} from "../chunk-JPHL2JHE.js";
+} from "../chunk-XWR74BQ2.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-prompt.ts
@@ -53,7 +53,7 @@ runHook(25e3, async (input) => {
     const lines = [];
     if (cached) {
       lines.push(
-        `\u26A1 Ya resolviste algo casi id\xE9ntico antes (\xAB${cached.note.title}\xBB). Reutiliza esa soluci\xF3n en vez de re-derivarla:
+        `\u26A1 Ya resolviste algo casi id\xE9ntico antes (\xAB${cached.note.title}\xBB). Parte de esa soluci\xF3n en vez de re-derivarla \u2014 valida que siga aplicando si el c\xF3digo cambi\xF3:
 ${truncate(cached.excerpts.join("\n"), 2e3)}`
       );
     }

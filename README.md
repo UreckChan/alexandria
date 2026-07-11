@@ -1,26 +1,49 @@
 # 🏛️ Alexandria
 
-> Bóveda de conocimiento local para tus agentes de IA — ahorra tokens, recuerda entre sesiones, conecta tus ideas.
+> A local knowledge vault for your AI agents — saves tokens, remembers across sessions, and turns every model into a disciplined engineer.
 
 [![npm](https://img.shields.io/npm/v/%40ureck%2Falexandria)](https://www.npmjs.com/package/@ureck/alexandria)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
-[![Buy Me a Coffee](https://img.shields.io/badge/☕_Invítame_un_café-ureck-yellow)](https://buymeacoffee.com/ureck)
+[![Buy Me a Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-ureck-yellow)](https://buymeacoffee.com/ureck)
 
-Alexandria captura automáticamente tus prompts y sesiones de IA, busca en ese conocimiento **antes** de gastar tokens, y conecta todo en un grafo estilo Obsidian. **100% local**: sin base de datos, sin API keys, sin telemetría, sin costo.
+Alexandria automatically captures your AI prompts and sessions, searches that knowledge **before** spending tokens, and connects everything in an Obsidian-style graph. **100% local**: no database, no API keys, no telemetry, no cost.
 
-Funciona con los agentes más usados vía MCP: **Claude Code · Cursor · OpenCode · Windsurf · Cline · Codex CLI · Gemini CLI · VS Code (Copilot) · OpenClaw · Hermes Agent**.
+Works with the most popular agents via MCP: **Claude Code · Cursor · OpenCode · Windsurf · Cline · Codex CLI · Gemini CLI · VS Code (Copilot) · OpenClaw · Hermes Agent**.
 
-## ¿Por qué?
+## Why?
 
-Cada sesión nueva de un agente de IA empieza de cero: re-explora tu código, re-deriva decisiones que ya tomaste, re-consume los mismos tokens. Alexandria rompe ese ciclo:
+Every new AI session starts from zero: it re-explores your code, re-derives decisions you already made, re-spends the same tokens. Alexandria breaks that cycle:
 
-- **Ahorra tokens**: cada prompt dispara una búsqueda semántica local (<100ms) que inyecta al agente solo los fragmentos relevantes — en vez de releer archivos completos.
-- **Cero re-análisis entre sesiones**: al abrir sesión, el agente recibe el mapa del proyecto y el conocimiento acumulado.
-- **Memoria de soluciones**: si un prompt casi idéntico ya se resolvió antes, inyecta esa solución — el agente no la re-deriva.
-- **Es un vault de Obsidian**: markdown puro con `[[wikilinks]]`. Ábrelo en Obsidian cuando quieras.
-- **Multiplataforma**: Windows, macOS, Linux · Node, Bun o Deno. Pure JS, sin dependencias nativas que fallen al instalar.
+- **Saves tokens**: every prompt triggers a local semantic search (<100ms) that injects only the relevant fragments — instead of re-reading whole files.
+- **Zero re-analysis between sessions**: on session start, the agent receives the project map and all accumulated knowledge.
+- **Solution memory**: if a nearly identical prompt was already solved, the previous solution is injected — the agent doesn't re-derive it.
+- **Infinite context, nothing is ever lost**: old noise gets archived, never deleted — everything stays searchable forever.
+- **It's a valid Obsidian vault**: plain markdown with `[[wikilinks]]`. Open it in Obsidian anytime.
+- **Cross-platform**: Windows, macOS, Linux · Node, Bun or Deno. Pure JS — no native dependencies to break your install.
 
-## Instalación
+## The Alexandria Protocol
+
+Beyond memory, Alexandria ships a lightweight engineering protocol that turns **any** MCP-capable model into a senior agent that plans, verifies with evidence, and learns:
+
+> **Plan → Execute one task → Verify with evidence → (on failure: reuse past lessons) → Extract the lesson**
+
+It lives in the MCP tools themselves — their names and descriptions carry the instructions — so it works identically across every agent, with or without hooks:
+
+| MCP tool | What the agent does with it | Token payoff |
+|---|---|---|
+| `plan_create(title, goal, dod, tasks)` | Writes a plan note with a **Definition of Done** and numbered tasks before touching code | No wandering; open plans are re-injected next session so work is resumed, not repeated |
+| `task_verify(plan, task, passed, evidence)` | Records the real verdict of each task (test/build output, compacted) | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
+| `lesson_extract(title, lesson, links)` | Distills the root cause + fix after solving something non-obvious | ~200 tokens today replace ~20,000 tokens of re-debugging next month |
+
+Lessons and solutions get a ranking boost in search, so the most valuable knowledge always surfaces first. The protocol is **on by default**; toggle it anytime:
+
+```bash
+ale config set protocol false   # classic vault only
+ale config set protocol true    # back on
+ale init --no-protocol          # install without it
+```
+
+## Install
 
 ```bash
 # npm (Node ≥ 20)
@@ -31,168 +54,162 @@ bun add -g @ureck/alexandria
 
 # deno
 deno install -grA -n ale npm:@ureck/alexandria/ale
-# (si Deno se queja de "minimum dependency date": agrega --minimum-dependency-age=0)
+# (if Deno complains about "minimum dependency date", add --minimum-dependency-age=0)
 ```
 
-Confirma que quedó instalado:
+Verify:
 
 ```bash
 $ ale --version
-0.4.0
+0.5.0
 ```
 
-## Primeros pasos
+## Getting started
 
-Un solo comando instala todo (modelo de embeddings ~130MB una única vez, hooks, MCP, índice):
+One command installs everything (embedding model ~130MB downloaded once, hooks, MCP registration, index):
 
 ```bash
-# Global — una bóveda compartida para todas tus sesiones (~/Alexandria)
+# Global — one shared vault for all your sessions (~/Alexandria)
 ale init
 
-# Por proyecto — bóveda DENTRO del repo (./Alexandria)
-cd mi-proyecto
+# Per project — vault INSIDE the repo (./Alexandria)
+cd my-project
 ale init --project
 
-# Con tu vault de Obsidian existente
-ale init --path ~/Documents/MiVaultObsidian
+# Point at an existing Obsidian vault
+ale init --path ~/Documents/MyObsidianVault
 
-# Eligiendo en qué agentes registrar el MCP
-ale init --agents all                      # todos los soportados
-ale init --agents claude,cursor,opencode   # solo esos
-# (sin --agents: Claude Code + los que detecte instalados)
+# Choose which agents get the MCP server
+ale init --agents all                      # every supported agent
+ale init --agents claude,cursor,opencode   # just these
+# (without --agents: Claude Code + whatever is detected on your machine)
 ```
 
-<details>
-<summary>Salida esperada de <code>ale init --project</code></summary>
+`ale init --project` also, automatically:
+- adds the vault to your `.gitignore` (personal knowledge, not repo code),
+- **scans the project** (stack from package.json, npm scripts, folder structure, README excerpt) into an initial `Map - <project>` note — context from the very first session,
+- asks *"Configure Claude to use Alexandria automatically?"* and writes the usage rules into `CLAUDE.md` (`--auto` / `--manual` to skip the question).
 
-```
-  ▄▀█ █░░ █▀▀ ▀▄▀ ▄▀█ █▄░█ █▀▄ █▀█ █ ▄▀█
-  █▀█ █▄▄ ██▄ █░█ █▀█ █░▀█ █▄▀ █▀▄ █ █▀█
-  🏛  Bóveda de conocimiento local · creada por Ureck
+After `init` there is nothing to reconnect, ever. Important: hooks load **when a session starts** — open a *new* agent session in that folder (an already-open one won't see them).
 
-Instalación por proyecto
+## Daily usage — examples
 
-✓ Bóveda en /Users/tu/mi-proyecto/Alexandria (vault Obsidian válido)
-✓ Config del proyecto: /Users/tu/mi-proyecto/.vault.json
-✓ Hooks registrados en /Users/tu/mi-proyecto/.claude/settings.json
-  SessionStart (digest) · UserPromptSubmit (contexto+captura) · Stop/PreCompact (sesiones)
-✓ MCP → Claude Code (/Users/tu/mi-proyecto/.mcp.json)
-↓ Descargando modelo de embeddings (una sola vez)…
-✓ Modelo listo (búsqueda semántica activada)
-✓ Índice: 0 notas, 0 conexiones
-
-✅ Listo. Abre una sesión de tu agente y todo funciona solo — nada que reconectar nunca.
-```
-
-</details>
-
-Después de `init` no hay nada que reconectar, nunca. Importante: los hooks cargan **al arrancar** una sesión — abre una sesión *nueva* de tu agente en esa carpeta (una que ya estaba abierta no los verá). Desde ahí, cada prompt busca en la bóveda antes de gastar tokens y cada cierre de sesión guarda lo aprendido.
-
-> `ale init --project` también agrega la bóveda a tu `.gitignore` automáticamente, escanea el proyecto (stack, estructura, comandos → mapa inicial) y te ofrece configurar en `CLAUDE.md` que Claude use Alexandria por default en cada sesión (`--auto` / `--manual` para decidir sin pregunta).
-
-## Uso diario — ejemplos
-
-### Buscar conocimiento (semántico + keyword)
-
-Busca por **significado**, no por palabras exactas:
+### Search by meaning, not keywords
 
 ```bash
-$ ale search como publico mi app en la tienda de google
+$ ale search how do I publish my app to the google store
 
-Despliegue de Flutter release (Alexandria/notes/2026-07-09-despliegue.md, note) ● relevancia alta
-  Para publicar en Play Store: keystore fuera de git, key.properties,
-  flutter build appbundle. Firmar siempre con la clave de producción.
+Flutter release deployment (Alexandria/notes/2026-07-09-deploy.md, note) ● high relevance
+  To publish on Play Store: keystore outside git, key.properties,
+  flutter build appbundle. Always sign with the production key.
 ```
 
-Nota que la query no comparte ni una palabra clave con la nota ("tienda de google" → "Play Store"). Más ejemplos:
+The query shares zero keywords with the note ("google store" → "Play Store"). More:
 
 ```bash
-ale search error de cors en el api            # encuentra tu solución de hace meses
-ale search "decisión de arquitectura" -k 10   # más resultados
-ale search autenticacion --expand             # incluye notas CONECTADAS a los resultados (grafo)
+ale search cors error in the api        # finds your fix from months ago
+ale search "architecture decision" -k 10
+ale search auth --expand                # also pulls notes CONNECTED to the results (graph)
 ```
 
-La etiqueta `● relevancia alta/media/baja` es relativa al mejor resultado — confía en ella más que en el número.
+The `● high/medium/low relevance` label is relative to the best hit — trust it over the raw number.
 
-### Guardar notas manualmente
+### Save notes manually
 
 ```bash
-# Nota rápida
-ale add "Configuración de Prisma" -c "Singleton en src/lib/prisma.ts con globalThis" -t "prisma,db"
+# Quick note
+ale add "Prisma setup" -c "Singleton in src/lib/prisma.ts using globalThis" -t "prisma,db"
 
-# Desde un archivo o pipe
-cat DECISIONES.md | ale add "Decisiones de arquitectura Q3"
+# From a file in your project (or a pipe)
+ale add "Q3 architecture decisions" --file DECISIONS.md
+cat DECISIONS.md | ale add "Q3 architecture decisions"
 
-# Con [[wikilinks]] para conectar conocimiento
-ale add "Deploy en Vercel" -c "Regiones cdg1, ver [[Configuración de Prisma]]" -t deploy
+# With [[wikilinks]] to connect knowledge
+ale add "Vercel deploy" -c "Region cdg1, see [[Prisma setup]]" -t deploy
 ```
 
-(La captura automática vía hooks hace esto solo en cada sesión de Claude Code — `add` es para conocimiento extra.)
+(Automatic capture via hooks already does this in every Claude Code session — `add` is for extra knowledge.)
 
-### Ver el grafo de conexiones
+### Create a plan from a file
 
-**El grafo se mantiene solo** — no hay que generarlo: cada vez que la bóveda cambia (captura automática, `ale add`, reindex), se regenera `<bóveda>/grafo.html`. Doble clic y siempre está al día.
+Instead of typing a whole plan into the terminal, keep it as markdown in your repo:
 
 ```bash
-ale graph                    # visor EN VIVO en tu navegador: se actualiza solo cada 3s
-ale graph --out otro.html    # copia estática a otra ruta (opcional)
+$ ale plan PLAN-migration.md
+✓ Plan created: notes/2026-07-11-plan-migrate-to-postgres-17.md
+  DoD detected: 3 criteria — backup verified · migrations run clean · app responds on staging
 ```
 
-Nodos = notas (tamaño = conexiones, color = tipo), líneas sólidas = `[[wikilinks]]`, punteadas = similitud semántica. Auto-encuadre, hover resalta vecinos, click muestra detalle y conexiones, caja para filtrar por título/tag, y **filtros por tipo estilo Obsidian** (los prompts vienen ocultos por default — son ruido visual; actívalos con su checkbox). El grafo brilla a partir de ~20-30 notas — es acumulativo por diseño.
+Checkbox lines (`- [ ] ...`) become the Definition of Done. The agent sees it as an **open plan** at the start of the next session and resumes it with `task_verify`.
 
-**En Obsidian**: abre la carpeta de la bóveda como vault y usa su graph view nativo — las notas llevan `aliases` en el frontmatter para que Obsidian resuelva los `[[wikilinks]]` (sin eso los ve como enlaces rotos). Las notas viejas se migran solas en el siguiente reindex. Ojo: `grafo.html` no se abre *dentro* de Obsidian (no renderiza HTML) — es para el navegador.
+### View the knowledge graph
 
-### Medir cuánto te está ahorrando
+**The graph maintains itself** — every vault change (automatic capture, `ale add`, reindex) regenerates `<vault>/grafo.html`. Double-click it anytime.
+
+```bash
+ale graph                  # LIVE viewer in your browser: auto-refreshes every 3s
+ale graph --out other.html # static copy elsewhere (optional)
+```
+
+Nodes = notes (size = connections, color = type: 🟪 plans, 🟦 verifications, 🟨 lessons, 🟩 sessions…), solid lines = `[[wikilinks]]`, dashed = semantic similarity. Auto-fit, hover highlights neighbors, click shows details, Obsidian-style **type filters** (prompts hidden by default — they're visual noise). The graph shines from ~20-30 notes on — it's cumulative by design.
+
+**In Obsidian**: open the vault folder as a vault and use the native graph view — notes carry `aliases` in their frontmatter so Obsidian resolves the `[[wikilinks]]`. Old notes are migrated automatically on the next reindex. Note: `grafo.html` is for your browser; Obsidian doesn't render HTML.
+
+### Measure what it saves you
 
 ```bash
 $ ale stats
 
-🧠 Bóveda: /Users/tu/Alexandria (global)
-  Notas: 142 {"note":80,"prompt":38,"session":22,"map":2}
-  Chunks indexados: 385 · Conexiones: 91
-  Búsqueda semántica: activa
+🧠 Vault: /Users/you/Alexandria (global)
+  Notes: 142 {"note":80,"prompt":38,"session":22,"map":2}
+  Indexed chunks: 385 · Connections: 91
+  Semantic search: active
 
-💰 Ahorro estimado
-  Inyecciones de contexto: 57 (12 con solución cacheada)
-  Tokens inyectados: ~21,300
-  Tokens ahorrados (vs re-explorar): ~191,700
+🏛️  Protocol
+  Plans: 6 (1 open) · Verifications: 14 (86% ✓)
+  Lessons: 9 (4 reused — each reuse = a debug session that never happened)
+
+💰 Estimated savings
+  Context injections: 57 (12 with cached solution)
+  Injected tokens: ~21,300
+  Tokens saved (vs re-exploring): ~191,700
 ```
 
-### Skills recomendadas según tus patrones
+### Audit your vault's health
 
 ```bash
-$ ale skills
+$ ale audit
 
-📦 Skills recomendadas según tu bóveda:
-  pdf-report-gen [local] — detecté 14 menciones de pdf, membrete en la bóveda
-  auth-standard  [local] — detecté 9 menciones de auth, login, jwt en la bóveda
-
-¿Instalar todas? [s/N/números separados por coma]
+🏛️  Alexandria Protocol audit
+  Plans: 2 (2 open, 0 completed, 0 failed)
+  Verifications: 1 (1 failures) · Lessons: 1
+  ⚠ Notes without connections (invisible to vault_related): 1
+    - Plan - Migrate to Postgres 17 → connect it with vault_link or [[wikilinks]]
 ```
 
-Analiza los temas de tus notas y sugiere skills de Claude (desde skills.sh o tu repo local). `-y` instala sin preguntar, `--project` instala en `.claude/skills/` del proyecto.
+Flags plans without a Definition of Done, failures without lessons, and orphan notes.
 
-### Mantenimiento (casi nunca lo necesitas)
+### Maintenance (you rarely need it)
 
 ```bash
-ale doctor              # verifica y repara: modelo, hooks, MCP, índice
-ale reindex             # reindexado incremental (solo notas cambiadas)
-ale reindex --force     # desde cero (p. ej. tras editar mucho en Obsidian)
-ale uninstall           # quita hooks; tus notas quedan intactas
+ale doctor                    # checks & repairs: model, hooks, MCP, index
+ale reindex [--force]         # incremental by default
+ale consolidate [--days 45]   # ARCHIVES old unused prompts to Alexandria/archive/
+                              # — out of the graph and injection, still searchable: nothing is ever lost
+ale uninstall                 # removes hooks; your notes stay untouched
 ```
 
-Todo comando auto-repara antes de correr: si falta el modelo lo descarga, si el índice está viejo lo actualiza — no tienes que pensar en ello.
+Every command self-repairs before running: missing model → downloads it; stale index → updates it.
 
-## Agentes soportados
+## Supported agents
 
 ```bash
-ale agents                 # lista con detección automática (● = detectado en tu máquina)
-ale agents all             # registra el MCP en todos
-ale agents cursor,gemini   # solo en esos
-ale agents detected        # solo los detectados
+ale agents                 # list with auto-detection (● = found on your machine)
+ale agents all             # register the MCP server in all of them
+ale agents cursor,gemini   # just these
 ```
 
-| Agente | Config que escribe | Por proyecto |
+| Agent | Config written | Per-project |
 |---|---|---|
 | Claude Code | `.mcp.json` / `claude mcp add` + hooks | ✓ |
 | Cursor | `~/.cursor/mcp.json` / `.cursor/mcp.json` | ✓ |
@@ -201,85 +218,68 @@ ale agents detected        # solo los detectados
 | Cline | `cline_mcp_settings.json` (VS Code) | — |
 | Codex CLI | `~/.codex/config.toml` | — |
 | Gemini CLI | `~/.gemini/settings.json` / `.gemini/settings.json` | ✓ |
-| VS Code (Copilot) | `mcp.json` (perfil) / `.vscode/mcp.json` | ✓ |
+| VS Code (Copilot) | `mcp.json` (profile) / `.vscode/mcp.json` | ✓ |
 | OpenClaw | `~/.openclaw/openclaw.json` | — |
 | Hermes Agent (Nous) | `hermes mcp add` / `~/.hermes/config.yaml` | — |
 
-Los registros hacen **merge idempotente**: nunca pisan tus otros servidores MCP configurados.
+Registrations are **idempotent merges** — your other MCP servers are never touched.
 
-**Nota**: la captura automática por hooks (digest de sesión, inyección por prompt, guardado al terminar) es exclusiva de Claude Code — los demás agentes no tienen sistema de hooks. En ellos el conocimiento fluye por las herramientas MCP, que el agente usa solo.
+**Note**: automatic capture via hooks (session digest, per-prompt injection, session save on close) is Claude Code-only — other agents don't have a hook system. There, knowledge flows through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).
 
-## Cómo funciona
+## How it works
 
 ```
-Sesión del agente de IA
+AI agent session
   │
-  ├─ SessionStart ──► inyecta digest: mapa del proyecto + conocimiento previo   (hooks, Claude Code)
-  ├─ Cada prompt ───► búsqueda híbrida local → inyecta solo lo relevante        (hooks, Claude Code)
-  │                   └─ prompt casi idéntico ya resuelto → inyecta la solución (caché)
-  ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link   (todos los agentes)
-  └─ Stop/PreCompact► guarda el resultado de la sesión en la bóveda             (hooks, Claude Code)
+  ├─ SessionStart ──► injects digest: protocol manifest + project map + open plans   (hooks, Claude Code)
+  ├─ Every prompt ──► local hybrid search → injects only what's relevant             (hooks, Claude Code)
+  │                   └─ near-identical prompt already solved → injects the solution (cache)
+  ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link         (all agents)
+  │                   plan_create · task_verify · lesson_extract                     (the Protocol)
+  └─ Stop/PreCompact► saves the session outcome into the vault                       (hooks, Claude Code)
                                 │
-                        <Vault Obsidian>/Alexandria/*.md   ← markdown, [[wikilinks]]
-                        <Vault>/.vault/                    ← índice (regenerable)
+                        <Obsidian vault>/Alexandria/*.md   ← markdown, [[wikilinks]]
+                        <vault>/.vault/                    ← index (regenerable)
 ```
 
-- **Búsqueda híbrida**: embeddings locales (transformers.js, modelo multilingüe e5-small) + BM25, combinados con RRF y boost por recencia/uso. Sin internet funciona en modo keyword.
-- **Índice incremental**: solo re-procesa notas cuyo mtime cambió. El grafo nunca se recalcula completo.
-- **Deduplicación**: prompts casi idénticos no crean notas nuevas — suman `hits` (y suben en el ranking).
-- **Sobre los scores**: el modelo e5 comprime los cosenos (~0.76–0.86 incluso entre temas sin relación); el *ranking* es lo confiable, no el número crudo — por eso la etiqueta de relevancia.
+- **Hybrid search**: local embeddings (transformers.js, multilingual e5-small) + BM25, combined with RRF, boosted by recency, usage, and note type (lessons/solutions rank highest).
+- **Incremental index**: only re-processes notes whose mtime changed. The graph is never rebuilt from scratch.
+- **Deduplication**: near-identical prompts don't create new notes — they add `hits` (and climb the ranking).
+- **About scores**: the e5 model compresses cosines (~0.76–0.86 even for unrelated topics); the *ranking* is what's reliable, hence the relevance label.
 
-## Herramientas MCP (las usa el agente solo)
+## Command reference
 
-En cualquier agente conectado, pídele cosas como *"busca en mi bóveda cómo configuré el deploy"* o *"guarda esta decisión en la bóveda"*:
-
-- `vault_search(query, k)` — busca conocimiento antes de explorar código.
-- `vault_save(title, content, tags)` — guarda decisiones/arquitectura. `title: "Mapa - <proyecto>"` actualiza el mapa que se inyecta al inicio de cada sesión de Claude Code.
-- `vault_related(title)` — vecinos en el grafo (wikilinks + semánticos) sin releer archivos.
-- `vault_link(from, to)` — conecta dos notas con `[[wikilink]]`.
-
-## Comandos — referencia
-
-| Comando | Qué hace |
+| Command | What it does |
 |---|---|
-| `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual]` | Instala todo: bóveda (default `./Alexandria` / `~/Alexandria`), hooks, MCP, .gitignore, escaneo inicial y CLAUDE.md |
-| `ale agents [ids] [--project]` | Lista agentes / registra el MCP en ellos |
-| `ale search <query> [-k n] [--expand]` | Búsqueda híbrida; `--expand` trae vecinos del grafo |
-| `ale add <título> [-c texto] [-t tags]` | Guardar nota manual (o por stdin) |
-| `ale graph [--out file.html] [--no-open]` | Grafo interactivo local |
-| `ale skills [-y] [--project]` | Recomienda e instala skills de Claude según tus patrones |
-| `ale stats` | Notas, conexiones y tokens ahorrados estimados |
-| `ale reindex [--force]` | Reindexar (incremental por default) |
-| `ale doctor [--project]` | Verifica y repara: modelo, hooks, MCP, índice |
-| `ale consolidate [--days n] [--dry]` | Archiva prompts viejos sin reuso — fuera del grafo/inyección, siguen buscables: nada se pierde |
-| `ale uninstall [--project]` | Quita hooks (las notas quedan intactas) |
-| `ale --vault <ruta> <comando>` | Cualquier comando contra otra bóveda |
+| `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol]` | Installs everything: vault (default `./Alexandria` / `~/Alexandria`), hooks, MCP, .gitignore, project scan, CLAUDE.md |
+| `ale agents [ids] [--project]` | List agents / register the MCP server |
+| `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors |
+| `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |
+| `ale plan <file> [--title t]` | Create a Protocol plan from a .md/.txt file (checkboxes → Definition of Done) |
+| `ale graph [--out file.html] [--no-open]` | Live local graph viewer |
+| `ale audit` | Protocol health: plans without DoD, failures without lessons, orphan notes |
+| `ale stats` | Notes, connections, protocol metrics, estimated tokens saved |
+| `ale config <get\|set> <key> [value]` | Configuration (e.g. `protocol` true/false) |
+| `ale skills [-y] [--project]` | Recommends & installs Claude skills based on your patterns |
+| `ale reindex [--force]` | Reindex (incremental by default) |
+| `ale consolidate [--days n] [--dry]` | Archive old unused prompts — never deletes |
+| `ale doctor [--project]` | Check & repair: model, hooks, MCP, index |
+| `ale uninstall [--project]` | Remove hooks (notes stay untouched) |
+| `ale --vault <path> <cmd>` | Run any command against another vault |
 
-`alexandria` funciona como alias de `ale`.
+`alexandria` works as an alias of `ale`.
 
-## Privacidad y seguridad
+## Privacy & security
 
-- **Todo corre en tu máquina**: el modelo de embeddings se descarga una vez (Hugging Face) y después funciona offline. Tus notas jamás salen de tu disco. Sin telemetría.
-- **Sin API keys, sin cuentas, sin costo.**
-- Los escáneres de dependencias (Socket, etc.) marcan alertas de *network/shell/env access* en el árbol de dependencias: provienen del runtime de ML (`onnxruntime`/`transformers.js`, que necesita filesystem y descarga inicial del modelo) y del SDK oficial de MCP — no de código de Alexandria. El código fuente es abierto y auditable; el paquete publicado no ejecuta install scripts propios.
-- Los configs generados (`.mcp.json`, hooks) apuntan a la ruta de instalación de tu máquina. Si compartes un repo con equipo, cambia el `command` a `npx -y @ureck/alexandria alexandria serve-mcp` para que sea portable.
+- **Everything runs on your machine**: the embedding model is downloaded once (Hugging Face) and then works offline. Your notes never leave your disk. No telemetry.
+- **No API keys, no accounts, no cost.**
+- Dependency scanners (Socket, etc.) flag *network/shell/env access* in the dependency tree: those come from the ML runtime (`onnxruntime`/`transformers.js`, which needs filesystem access and the one-time model download) and the official MCP SDK — not from Alexandria's code. The published package runs no install scripts of its own.
+- Generated configs (`.mcp.json`, hooks) point at your machine's install path. If you share a repo with a team, switch the `command` to `npx -y @ureck/alexandria alexandria serve-mcp` for portability.
 
-## V2 (roadmap)
+## Support the project ☕
 
-- Bot de Telegram (grammY, polling local — sin servidor público): `/search`, `/save` desde el teléfono.
-
-
-## Código y contribuciones
-
-El código fuente se mantiene en un repositorio privado; este repositorio público contiene el compilado distribuido en npm (el mismo contenido del paquete, auditable).
-
-- 🐛 **Issues y sugerencias**: [github.com/UreckChan/alexandria/issues](https://github.com/UreckChan/alexandria/issues)
-- 📦 **Releases**: cada versión de npm tiene su tag aquí
-
-## Apoya el proyecto ☕
-
-Alexandria es gratis y open source. Si te ahorra tokens (y dinero), puedes invitarme un café:
+Alexandria is free and open source. If it saves you tokens (and money), you can buy me a coffee:
 
 **[☕ buymeacoffee.com/ureck](https://buymeacoffee.com/ureck)**
 
-Hecho con 🏛 por **[Ureck](https://buymeacoffee.com/ureck)** — MIT License.
+Built with 🏛 by **[Ureck](https://buymeacoffee.com/ureck)** — MIT License.

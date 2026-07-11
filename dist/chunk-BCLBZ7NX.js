@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-ZW7XY3EN.js";
+} from "./chunk-MLA3KZPZ.js";
 import {
   dot,
   embed,
@@ -35,12 +35,25 @@ function buildMini(idx) {
   );
   return mini;
 }
+var TYPE_BOOST = {
+  lesson: 1.35,
+  solution: 1.35,
+  map: 1.25,
+  plan: 1.15,
+  verification: 1.1,
+  note: 1,
+  task: 1,
+  session: 0.9,
+  prompt: 0.8
+};
 function recencyBoost(note) {
-  if (!note?.created) return 1;
+  if (!note) return 1;
+  const typeBoost = TYPE_BOOST[note.type] ?? 1;
+  if (!note.created) return typeBoost;
   const age = (Date.now() - Date.parse(note.created)) / 864e5;
-  if (Number.isNaN(age)) return 1;
+  if (Number.isNaN(age)) return typeBoost;
   const hits = Math.min(note.hits ?? 1, 10);
-  return 1 + 0.15 * Math.exp(-Math.max(age, 0) / 45) + 0.02 * hits;
+  return typeBoost * (1 + 0.15 * Math.exp(-Math.max(age, 0) / 45) + 0.02 * hits);
 }
 async function hybridSearch(vault, query, k = 6, opts = {}) {
   const idx = VaultIndex.load(vault);

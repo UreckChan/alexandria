@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-ZW7XY3EN.js";
+} from "./chunk-MLA3KZPZ.js";
 
 // src/graph/viewer.ts
 import fs from "fs";
@@ -65,8 +65,12 @@ function renderGraphHtml(data, live) {
   <div class="leg" id="leg">
     <label><input type="checkbox" data-type="note" checked><b style="background:#7aa2f7"></b>nota</label>
     <label><input type="checkbox" data-type="map" checked><b style="background:#f7768e"></b>mapa</label>
+    <label><input type="checkbox" data-type="plan" checked><b style="background:#bb9af7"></b>plan</label>
+    <label><input type="checkbox" data-type="verification" checked><b style="background:#2ac3de"></b>verificaci\xF3n</label>
+    <label><input type="checkbox" data-type="lesson" checked><b style="background:#ffc777"></b>lecci\xF3n</label>
+    <label><input type="checkbox" data-type="solution" checked><b style="background:#73daca"></b>soluci\xF3n</label>
     <label><input type="checkbox" data-type="session" checked><b style="background:#9ece6a"></b>sesi\xF3n</label>
-    <label><input type="checkbox" data-type="prompt"><b style="background:#e0af68"></b>prompt</label>
+    <label><input type="checkbox" data-type="prompt"><b style="background:#565f89"></b>prompt</label>
   </div>
   <div id="hint">filtros por tipo (prompts ocultos por default \u2014 ruido) \xB7 arrastra \xB7 rueda = zoom<br>hover = conexiones \xB7 click = detalle \xB7 \u2014 s\xF3lida = [[wikilink]] \xB7 \u2025 punteada = sem\xE1ntica</div>
 </div>
@@ -79,7 +83,7 @@ function renderGraphHtml(data, live) {
 'use strict';
 const LIVE = ${live};
 let DATA = ${JSON.stringify(data)};
-const COLORS = { note:'#7aa2f7', session:'#9ece6a', prompt:'#e0af68', map:'#f7768e' };
+const COLORS = { note:'#7aa2f7', session:'#9ece6a', prompt:'#565f89', map:'#f7768e', plan:'#bb9af7', verification:'#2ac3de', lesson:'#ffc777', solution:'#73daca', task:'#7dcfff' };
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const DPR = Math.min(devicePixelRatio || 1, 2);
 let W, H;
@@ -91,7 +95,7 @@ let nodes = [], byId = new Map(), edges = [];
 let zoom = 1, panX = 0, panY = 0, dragNode = null, hot = true, heat = 300;
 let didFit = false, hover = null, filter = '';
 // filtros por tipo (estilo Obsidian) \u2014 prompts ocultos por default: son ruido visual
-const typeOn = { note: true, map: true, session: true, prompt: false };
+const typeOn = { note: true, map: true, session: true, prompt: false, plan: true, verification: true, lesson: true, solution: true, task: true };
 document.querySelectorAll('#leg input').forEach(cb => cb.addEventListener('change', e => {
   typeOn[e.target.dataset.type] = e.target.checked; heat = Math.max(heat, 30); hot = true;
 }));
