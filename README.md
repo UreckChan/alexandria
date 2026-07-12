@@ -6,6 +6,8 @@
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-ureck-yellow)](https://buymeacoffee.com/ureck)
 
+📖 **[Documentation / Documentación (ES · EN)](https://ureckchan.github.io/alexandria/)**
+
 Alexandria automatically captures your AI prompts and sessions, searches that knowledge **before** spending tokens, and connects everything in an Obsidian-style graph. **100% local**: no database, no API keys, no telemetry, no cost.
 
 Works with the most popular agents via MCP: **Claude Code · Cursor · OpenCode · Windsurf · Cline · Codex CLI · Gemini CLI · VS Code (Copilot) · OpenClaw · Hermes Agent**.
