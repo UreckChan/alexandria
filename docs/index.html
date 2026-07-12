@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alexandria — Documentación / Docs</title>
+<meta name="description" content="Alexandria: bóveda de conocimiento local para agentes de IA. Documentación de comandos, uso y dudas técnicas. / Local knowledge vault for AI agents. Command docs, usage and technical FAQ.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f6f1e7; --bg-soft:#efe7d6; --card:#fffdf8; --ink:#2b2620; --ink-soft:#5c5445;
+  --gold:#b8860b; --gold-2:#8a6508; --line:#e0d5bf; --code-bg:#2b2620; --code-ink:#f3ead6;
+  --accent:#7a5c1e; --shadow:0 1px 3px rgba(60,45,15,.08),0 8px 24px rgba(60,45,15,.06);
+  --sans:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  --serif:Georgia,'Times New Roman','Iowan Old Style',serif;
+  --mono:'SF Mono',ui-monospace,'Cascadia Code','Fira Code',Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#17140f; --bg-soft:#1e1a13; --card:#211c15; --ink:#ece3d0; --ink-soft:#a89e88;
+  --gold:#d9a93a; --gold-2:#e8c268; --line:#332c20; --code-bg:#100e0a; --code-ink:#e9dcc0;
+  --accent:#e0be6d; --shadow:0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;color:var(--ink)}
+code{font-family:var(--mono);font-size:.88em;background:var(--bg-soft);border:1px solid var(--line);border-radius:5px;padding:.1em .4em}
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.55;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.05)}
+pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.only-en{display:none}
+html[data-lang="en"] .only-es{display:none}
+html[data-lang="en"] .only-en{display:revert}
+
+/* Top bar */
+header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:600;font-size:18px}
+.brand .logo{font-size:22px}
+.brand .ver{font-family:var(--mono);font-size:11px;color:var(--gold-2);border:1px solid var(--line);border-radius:20px;padding:2px 8px;background:var(--card)}
+.spacer{flex:1}
+.ctrl{display:flex;gap:8px}
+.btn{cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.btn:hover{border-color:var(--gold);color:var(--gold-2)}
+.menu-btn{display:none}
+
+/* Layout */
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px 1fr;gap:36px;padding:0 22px}
+nav.side{position:sticky;top:70px;align-self:start;height:calc(100vh - 90px);overflow-y:auto;padding:26px 0 40px;font-size:14px}
+nav.side .grp{font-family:var(--serif);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-2);margin:20px 0 8px;font-weight:700}
+nav.side a{display:block;color:var(--ink-soft);padding:5px 12px;border-left:2px solid transparent;border-radius:0 6px 6px 0}
+nav.side a:hover{color:var(--ink);background:var(--bg-soft);text-decoration:none}
+nav.side a.active{color:var(--gold-2);border-left-color:var(--gold);background:var(--bg-soft);font-weight:600}
+main{padding:26px 0 90px;min-width:0}
+section{margin-bottom:60px;scroll-margin-top:80px}
+section>h2{font-size:30px;margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid var(--line)}
+section h3{font-size:20px;margin:32px 0 8px}
+p{margin:12px 0}
+ul,ol{padding-left:22px}li{margin:6px 0}
+
+/* Hero */
+.hero{padding:56px 0 30px;text-align:center;border-bottom:1px solid var(--line);margin-bottom:20px}
+.hero .glyph{font-size:56px}
+.hero h1{font-size:46px;margin:10px 0 6px;background:linear-gradient(180deg,var(--ink),var(--gold-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tag{font-size:19px;color:var(--ink-soft);max-width:640px;margin:0 auto;font-family:var(--serif);font-style:italic}
+.hero .pills{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.pill{font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 13px;color:var(--ink-soft)}
+.hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
+.cta .primary{background:linear-gradient(180deg,var(--gold),var(--gold-2));color:#fff;border:none;padding:11px 22px;font-size:14px}
+:root[data-theme="dark"] .cta .primary{color:#17140f}
+.cta .primary:hover{filter:brightness(1.07);color:#fff}
+:root[data-theme="dark"] .cta .primary:hover{color:#17140f}
+
+/* cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:18px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+.card .ico{font-size:24px;margin-bottom:6px}
+.card h3{margin:0 0 4px;font-size:16.5px}
+.card p{margin:0;font-size:14px;color:var(--ink-soft)}
+
+/* table */
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--card)}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--bg-soft);font-family:var(--serif);font-weight:600;color:var(--gold-2);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td code{white-space:nowrap}
+
+/* callouts */
+.note{border-left:4px solid var(--gold);background:var(--bg-soft);border-radius:0 10px 10px 0;padding:12px 18px;margin:16px 0;font-size:14.5px}
+.note.warn{border-left-color:#c0392b}
+.note .lbl{font-family:var(--serif);font-weight:700;color:var(--gold-2);display:block;margin-bottom:2px}
+.note.warn .lbl{color:#c0392b}
+
+/* command block */
+.cmd{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.cmd h3{margin:0 0 4px;font-family:var(--mono);font-size:16px;color:var(--gold-2)}
+.cmd .desc{color:var(--ink-soft);font-size:14px;margin:0 0 12px}
+.opt{font-family:var(--mono);font-size:12.5px}
+.opt td:first-child{color:var(--gold-2);white-space:nowrap}
+
+/* faq */
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
+details[open]{box-shadow:var(--shadow)}
+summary{cursor:pointer;padding:15px 18px;font-family:var(--serif);font-weight:600;font-size:16px;list-style:none;position:relative;padding-right:44px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";position:absolute;right:18px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:22px;font-weight:400}
+details[open] summary::after{content:"–"}
+details .body{padding:0 18px 16px;font-size:14.5px;color:var(--ink-soft)}
+details .body p:first-child{margin-top:0}
+
+footer{border-top:1px solid var(--line);padding:34px 22px;text-align:center;color:var(--ink-soft);font-size:14px}
+footer .links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+.copy-hint{color:var(--ink-soft);font-size:12px;margin-top:6px}
+
+@media(max-width:860px){
+  .wrap{grid-template-columns:1fr}
+  nav.side{display:none;position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--bg);z-index:60;padding:70px 14px 40px;border-right:1px solid var(--line);box-shadow:var(--shadow)}
+  nav.side.open{display:block}
+  .menu-btn{display:inline-flex}
+  .hero h1{font-size:34px}.hero .tag{font-size:17px}
+  section>h2{font-size:25px}
+}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:55}
+.overlay.open{display:block}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <button class="btn menu-btn" id="menuBtn" aria-label="menu">☰</button>
+    <a class="brand" href="#top">
+      <span class="logo">🏛️</span> Alexandria <span class="ver">v0.5.3</span>
+    </a>
+    <div class="spacer"></div>
+    <div class="ctrl">
+      <button class="btn" id="langBtn" title="Español / English">🌐 <span id="langLbl">EN</span></button>
+      <button class="btn" id="themeBtn" title="Tema / Theme">🌙</button>
+    </div>
+  </div>
+</header>
+
+<div class="overlay" id="overlay"></div>
+
+<div class="wrap" id="top">
+  <!-- SIDEBAR -->
+  <nav class="side" id="side">
+    <div class="grp"><span class="only-es">Introducción</span><span class="only-en">Getting started</span></div>
+    <a href="#que-es"><span class="only-es">¿Qué es?</span><span class="only-en">What is it?</span></a>
+    <a href="#instalacion"><span class="only-es">Instalación</span><span class="only-en">Install</span></a>
+    <a href="#primeros-pasos"><span class="only-es">Primeros pasos</span><span class="only-en">First steps</span></a>
+    <div class="grp"><span class="only-es">Uso</span><span class="only-en">Usage</span></div>
+    <a href="#comandos"><span class="only-es">Referencia de comandos</span><span class="only-en">Command reference</span></a>
+    <a href="#ejemplos"><span class="only-es">Ejemplos diarios</span><span class="only-en">Daily examples</span></a>
+    <a href="#protocolo"><span class="only-es">El Protocolo</span><span class="only-en">The Protocol</span></a>
+    <a href="#agentes"><span class="only-es">Agentes soportados</span><span class="only-en">Supported agents</span></a>
+    <div class="grp"><span class="only-es">Profundizar</span><span class="only-en">Deep dive</span></div>
+    <a href="#como-funciona"><span class="only-es">Cómo funciona</span><span class="only-en">How it works</span></a>
+    <a href="#privacidad"><span class="only-es">Privacidad</span><span class="only-en">Privacy</span></a>
+    <a href="#faq"><span class="only-es">Dudas técnicas</span><span class="only-en">Technical FAQ</span></a>
+    <a href="#changelog"><span class="only-es">Historial</span><span class="only-en">Changelog</span></a>
+  </nav>
+
+  <!-- MAIN -->
+  <main>
+    <div class="hero">
+      <div class="glyph">🏛️</div>
+      <h1>Alexandria</h1>
+      <p class="tag">
+        <span class="only-es">Una bóveda de conocimiento local para tus agentes de IA — ahorra tokens, recuerda entre sesiones y convierte cualquier modelo en un ingeniero disciplinado.</span>
+        <span class="only-en">A local knowledge vault for your AI agents — saves tokens, remembers across sessions, and turns every model into a disciplined engineer.</span>
+      </p>
+      <div class="pills">
+        <span class="pill">🔒 100% local</span>
+        <span class="pill"><span class="only-es">🧠 Búsqueda semántica offline</span><span class="only-en">🧠 Offline semantic search</span></span>
+        <span class="pill"><span class="only-es">🕸️ Grafo estilo Obsidian</span><span class="only-en">🕸️ Obsidian-style graph</span></span>
+        <span class="pill"><span class="only-es">💸 Sin API keys ni costo</span><span class="only-en">💸 No API keys, no cost</span></span>
+      </div>
+      <div class="cta">
+        <a class="btn primary" href="#instalacion"><span class="only-es">▶ Empezar</span><span class="only-en">▶ Get started</span></a>
+        <a class="btn" href="https://github.com/UreckChan/alexandria" target="_blank">⭐ GitHub</a>
+        <a class="btn" href="https://www.npmjs.com/package/@ureck/alexandria" target="_blank">📦 npm</a>
+      </div>
+    </div>
+
+    <!-- QUE ES -->
+    <section id="que-es">
+      <h2><span class="only-es">¿Qué es Alexandria?</span><span class="only-en">What is Alexandria?</span></h2>
+      <p>
+        <span class="only-es">Alexandria captura automáticamente tus prompts y sesiones de IA, busca en ese conocimiento <strong>antes</strong> de gastar tokens, y lo conecta todo en un grafo estilo Obsidian. <strong>100% local</strong>: sin base de datos, sin API keys, sin telemetría, sin costo. Funciona con los agentes más populares vía MCP.</span>
+        <span class="only-en">Alexandria automatically captures your AI prompts and sessions, searches that knowledge <strong>before</strong> spending tokens, and connects everything in an Obsidian-style graph. <strong>100% local</strong>: no database, no API keys, no telemetry, no cost. Works with the most popular agents via MCP.</span>
+      </p>
+      <div class="note">
+        <span class="lbl"><span class="only-es">El problema que resuelve</span><span class="only-en">The problem it solves</span></span>
+        <span class="only-es">Cada nueva sesión de IA empieza de cero: reexplora tu código, rederiva decisiones que ya tomaste, revuelve a gastar los mismos tokens. Alexandria rompe ese ciclo.</span>
+        <span class="only-en">Every new AI session starts from zero: it re-explores your code, re-derives decisions you already made, re-spends the same tokens. Alexandria breaks that cycle.</span>
+      </div>
+      <div class="grid">
+        <div class="card"><div class="ico">💸</div><h3><span class="only-es">Ahorra tokens</span><span class="only-en">Saves tokens</span></h3><p><span class="only-es">Cada prompt dispara una búsqueda semántica local (&lt;100ms) que inyecta solo los fragmentos relevantes — en vez de releer archivos enteros.</span><span class="only-en">Every prompt triggers a local semantic search (&lt;100ms) that injects only the relevant fragments — instead of re-reading whole files.</span></p></div>
+        <div class="card"><div class="ico">🔁</div><h3><span class="only-es">Cero reanálisis</span><span class="only-en">Zero re-analysis</span></h3><p><span class="only-es">Al iniciar sesión, el agente recibe el mapa del proyecto y todo el conocimiento acumulado.</span><span class="only-en">On session start, the agent receives the project map and all accumulated knowledge.</span></p></div>
+        <div class="card"><div class="ico">🧩</div><h3><span class="only-es">Memoria de soluciones</span><span class="only-en">Solution memory</span></h3><p><span class="only-es">Si un prompt casi idéntico ya se resolvió, se inyecta la solución previa — el agente no la rederiva.</span><span class="only-en">If a nearly identical prompt was solved, the previous solution is injected — the agent doesn't re-derive it.</span></p></div>
+        <div class="card"><div class="ico">♾️</div><h3><span class="only-es">Contexto infinito</span><span class="only-en">Infinite context</span></h3><p><span class="only-es">El ruido viejo se archiva, nunca se borra — todo queda buscable para siempre.</span><span class="only-en">Old noise gets archived, never deleted — everything stays searchable forever.</span></p></div>
+        <div class="card"><div class="ico">🗂️</div><h3><span class="only-es">Vault de Obsidian válido</span><span class="only-en">Valid Obsidian vault</span></h3><p><span class="only-es">Markdown plano con <code>[[wikilinks]]</code>. Ábrelo en Obsidian cuando quieras.</span><span class="only-en">Plain markdown with <code>[[wikilinks]]</code>. Open it in Obsidian anytime.</span></p></div>
+        <div class="card"><div class="ico">🌎</div><h3><span class="only-es">Multiplataforma</span><span class="only-en">Cross-platform</span></h3><p><span class="only-es">Windows, macOS, Linux · Node, Bun o Deno. JS puro — sin dependencias nativas que rompan tu install.</span><span class="only-en">Windows, macOS, Linux · Node, Bun or Deno. Pure JS — no native deps to break your install.</span></p></div>
+      </div>
+    </section>
+
+    <!-- INSTALACION -->
+    <section id="instalacion">
+      <h2><span class="only-es">Instalación</span><span class="only-en">Install</span></h2>
+      <p><span class="only-es">Requiere <strong>Node ≥ 20</strong>. Instala el binario global <code>ale</code> (alias <code>alexandria</code>):</span><span class="only-en">Requires <strong>Node ≥ 20</strong>. Installs the global binary <code>ale</code> (alias <code>alexandria</code>):</span></p>
+<pre><code># npm (Node ≥ 20)
+npm install -g @ureck/alexandria
+
+# bun
+bun add -g @ureck/alexandria
+
+# deno
+deno install -grA -n ale npm:@ureck/alexandria/ale
+# (si Deno se queja de "minimum dependency date", añade --minimum-dependency-age=0)</code></pre>
+      <p><span class="only-es">Verifica:</span><span class="only-en">Verify:</span></p>
+<pre><code>$ ale --version
+0.5.3</code></pre>
+    </section>
+
+    <!-- PRIMEROS PASOS -->
+    <section id="primeros-pasos">
+      <h2><span class="only-es">Primeros pasos</span><span class="only-en">First steps</span></h2>
+      <p><span class="only-es">Un solo comando instala todo (modelo de embeddings ~130MB descargado una vez, hooks, registro MCP, índice):</span><span class="only-en">One command installs everything (embedding model ~130MB downloaded once, hooks, MCP registration, index):</span></p>
+<pre><code># Global — una bóveda compartida para todas tus sesiones (~/Alexandria)
+ale init
+
+# Por proyecto — bóveda DENTRO del repo (./Alexandria)
+cd mi-proyecto
+ale init --project
+
+# Apuntar a un vault de Obsidian existente
+ale init --path ~/Documents/MiVaultObsidian
+
+# Elegir qué agentes reciben el servidor MCP
+ale init --agents all                      # todos los soportados
+ale init --agents claude,cursor,opencode   # solo estos</code></pre>
+      <p><span class="only-es"><code>ale init --project</code> además, automáticamente:</span><span class="only-en"><code>ale init --project</code> also, automatically:</span></p>
+      <ul>
+        <li><span class="only-es">añade la bóveda a tu <code>.gitignore</code> (conocimiento personal, no código del repo),</span><span class="only-en">adds the vault to your <code>.gitignore</code> (personal knowledge, not repo code),</span></li>
+        <li><span class="only-es"><strong>escanea el proyecto</strong> (stack de package.json, scripts npm, estructura de carpetas, extracto del README) en una nota inicial <code>Map - &lt;proyecto&gt;</code> — contexto desde la primera sesión,</span><span class="only-en"><strong>scans the project</strong> (stack from package.json, npm scripts, folder structure, README excerpt) into an initial <code>Map - &lt;project&gt;</code> note — context from the very first session,</span></li>
+        <li><span class="only-es">pregunta <em>«¿Configurar Claude para usar Alexandria automáticamente?»</em> y escribe las reglas de uso en <code>CLAUDE.md</code> (<code>--auto</code> / <code>--manual</code> para saltar la pregunta).</span><span class="only-en">asks <em>"Configure Claude to use Alexandria automatically?"</em> and writes the usage rules into <code>CLAUDE.md</code> (<code>--auto</code> / <code>--manual</code> to skip).</span></li>
+      </ul>
+      <div class="note warn">
+        <span class="lbl"><span class="only-es">Importante</span><span class="only-en">Important</span></span>
+        <span class="only-es">Los hooks cargan <strong>al iniciar una sesión</strong> — abre una sesión <em>nueva</em> del agente en esa carpeta (una ya abierta no los verá). Tras el <code>init</code> no hay nada que reconectar, nunca.</span>
+        <span class="only-en">Hooks load <strong>when a session starts</strong> — open a <em>new</em> agent session in that folder (an already-open one won't see them). After <code>init</code> there is nothing to reconnect, ever.</span>
+      </div>
+    </section>
+
+    <!-- COMANDOS -->
+    <section id="comandos">
+      <h2><span class="only-es">Referencia de comandos</span><span class="only-en">Command reference</span></h2>
+      <p><span class="only-es"><code>alexandria</code> funciona como alias de <code>ale</code>. Ejecuta <code>ale &lt;comando&gt; --help</code> para ver todas las opciones.</span><span class="only-en"><code>alexandria</code> works as an alias of <code>ale</code>. Run <code>ale &lt;command&gt; --help</code> to see all options.</span></p>
+
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr><th><span class="only-es">Comando</span><span class="only-en">Command</span></th><th><span class="only-es">Qué hace</span><span class="only-en">What it does</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>ale init</code></td><td><span class="only-es">Instala todo: bóveda, hooks, MCP, .gitignore, escaneo del proyecto, CLAUDE.md.</span><span class="only-en">Installs everything: vault, hooks, MCP, .gitignore, project scan, CLAUDE.md.</span></td></tr>
+          <tr><td><code>ale agents [ids]</code></td><td><span class="only-es">Lista agentes / registra el servidor MCP en los que elijas.</span><span class="only-en">List agents / register the MCP server in the ones you pick.</span></td></tr>
+          <tr><td><code>ale search &lt;query&gt;</code></td><td><span class="only-es">Búsqueda híbrida (semántica + keyword); <code>--expand</code> trae vecinos del grafo.</span><span class="only-en">Hybrid search (semantic + keyword); <code>--expand</code> pulls graph neighbors.</span></td></tr>
+          <tr><td><code>ale add &lt;title&gt;</code></td><td><span class="only-es">Guardar una nota (inline, desde archivo o stdin).</span><span class="only-en">Save a note (inline, from file, or stdin).</span></td></tr>
+          <tr><td><code>ale plan &lt;file&gt;</code></td><td><span class="only-es">Crear un plan del Protocolo desde .md/.txt (los checkboxes → Definition of Done).</span><span class="only-en">Create a Protocol plan from .md/.txt (checkboxes → Definition of Done).</span></td></tr>
+          <tr><td><code>ale graph</code></td><td><span class="only-es">Visor local del grafo de conocimiento (auto-refresh cada 3s).</span><span class="only-en">Live local graph viewer (auto-refresh every 3s).</span></td></tr>
+          <tr><td><code>ale audit</code></td><td><span class="only-es">Salud del Protocolo: planes sin DoD, fallos sin lección, notas huérfanas.</span><span class="only-en">Protocol health: plans without DoD, failures without lessons, orphan notes.</span></td></tr>
+          <tr><td><code>ale stats</code></td><td><span class="only-es">Notas, conexiones, métricas del protocolo, tokens estimados ahorrados.</span><span class="only-en">Notes, connections, protocol metrics, estimated tokens saved.</span></td></tr>
+          <tr><td><code>ale config &lt;get|set&gt;</code></td><td><span class="only-es">Configuración (ej. <code>protocol</code> true/false).</span><span class="only-en">Configuration (e.g. <code>protocol</code> true/false).</span></td></tr>
+          <tr><td><code>ale skills</code></td><td><span class="only-es">Recomienda e instala skills de Claude según tus patrones.</span><span class="only-en">Recommends &amp; installs Claude skills based on your patterns.</span></td></tr>
+          <tr><td><code>ale reindex</code></td><td><span class="only-es">Reindexar (incremental; <code>--force</code> para todo).</span><span class="only-en">Reindex (incremental by default; <code>--force</code> for all).</span></td></tr>
+          <tr><td><code>ale consolidate</code></td><td><span class="only-es">Archiva prompts viejos sin reuso — nunca borra.</span><span class="only-en">Archive old unused prompts — never deletes.</span></td></tr>
+          <tr><td><code>ale doctor</code></td><td><span class="only-es">Verifica y repara: modelo, hooks, MCP, índice.</span><span class="only-en">Check &amp; repair: model, hooks, MCP, index.</span></td></tr>
+          <tr><td><code>ale uninstall</code></td><td><span class="only-es">Quita hooks (tus notas quedan intactas).</span><span class="only-en">Remove hooks (your notes stay untouched).</span></td></tr>
+          <tr><td><code>ale --vault &lt;path&gt; &lt;cmd&gt;</code></td><td><span class="only-es">Ejecutar cualquier comando contra otra bóveda.</span><span class="only-en">Run any command against another vault.</span></td></tr>
+        </tbody>
+      </table>
+      </div>
+
+      <h3><span class="only-es">Opciones detalladas</span><span class="only-en">Detailed options</span></h3>
+
+      <div class="cmd">
+        <h3>ale init</h3>
+        <p class="desc"><span class="only-es">Crea/conecta la bóveda e instala todo. Persiste entre sesiones.</span><span class="only-en">Creates/connects the vault and installs everything. Persists across sessions.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>--project</td><td><span class="only-es">registrar para este proyecto (cwd)</span><span class="only-en">register for this project (cwd)</span></td></tr>
+          <tr><td>--global</td><td><span class="only-es">registrar para todas las sesiones (default)</span><span class="only-en">register for all sessions (default)</span></td></tr>
+          <tr><td>--path &lt;dir&gt;</td><td><span class="only-es">ruta del vault Obsidian</span><span class="only-en">Obsidian vault path</span></td></tr>
+          <tr><td>--auto / --manual</td><td><span class="only-es">configurar CLAUDE.md sin preguntar / no tocarlo</span><span class="only-en">configure CLAUDE.md without asking / don't touch it</span></td></tr>
+          <tr><td>--no-protocol</td><td><span class="only-es">instalar sin el Protocolo (solo bóveda clásica)</span><span class="only-en">install without the Protocol (classic vault only)</span></td></tr>
+          <tr><td>--portable</td><td><span class="only-es">MCP con comando npx (commiteable en repos de equipo)</span><span class="only-en">npx-based MCP command (safe to commit for teams)</span></td></tr>
+          <tr><td>--agents &lt;ids&gt;</td><td><span class="only-es">"all", "detected" o csv de agentes</span><span class="only-en">"all", "detected" or csv of agents</span></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="cmd">
+        <h3>ale search &lt;query...&gt;</h3>
+        <p class="desc"><span class="only-es">Búsqueda híbrida en la bóveda por significado, no por keywords.</span><span class="only-en">Hybrid search over the vault by meaning, not keywords.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>-k &lt;n&gt;</td><td><span class="only-es">número de resultados (default: 6)</span><span class="only-en">number of results (default: 6)</span></td></tr>
+          <tr><td>--expand</td><td><span class="only-es">incluir vecinos del grafo conectados a los resultados</span><span class="only-en">include graph neighbors connected to the results</span></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="cmd">
+        <h3>ale add &lt;title&gt;</h3>
+        <p class="desc"><span class="only-es">Guardar una nota manualmente. Usa <code>[[wikilinks]]</code> para conectar conocimiento.</span><span class="only-en">Save a note manually. Use <code>[[wikilinks]]</code> to connect knowledge.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>-c, --content &lt;text&gt;</td><td><span class="only-es">contenido markdown (o se lee de stdin)</span><span class="only-en">markdown content (or read from stdin)</span></td></tr>
+          <tr><td>-f, --file &lt;path&gt;</td><td><span class="only-es">leer contenido de un archivo .md/.txt</span><span class="only-en">read content from a .md/.txt file</span></td></tr>
+          <tr><td>-t, --tags &lt;tags&gt;</td><td><span class="only-es">tags separados por coma</span><span class="only-en">comma-separated tags</span></td></tr>
+        </tbody></table></div>
+      </div>
+    </section>
+
+    <!-- EJEMPLOS -->
+    <section id="ejemplos">
+      <h2><span class="only-es">Ejemplos diarios</span><span class="only-en">Daily examples</span></h2>
+
+      <h3><span class="only-es">Buscar por significado, no por keywords</span><span class="only-en">Search by meaning, not keywords</span></h3>
+<pre><code>$ ale search how do I publish my app to the google store
+
+Flutter release deployment (Alexandria/notes/2026-07-09-deploy.md, note) ● high relevance
+  To publish on Play Store: keystore outside git, key.properties,
+  flutter build appbundle. Always sign with the production key.</code></pre>
+      <p><span class="only-es">La consulta no comparte keywords con la nota («google store» → «Play Store»). Más ejemplos:</span><span class="only-en">The query shares zero keywords with the note ("google store" → "Play Store"). More:</span></p>
+<pre><code>ale search cors error in the api        # encuentra tu fix de hace meses
+ale search "architecture decision" -k 10
+ale search auth --expand                # también trae notas CONECTADAS (grafo)</code></pre>
+      <div class="note"><span class="only-es">La etiqueta <code>● high/medium/low relevance</code> es relativa al mejor resultado — confía en ella más que en el número crudo.</span><span class="only-en">The <code>● high/medium/low relevance</code> label is relative to the best hit — trust it over the raw number.</span></div>
+
+      <h3><span class="only-es">Guardar notas manualmente</span><span class="only-en">Save notes manually</span></h3>
+<pre><code># Nota rápida
+ale add "Prisma setup" -c "Singleton en src/lib/prisma.ts usando globalThis" -t "prisma,db"
+
+# Desde un archivo del proyecto (o un pipe)
+ale add "Decisiones de arquitectura Q3" --file DECISIONS.md
+cat DECISIONS.md | ale add "Decisiones de arquitectura Q3"
+
+# Con [[wikilinks]] para conectar conocimiento
+ale add "Vercel deploy" -c "Region cdg1, ver [[Prisma setup]]" -t deploy</code></pre>
+      <p><span class="only-es">(La captura automática vía hooks ya hace esto en cada sesión de Claude Code — <code>add</code> es para conocimiento extra.)</span><span class="only-en">(Automatic capture via hooks already does this in every Claude Code session — <code>add</code> is for extra knowledge.)</span></p>
+
+      <h3><span class="only-es">Ver el grafo de conocimiento</span><span class="only-en">View the knowledge graph</span></h3>
+      <p><span class="only-es"><strong>El grafo se mantiene solo</strong> — cada cambio en la bóveda regenera <code>&lt;vault&gt;/grafo.html</code>.</span><span class="only-en"><strong>The graph maintains itself</strong> — every vault change regenerates <code>&lt;vault&gt;/grafo.html</code>.</span></p>
+<pre><code>ale graph                  # visor EN VIVO en tu navegador (auto-refresh cada 3s)
+ale graph --out other.html # copia estática en otro lugar (opcional)</code></pre>
+      <p><span class="only-es">Nodos = notas (tamaño = conexiones, color = tipo: 🟪 planes, 🟦 verificaciones, 🟨 lecciones, 🟩 sesiones…), líneas sólidas = <code>[[wikilinks]]</code>, punteadas = similitud semántica.</span><span class="only-en">Nodes = notes (size = connections, color = type: 🟪 plans, 🟦 verifications, 🟨 lessons, 🟩 sessions…), solid lines = <code>[[wikilinks]]</code>, dashed = semantic similarity.</span></p>
+
+      <h3><span class="only-es">Medir lo que te ahorra</span><span class="only-en">Measure what it saves you</span></h3>
+<pre><code>$ ale stats
+
+🧠 Vault: /Users/you/Alexandria (global)
+  Notes: 142 {"note":80,"prompt":38,"session":22,"map":2}
+  Indexed chunks: 385 · Connections: 91
+  Semantic search: active
+
+🏛️  Protocol
+  Plans: 6 (1 open) · Verifications: 14 (86% ✓)
+  Lessons: 9 (4 reused — each reuse = a debug session that never happened)
+
+📊 Measured (facts, not estimates)
+  Context injections: 57
+  Solution cache hits: 12 (~9,400 tokens)
+  Injected tokens (cost): ~21,300
+
+💰 Estimated savings (band, NOT audited)
+  ~63,900 – 170,400 tokens</code></pre>
+    </section>
+
+    <!-- PROTOCOLO -->
+    <section id="protocolo">
+      <h2><span class="only-es">El Protocolo Alexandria</span><span class="only-en">The Alexandria Protocol</span></h2>
+      <p><span class="only-es">Más allá de la memoria, Alexandria trae un protocolo de ingeniería ligero que convierte <strong>cualquier</strong> modelo con MCP en un agente senior que planea, verifica con evidencia y aprende:</span><span class="only-en">Beyond memory, Alexandria ships a lightweight engineering protocol that turns <strong>any</strong> MCP-capable model into a senior agent that plans, verifies with evidence, and learns:</span></p>
+      <div class="note"><span class="lbl">Plan → Execute → Verify → Learn</span><span class="only-es"><strong>Planear → Ejecutar una tarea → Verificar con evidencia → (si falla: reusar lecciones pasadas) → Extraer la lección</strong></span><span class="only-en"><strong>Plan → Execute one task → Verify with evidence → (on failure: reuse past lessons) → Extract the lesson</strong></span></div>
+      <p><span class="only-es">Vive en las propias tools MCP — sus nombres y descripciones cargan las instrucciones — así funciona idéntico en todos los agentes, con o sin hooks:</span><span class="only-en">It lives in the MCP tools themselves — their names and descriptions carry the instructions — so it works identically across every agent, with or without hooks:</span></p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>MCP tool</th><th><span class="only-es">Qué hace el agente</span><span class="only-en">What the agent does</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>plan_create</code></td><td><span class="only-es">Escribe una nota-plan con <strong>Definition of Done</strong> y tareas numeradas antes de tocar código. Los planes abiertos se reinyectan la próxima sesión: el trabajo se reanuda, no se repite.</span><span class="only-en">Writes a plan note with a <strong>Definition of Done</strong> and numbered tasks before touching code. Open plans are re-injected next session so work is resumed, not repeated.</span></td></tr>
+          <tr><td><code>task_verify</code></td><td><span class="only-es">Registra el veredicto real de cada tarea (salida de test/build, compactada). "✅ 12/12" en vez de 500 líneas de log; al fallar, aflora lecciones pasadas que coinciden.</span><span class="only-en">Records the real verdict of each task (test/build output, compacted). "✅ 12/12" instead of a 500-line log; on failure it surfaces matching past lessons.</span></td></tr>
+          <tr><td><code>lesson_extract</code></td><td><span class="only-es">Destila la causa raíz + fix tras resolver algo no obvio. ~200 tokens hoy reemplazan ~20,000 de re-debug el mes que viene.</span><span class="only-en">Distills the root cause + fix after solving something non-obvious. ~200 tokens today replace ~20,000 tokens of re-debugging next month.</span></td></tr>
+        </tbody>
+      </table></div>
+      <p><span class="only-es">El protocolo está <strong>activo por defecto</strong>; actívalo/desactívalo cuando quieras:</span><span class="only-en">The protocol is <strong>on by default</strong>; toggle it anytime:</span></p>
+<pre><code>ale config set protocol false   # solo bóveda clásica
+ale config set protocol true    # de vuelta
+ale init --no-protocol          # instalar sin él</code></pre>
+    </section>
+
+    <!-- AGENTES -->
+    <section id="agentes">
+      <h2><span class="only-es">Agentes soportados</span><span class="only-en">Supported agents</span></h2>
+      <p><span class="only-es">Los registros son <strong>merges idempotentes</strong> — tus otros servidores MCP nunca se tocan.</span><span class="only-en">Registrations are <strong>idempotent merges</strong> — your other MCP servers are never touched.</span></p>
+<pre><code>ale agents                 # lista con auto-detección (● = encontrado en tu máquina)
+ale agents all             # registra el MCP en todos
+ale agents cursor,gemini   # solo estos</code></pre>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Agent</th><th><span class="only-es">Config escrita</span><span class="only-en">Config written</span></th><th><span class="only-es">Por proyecto</span><span class="only-en">Per-project</span></th></tr></thead>
+        <tbody>
+          <tr><td>Claude Code</td><td><code>.mcp.json</code> / <code>claude mcp add</code> + hooks</td><td>✓</td></tr>
+          <tr><td>Cursor</td><td><code>~/.cursor/mcp.json</code> / <code>.cursor/mcp.json</code></td><td>✓</td></tr>
+          <tr><td>OpenCode</td><td><code>opencode.json</code></td><td>✓</td></tr>
+          <tr><td>Windsurf</td><td><code>~/.codeium/windsurf/mcp_config.json</code></td><td>—</td></tr>
+          <tr><td>Cline</td><td><code>cline_mcp_settings.json</code> (VS Code)</td><td>—</td></tr>
+          <tr><td>Codex CLI</td><td><code>~/.codex/config.toml</code></td><td>—</td></tr>
+          <tr><td>Gemini CLI</td><td><code>~/.gemini/settings.json</code> / <code>.gemini/settings.json</code></td><td>✓</td></tr>
+          <tr><td>VS Code (Copilot)</td><td><code>mcp.json</code> / <code>.vscode/mcp.json</code></td><td>✓</td></tr>
+          <tr><td>OpenClaw</td><td><code>~/.openclaw/openclaw.json</code></td><td>—</td></tr>
+          <tr><td>Hermes Agent (Nous)</td><td><code>hermes mcp add</code> / <code>~/.hermes/config.yaml</code></td><td>—</td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><span class="lbl"><span class="only-es">Nota</span><span class="only-en">Note</span></span><span class="only-es">La captura automática vía hooks (digest de sesión, inyección por prompt, guardado al cerrar) es <strong>solo Claude Code</strong> — otros agentes no tienen sistema de hooks. Ahí el conocimiento fluye por las tools MCP, que el agente usa por su cuenta (las instrucciones del protocolo viajan dentro de las descripciones de las tools).</span><span class="only-en">Automatic capture via hooks (session digest, per-prompt injection, session save on close) is <strong>Claude Code-only</strong> — other agents don't have a hook system. There, knowledge flows through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).</span></div>
+    </section>
+
+    <!-- COMO FUNCIONA -->
+    <section id="como-funciona">
+      <h2><span class="only-es">Cómo funciona</span><span class="only-en">How it works</span></h2>
+<pre><code>AI agent session
+  │
+  ├─ SessionStart ──► inyecta digest: manifiesto del protocolo + mapa + planes abiertos  (hooks, Claude Code)
+  ├─ Cada prompt ──► búsqueda híbrida local → inyecta solo lo relevante                  (hooks, Claude Code)
+  │                  └─ prompt casi idéntico ya resuelto → inyecta la solución           (cache)
+  ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link             (todos los agentes)
+  │                   plan_create · task_verify · lesson_extract                         (el Protocolo)
+  └─ Stop/PreCompact► guarda el resultado de la sesión en la bóveda                      (hooks, Claude Code)
+                            │
+                    &lt;Obsidian vault&gt;/Alexandria/*.md   ← markdown, [[wikilinks]]
+                    &lt;vault&gt;/.vault/                    ← índice (regenerable)</code></pre>
+      <ul>
+        <li><span class="only-es"><strong>Búsqueda híbrida:</strong> embeddings locales (transformers.js, e5-small multilingüe) + BM25, combinados con RRF, ponderados por recencia, uso y tipo de nota (lecciones/soluciones rankean más alto).</span><span class="only-en"><strong>Hybrid search:</strong> local embeddings (transformers.js, multilingual e5-small) + BM25, combined with RRF, boosted by recency, usage, and note type (lessons/solutions rank highest).</span></li>
+        <li><span class="only-es"><strong>Índice incremental:</strong> solo re-procesa notas cuyo mtime cambió. El grafo nunca se reconstruye desde cero.</span><span class="only-en"><strong>Incremental index:</strong> only re-processes notes whose mtime changed. The graph is never rebuilt from scratch.</span></li>
+        <li><span class="only-es"><strong>Deduplicación:</strong> prompts casi idénticos no crean notas nuevas — suman <code>hits</code> (y suben en el ranking).</span><span class="only-en"><strong>Deduplication:</strong> near-identical prompts don't create new notes — they add <code>hits</code> (and climb the ranking).</span></li>
+        <li><span class="only-es"><strong>Sobre los scores:</strong> el modelo e5 comprime los cosenos (~0.76–0.86 aun para temas no relacionados); el <em>ranking</em> es lo confiable, de ahí la etiqueta de relevancia.</span><span class="only-en"><strong>About scores:</strong> the e5 model compresses cosines (~0.76–0.86 even for unrelated topics); the <em>ranking</em> is what's reliable, hence the relevance label.</span></li>
+      </ul>
+    </section>
+
+    <!-- PRIVACIDAD -->
+    <section id="privacidad">
+      <h2><span class="only-es">Privacidad y seguridad</span><span class="only-en">Privacy &amp; security</span></h2>
+      <ul>
+        <li><span class="only-es"><strong>Todo corre en tu máquina:</strong> el modelo de embeddings se descarga una vez (Hugging Face) y luego funciona offline. Tus notas nunca salen de tu disco. Sin telemetría.</span><span class="only-en"><strong>Everything runs on your machine:</strong> the embedding model is downloaded once (Hugging Face) and then works offline. Your notes never leave your disk. No telemetry.</span></li>
+        <li><span class="only-es"><strong>Sin API keys, sin cuentas, sin costo.</strong></span><span class="only-en"><strong>No API keys, no accounts, no cost.</strong></span></li>
+        <li><span class="only-es">Los escáneres de dependencias (Socket, etc.) marcan <em>acceso a red/shell/env</em> en el árbol de dependencias: eso viene del runtime de ML (<code>onnxruntime</code>/<code>transformers.js</code>, que necesita acceso al filesystem y la descarga única del modelo) y del SDK oficial de MCP — no del código de Alexandria. El paquete publicado no corre install scripts propios.</span><span class="only-en">Dependency scanners (Socket, etc.) flag <em>network/shell/env access</em> in the dependency tree: those come from the ML runtime (<code>onnxruntime</code>/<code>transformers.js</code>, which needs filesystem access and the one-time model download) and the official MCP SDK — not from Alexandria's code. The published package runs no install scripts of its own.</span></li>
+        <li><span class="only-es">Los configs por proyecto generados (<code>.mcp.json</code>, <code>.vault.json</code>, etc.) apuntan a la ruta de instalación de tu máquina, así que <code>ale init --project</code> los gitignorea automáticamente (y quita del tracking los ya commiteados) — nunca se filtran a un repo compartido. Para un equipo que <em>sí</em> quiere un MCP compartido, corre <code>ale init --project --portable</code>.</span><span class="only-en">Generated per-project configs (<code>.mcp.json</code>, <code>.vault.json</code>, etc.) point at your machine's install path, so <code>ale init --project</code> automatically gitignores them (and untracks any already committed) — they never leak to a shared repo. For a team that <em>wants</em> a shared MCP config, run <code>ale init --project --portable</code>.</span></li>
+      </ul>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq">
+      <h2><span class="only-es">Dudas técnicas frecuentes</span><span class="only-en">Technical FAQ</span></h2>
+
+      <details><summary><span class="only-es">¿Necesito internet o una API key?</span><span class="only-en">Do I need internet or an API key?</span></summary>
+        <div class="body"><p><span class="only-es">Solo internet una vez, para descargar el modelo de embeddings (~130MB) en el primer <code>init</code>. Después todo es offline. Nunca hay API keys ni cuentas.</span><span class="only-en">Internet only once, to download the embedding model (~130MB) on the first <code>init</code>. After that everything is offline. No API keys or accounts, ever.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Qué pasa si aún no descargué el modelo? ¿Falla la búsqueda?</span><span class="only-en">What if I haven't downloaded the model yet? Does search break?</span></summary>
+        <div class="body"><p><span class="only-es">No. La búsqueda degrada con elegancia: sin modelo funciona en modo keyword-only (MiniSearch/BM25) — nunca falla por falta de modelo. Cuando el modelo aparece y el índice no tiene vectores, se fuerza un reindex completo automáticamente (v0.5.1+); no necesitas <code>reindex --force</code> a mano.</span><span class="only-en">No. Search degrades gracefully: without the model it runs keyword-only (MiniSearch/BM25) — it never fails for a missing model. When the model becomes available and the index has no vectors, a full reindex is forced automatically (v0.5.1+); no manual <code>reindex --force</code> needed.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Por qué los scores de similitud son todos ~0.8?</span><span class="only-en">Why are the similarity scores all ~0.8?</span></summary>
+        <div class="body"><p><span class="only-es">El modelo e5-small comprime los cosenos (~0.76–0.86 incluso para temas no relacionados), así que el número crudo no sirve como confianza. Por eso Alexandria muestra una etiqueta <code>● high/medium/low relevance</code> relativa al mejor resultado — confía en el ranking, no en el número.</span><span class="only-en">The e5-small model compresses cosines (~0.76–0.86 even for unrelated topics), so the raw number isn't meaningful as confidence. That's why Alexandria shows a <code>● high/medium/low relevance</code> label relative to the best hit — trust the ranking, not the number.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Dónde se guardan mis notas y el índice?</span><span class="only-en">Where are my notes and index stored?</span></summary>
+        <div class="body"><p><span class="only-es">Notas en <code>&lt;vault&gt;/Alexandria/*.md</code> (markdown con frontmatter YAML + <code>[[wikilinks]]</code>, un vault de Obsidian válido). El índice derivado vive en <code>&lt;vault&gt;/.vault/</code> (<code>meta.json</code> + <code>embeddings.bin</code>) y siempre es regenerable con <code>ale reindex</code>. Vault por defecto: <code>~/Alexandria</code> (global) o <code>./Alexandria</code> (por proyecto).</span><span class="only-en">Notes in <code>&lt;vault&gt;/Alexandria/*.md</code> (markdown with YAML frontmatter + <code>[[wikilinks]]</code>, a valid Obsidian vault). The derived index lives in <code>&lt;vault&gt;/.vault/</code> (<code>meta.json</code> + <code>embeddings.bin</code>) and is always regenerable with <code>ale reindex</code>. Default vault: <code>~/Alexandria</code> (global) or <code>./Alexandria</code> (per project).</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Cómo resuelve Alexandria qué bóveda usar?</span><span class="only-en">How does Alexandria resolve which vault to use?</span></summary>
+        <div class="body"><p><span class="only-es">Por orden de prioridad: el flag <code>--vault</code> &gt; <code>.vault.json</code> del directorio actual &gt; <code>~/.config/alexandria/config.json</code> &gt; <code>~/Alexandria</code>.</span><span class="only-en">In priority order: the <code>--vault</code> flag &gt; <code>.vault.json</code> in the current directory &gt; <code>~/.config/alexandria/config.json</code> &gt; <code>~/Alexandria</code>.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Se borra algo alguna vez? ¿Qué hace <code>consolidate</code>?</span><span class="only-en">Is anything ever deleted? What does <code>consolidate</code> do?</span></summary>
+        <div class="body"><p><span class="only-es">Nada se borra. <code>ale consolidate</code> <strong>archiva</strong> prompts viejos sin reuso a <code>Alexandria/archive/</code>: salen del grafo y de la inyección, pero siguen buscables para siempre (contexto infinito). Por defecto toca prompts de más de 45 días; <code>--dry</code> para simular.</span><span class="only-en">Nothing is deleted. <code>ale consolidate</code> <strong>archives</strong> old unused prompts to <code>Alexandria/archive/</code>: they leave the graph and injection but stay searchable forever (infinite context). Defaults to prompts older than 45 days; <code>--dry</code> to preview.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Rompe mis otros servidores MCP al registrarse?</span><span class="only-en">Does it break my other MCP servers when registering?</span></summary>
+        <div class="body"><p><span class="only-es">No. Todos los registros son <strong>merges idempotentes</strong> — nunca sobreescriben configuraciones ajenas. Puedes correr <code>ale agents</code> las veces que quieras.</span><span class="only-en">No. All registrations are <strong>idempotent merges</strong> — they never clobber other servers' configs. You can run <code>ale agents</code> as many times as you want.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">Instalé pero el agente no ve nada. ¿Qué pasó?</span><span class="only-en">I installed it but the agent sees nothing. What happened?</span></summary>
+        <div class="body"><p><span class="only-es">Los hooks cargan <strong>al iniciar una sesión</strong>. Una sesión ya abierta no los verá — abre una <em>nueva</em> sesión del agente en esa carpeta. Si persiste, corre <code>ale doctor</code> (verifica y repara modelo, hooks, MCP e índice).</span><span class="only-en">Hooks load <strong>when a session starts</strong>. An already-open session won't see them — open a <em>new</em> agent session in that folder. If it persists, run <code>ale doctor</code> (checks &amp; repairs model, hooks, MCP, and index).</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Puedo usar mi vault de Obsidian existente?</span><span class="only-en">Can I use my existing Obsidian vault?</span></summary>
+        <div class="body"><p><span class="only-es">Sí: <code>ale init --path ~/Documents/MiVault</code>. Alexandria escribe markdown plano con <code>[[wikilinks]]</code> y <code>aliases</code> en el frontmatter para que Obsidian resuelva los enlaces. Nota: <code>grafo.html</code> es para tu navegador; en Obsidian usa su vista de grafo nativa.</span><span class="only-en">Yes: <code>ale init --path ~/Documents/MyVault</code>. Alexandria writes plain markdown with <code>[[wikilinks]]</code> and <code>aliases</code> in the frontmatter so Obsidian resolves the links. Note: <code>grafo.html</code> is for your browser; in Obsidian use its native graph view.</span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Cómo lo desinstalo sin perder mis notas?</span><span class="only-en">How do I uninstall without losing my notes?</span></summary>
+        <div class="body"><p><span class="only-es"><code>ale uninstall</code> hace una reversión limpia: quita los hooks, el bloque marcado en <code>CLAUDE.md</code> (preservando el resto) y la entrada MCP del proyecto. <strong>No borra la bóveda ni las notas.</strong></span><span class="only-en"><code>ale uninstall</code> does a clean revert: removes hooks, the marked block in <code>CLAUDE.md</code> (preserving the rest), and the project's MCP entry. <strong>It does not delete the vault or notes.</strong></span></p></div>
+      </details>
+
+      <details><summary><span class="only-es">¿Funciona con Bun o Deno? ¿Y en Windows?</span><span class="only-en">Does it work with Bun or Deno? And on Windows?</span></summary>
+        <div class="body"><p><span class="only-es">Sí a todo. Es JS puro (ESM, Node ≥ 20) sin dependencias nativas: Windows, macOS, Linux · Node, Bun o Deno. Para Deno, si se queja del "minimum dependency date", añade <code>--minimum-dependency-age=0</code>.</span><span class="only-en">Yes to all. It's pure JS (ESM, Node ≥ 20) with no native deps: Windows, macOS, Linux · Node, Bun or Deno. For Deno, if it complains about the "minimum dependency date", add <code>--minimum-dependency-age=0</code>.</span></p></div>
+      </details>
+    </section>
+
+    <!-- CHANGELOG -->
+    <section id="changelog">
+      <h2><span class="only-es">Historial de versiones</span><span class="only-en">Changelog</span></h2>
+      <p><span class="only-es">Versión actual: <strong>v0.5.3</strong>. Resumen de lo más reciente (ver el <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank">CHANGELOG completo</a>):</span><span class="only-en">Current version: <strong>v0.5.3</strong>. Recent highlights (see the <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank">full CHANGELOG</a>):</span></p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th><span class="only-es">Versión</span><span class="only-en">Version</span></th><th><span class="only-es">Cambios</span><span class="only-en">Changes</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>0.5.3</code></td><td><span class="only-es">La métrica «lecciones reutilizadas» ahora sube de verdad: al inyectar una lección/solución como contexto, su <code>hits</code> incrementa — un reuso genuino por fin es medible.</span><span class="only-en">The "lessons reused" metric now actually moves: injecting a lesson/solution as context bumps its <code>hits</code> — a genuine reuse is finally measurable.</span></td></tr>
+          <tr><td><code>0.5.2</code></td><td><span class="only-es"><code>ale stats</code> honesto: separa hechos medidos de una banda de estimación explícitamente etiquetada (sin número falso-preciso).</span><span class="only-en">Honest <code>ale stats</code>: separates measured facts from an explicitly-labeled estimate band (no fake-precise single number).</span></td></tr>
+          <tr><td><code>0.5.1</code></td><td><span class="only-es">Búsqueda auto-repara de keyword-only a semántica; los configs personales ya no se filtran a repos compartidos; <code>uninstall</code> revierte limpio; nuevo <code>init --portable</code>.</span><span class="only-en">Search auto-repairs from keyword-only to semantic; personal configs no longer leak into shared repos; <code>uninstall</code> reverts cleanly; new <code>init --portable</code>.</span></td></tr>
+          <tr><td><code>0.5.0</code></td><td><span class="only-es">El Protocolo Alexandria: plan → ejecutar → verificar con evidencia → aprender. Nuevas tools MCP y comandos (<code>plan</code>, <code>audit</code>, <code>config</code>).</span><span class="only-en">The Alexandria Protocol: plan → execute → verify with evidence → learn. New MCP tools and commands (<code>plan</code>, <code>audit</code>, <code>config</code>).</span></td></tr>
+          <tr><td><code>0.4.0</code></td><td><span class="only-es"><code>init --project</code> totalmente automático (gitignore, escaneo, CLAUDE.md); <code>consolidate</code> archiva prompts viejos.</span><span class="only-en">Fully automatic <code>init --project</code> (gitignore, scan, CLAUDE.md); <code>consolidate</code> archives old prompts.</span></td></tr>
+          <tr><td><code>0.3.0</code></td><td><span class="only-es">Grafo se regenera automáticamente; visor en vivo con auto-refresh; compatibilidad real con Obsidian.</span><span class="only-en">Graph regenerates automatically; live viewer with auto-refresh; real Obsidian compatibility.</span></td></tr>
+          <tr><td><code>0.1.0</code></td><td><span class="only-es">Release inicial: bóveda markdown local, búsqueda híbrida offline, captura automática por hooks, visor de grafo, servidor MCP.</span><span class="only-en">Initial release: local markdown vault, offline hybrid search, automatic capture via hooks, graph viewer, MCP server.</span></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="links">
+    <a href="https://github.com/UreckChan/alexandria" target="_blank">GitHub</a>
+    <a href="https://www.npmjs.com/package/@ureck/alexandria" target="_blank">npm</a>
+    <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank">Changelog</a>
+    <a href="https://buymeacoffee.com/ureck" target="_blank">☕ Buy me a coffee</a>
+  </div>
+  <div><span class="only-es">Construido con 🏛 por <strong>Ureck</strong> — Licencia MIT.</span><span class="only-en">Built with 🏛 by <strong>Ureck</strong> — MIT License.</span></div>
+  <div class="copy-hint"><span class="only-es">Documentación de @ureck/alexandria · sin código fuente, solo uso.</span><span class="only-en">Documentation for @ureck/alexandria · no source code, usage only.</span></div>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  // theme
+  var savedTheme=localStorage.getItem('ale-theme')|| (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  setTheme(savedTheme);
+  function setTheme(t){root.setAttribute('data-theme',t);localStorage.setItem('ale-theme',t);document.getElementById('themeBtn').textContent=t==='dark'?'☀️':'🌙';}
+  document.getElementById('themeBtn').onclick=function(){setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');};
+  // lang
+  var storedLang=localStorage.getItem('ale-lang');
+  var savedLang=storedLang || ((navigator.language||'es').slice(0,2)==='en'?'en':'es');
+  setLang(savedLang);
+  function setLang(l){root.setAttribute('data-lang',l);root.lang=l;localStorage.setItem('ale-lang',l);document.getElementById('langLbl').textContent=l==='es'?'EN':'ES';}
+  document.getElementById('langBtn').onclick=function(){setLang(root.getAttribute('data-lang')==='es'?'en':'es');};
+  // mobile menu
+  var side=document.getElementById('side'),ov=document.getElementById('overlay');
+  function closeMenu(){side.classList.remove('open');ov.classList.remove('open');}
+  document.getElementById('menuBtn').onclick=function(){side.classList.toggle('open');ov.classList.toggle('open');};
+  ov.onclick=closeMenu;
+  side.addEventListener('click',function(e){if(e.target.tagName==='A')closeMenu();});
+  // scrollspy
+  var links=[].slice.call(document.querySelectorAll('nav.side a'));
+  var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));}).filter(Boolean);
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if(en.isIntersecting){
+        links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id);});
+      }
+    });
+  },{rootMargin:'-70px 0px -70% 0px'});
+  secs.forEach(function(s){obs.observe(s);});
+})();
+</script>
+</body>
+</html>
