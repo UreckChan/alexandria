@@ -74,6 +74,14 @@ Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o r
       injectedChars: injected.length,
       promptChars: prompt.length
     });
+    for (const r of relevant) {
+      if (r.note.type === "lesson" || r.note.type === "solution") {
+        try {
+          touchNote(path.join(vault.root, r.note.rel));
+        } catch {
+        }
+      }
+    }
   }
   const dupe = rawResults.find((r) => r.note.type === "prompt" && r.cosine >= DEDUP_COSINE);
   if (dupe) {
