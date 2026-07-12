@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   readStats
-} from "./chunk-OPUPZRP6.js";
+} from "./chunk-XITAQVOZ.js";
 import {
   distDir,
   globalSettingsPath,
@@ -928,11 +928,16 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
   const passed = verifs.filter((n) => n.status === "completed").length;
   console.log(`  Planes: ${plans.length} (${plans.filter((p) => p.status === "active").length} abiertos) \xB7 Verificaciones: ${verifs.length}${verifs.length ? ` (${Math.round(passed / verifs.length * 100)}% \u2713)` : ""}`);
   console.log(`  Lecciones: ${lessons.length} (${reused} reutilizadas \u2014 cada reuso = debug que no se repiti\xF3)`);
-  console.log(pc.bold("\n\u{1F4B0} Ahorro estimado"));
-  console.log(`  Inyecciones de contexto: ${s.injections} (${s.solutionCacheHits} con soluci\xF3n cacheada)`);
-  console.log(`  Tokens inyectados: ~${s.injectedTokens.toLocaleString()}`);
-  console.log(`  Tokens ahorrados (vs re-explorar): ~${pc.green(s.estimatedSavedTokens.toLocaleString())}
-`);
+  console.log(pc.bold("\n\u{1F4CA} Medido (hechos, no estimaci\xF3n)"));
+  console.log(`  Inyecciones de contexto: ${s.injections}`);
+  console.log(`  Aciertos de cach\xE9 de soluci\xF3n: ${s.solutionCacheHits} (${s.cacheHitTokens.toLocaleString()} tokens \u2014 el ahorro m\xE1s claro: soluciones no re-derivadas)`);
+  console.log(`  Tokens inyectados (costo): ~${s.injectedTokens.toLocaleString()}`);
+  if (s.injectedTokens > 0) {
+    console.log(pc.bold("\n\u{1F4B0} Ahorro estimado ") + pc.dim("(banda, NO auditado)"));
+    console.log(`  ~${pc.green(s.estSavedLow.toLocaleString())} \u2013 ${pc.green(s.estSavedHigh.toLocaleString())} tokens`);
+    console.log(pc.dim(`  Supuesto: el contexto inyectado sustituye releer 3\u20138\xD7 su tama\xF1o en archivos. No es medici\xF3n; el n\xFAmero real depende de qu\xE9 habr\xEDas rele\xEDdo sin la b\xF3veda.`));
+  }
+  console.log();
 });
 async function runSkills(opts) {
   const { vault } = await ensureReady();

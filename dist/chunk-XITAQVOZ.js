@@ -14,13 +14,17 @@ function logInjection(vault, line) {
   } catch {
   }
 }
+var EST_LOW = 3;
+var EST_HIGH = 8;
 function readStats(vault) {
   const file = path.join(vault.cache, "stats.jsonl");
   const summary = {
     injections: 0,
     solutionCacheHits: 0,
     injectedTokens: 0,
-    estimatedSavedTokens: 0
+    cacheHitTokens: 0,
+    estSavedLow: 0,
+    estSavedHigh: 0
   };
   try {
     for (const raw of fs.readFileSync(file, "utf8").split("\n")) {
@@ -28,14 +32,19 @@ function readStats(vault) {
       try {
         const line = JSON.parse(raw);
         summary.injections++;
-        if (line.kind === "solution-cache") summary.solutionCacheHits++;
-        summary.injectedTokens += charsToTokens(line.injectedChars);
+        const tk = charsToTokens(line.injectedChars);
+        summary.injectedTokens += tk;
+        if (line.kind === "solution-cache") {
+          summary.solutionCacheHits++;
+          summary.cacheHitTokens += tk;
+        }
       } catch {
       }
     }
   } catch {
   }
-  summary.estimatedSavedTokens = summary.injectedTokens * 9;
+  summary.estSavedLow = summary.injectedTokens * EST_LOW;
+  summary.estSavedHigh = summary.injectedTokens * EST_HIGH;
   return summary;
 }
 

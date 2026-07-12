@@ -61,7 +61,7 @@ Verify:
 
 ```bash
 $ ale --version
-0.5.1
+0.5.2
 ```
 
 ## Getting started
@@ -169,10 +169,15 @@ $ ale stats
   Plans: 6 (1 open) · Verifications: 14 (86% ✓)
   Lessons: 9 (4 reused — each reuse = a debug session that never happened)
 
-💰 Estimated savings
-  Context injections: 57 (12 with cached solution)
-  Injected tokens: ~21,300
-  Tokens saved (vs re-exploring): ~191,700
+📊 Measured (facts, not estimates)
+  Context injections: 57
+  Solution cache hits: 12 (~9,400 tokens — clearest win: solutions not re-derived)
+  Injected tokens (cost): ~21,300
+
+💰 Estimated savings (band, NOT audited)
+  ~63,900 – 170,400 tokens
+  Assumption: injected context replaces re-reading 3–8× its size in files. Not a
+  measurement — the real number depends on what you'd have re-read without the vault.
 ```
 
 ### Audit your vault's health

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   logInjection
-} from "../chunk-OPUPZRP6.js";
+} from "../chunk-XITAQVOZ.js";
 import {
   projectName,
   runHook,
