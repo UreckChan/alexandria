@@ -73,7 +73,10 @@ function hooksRegistered(settingsPath) {
     return false;
   }
 }
-function registerMcpProject(projectDir) {
+function serverCommand(portable) {
+  return portable ? { command: "npx", args: ["-y", "@ureck/alexandria", "alexandria", "serve-mcp"] } : { command: "node", args: [path.join(distDir(), "mcp", "server.js")] };
+}
+function registerMcpProject(projectDir, portable = false) {
   const file = path.join(projectDir, ".mcp.json");
   let cfg = {};
   try {
@@ -84,17 +87,14 @@ function registerMcpProject(projectDir) {
     }
   }
   cfg.mcpServers ??= {};
-  cfg.mcpServers["alexandria"] = {
-    command: "node",
-    args: [path.join(distDir(), "mcp", "server.js")]
-  };
+  cfg.mcpServers["alexandria"] = serverCommand(portable);
   fs.writeFileSync(file, JSON.stringify(cfg, null, 2) + "\n");
   return file;
 }
-function registerMcpGlobal() {
-  const server = path.join(distDir(), "mcp", "server.js");
+function registerMcpGlobal(portable = false) {
+  const { command, args } = serverCommand(portable);
   try {
-    execFileSync("claude", ["mcp", "add", "--scope", "user", "alexandria", "--", "node", server], {
+    execFileSync("claude", ["mcp", "add", "--scope", "user", "alexandria", "--", command, ...args], {
       stdio: "pipe",
       timeout: 15e3
     });

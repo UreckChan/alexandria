@@ -61,7 +61,7 @@ Verify:
 
 ```bash
 $ ale --version
-0.5.0
+0.5.1
 ```
 
 ## Getting started
@@ -251,7 +251,7 @@ AI agent session
 
 | Command | What it does |
 |---|---|
-| `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol]` | Installs everything: vault (default `./Alexandria` / `~/Alexandria`), hooks, MCP, .gitignore, project scan, CLAUDE.md |
+| `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol] [--portable]` | Installs everything: vault, hooks, MCP, .gitignore, project scan, CLAUDE.md. `--portable` writes an npx-based MCP command safe to commit for teams |
 | `ale agents [ids] [--project]` | List agents / register the MCP server |
 | `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors |
 | `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |
@@ -274,7 +274,7 @@ AI agent session
 - **Everything runs on your machine**: the embedding model is downloaded once (Hugging Face) and then works offline. Your notes never leave your disk. No telemetry.
 - **No API keys, no accounts, no cost.**
 - Dependency scanners (Socket, etc.) flag *network/shell/env access* in the dependency tree: those come from the ML runtime (`onnxruntime`/`transformers.js`, which needs filesystem access and the one-time model download) and the official MCP SDK — not from Alexandria's code. The published package runs no install scripts of its own.
-- Generated configs (`.mcp.json`, hooks) point at your machine's install path. If you share a repo with a team, switch the `command` to `npx -y @ureck/alexandria alexandria serve-mcp` for portability.
+- Generated per-project configs (`.mcp.json`, `.vault.json`, etc.) point at your machine's install path, so `ale init --project` automatically gitignores them (and untracks any already committed) — they never leak to a shared repo. For a team that *wants* a shared MCP config, run `ale init --project --portable`, which writes an npx-based command that works on any machine.
 
 ## Support the project ☕
 

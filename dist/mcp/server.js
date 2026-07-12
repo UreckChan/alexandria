@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 import {
   pkgVersion
-} from "../chunk-KHTYRYDR.js";
+} from "../chunk-IQM5S5N4.js";
 import {
   hybridSearch
-} from "../chunk-BCLBZ7NX.js";
+} from "../chunk-3ETM6PKR.js";
 import {
   ensureVaultStructure,
   resolveVault
 } from "../chunk-DYCARGQR.js";
 import {
   VaultIndex
-} from "../chunk-MLA3KZPZ.js";
+} from "../chunk-7G3NPKDO.js";
 import {
   createNote,
   setNoteStatus,

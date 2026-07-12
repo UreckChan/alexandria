@@ -80,6 +80,9 @@ var VaultIndex = class _VaultIndex {
       const rel = path.relative(this.vault.root, abs).split(path.sep).join("/");
       onDisk.set(rel, { abs, mtime: fs.statSync(abs).mtimeMs });
     }
+    if (withEmbeddings && this.emb === null && this.meta.chunks.length > 0) {
+      force = true;
+    }
     const changed = [];
     for (const [rel, info] of onDisk) {
       if (force || this.meta.mtimes[rel] !== info.mtime) changed.push(rel);
@@ -168,7 +171,7 @@ ${c.text}`),
     this.rebuildLinks();
     this.save();
     try {
-      const { writeStaticGraph } = await import("./viewer-57T7UOFE.js");
+      const { writeStaticGraph } = await import("./viewer-G3N57646.js");
       writeStaticGraph(this);
     } catch {
     }

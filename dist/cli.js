@@ -13,10 +13,10 @@ import {
   registerMcpGlobal,
   registerMcpProject,
   unregisterHooks
-} from "./chunk-KHTYRYDR.js";
+} from "./chunk-IQM5S5N4.js";
 import {
   hybridSearch
-} from "./chunk-BCLBZ7NX.js";
+} from "./chunk-3ETM6PKR.js";
 import {
   defaultVaultPath,
   ensureVaultStructure,
@@ -30,10 +30,10 @@ import {
 } from "./chunk-DYCARGQR.js";
 import {
   serveGraph
-} from "./chunk-RLVCH6CZ.js";
+} from "./chunk-UTXUGXDB.js";
 import {
   VaultIndex
-} from "./chunk-MLA3KZPZ.js";
+} from "./chunk-7G3NPKDO.js";
 import {
   createNote,
   slugify,
@@ -438,26 +438,56 @@ async function showBanner(animate) {
 import fs3 from "fs";
 import os3 from "os";
 import path3 from "path";
+import { execFileSync as execFileSync3 } from "child_process";
+var PERSONAL_CONFIG_FILES = [
+  ".vault.json",
+  ".mcp.json",
+  ".cursor/mcp.json",
+  "opencode.json",
+  ".vscode/mcp.json",
+  ".gemini/settings.json"
+];
 function ensureGitignore(projectDir, vaultRoot) {
   if (!fs3.existsSync(path3.join(projectDir, ".git"))) return null;
+  const entries = [];
   const rel = path3.relative(projectDir, vaultRoot);
-  if (rel.startsWith("..")) return null;
+  if (!rel.startsWith("..")) entries.push(`${rel.split(path3.sep).join("/")}/`);
+  entries.push(...PERSONAL_CONFIG_FILES);
   const file = path3.join(projectDir, ".gitignore");
-  const entries = [`${rel.split(path3.sep).join("/")}/`];
   let text = "";
   try {
     text = fs3.readFileSync(file, "utf8");
   } catch {
   }
-  const missing = entries.filter((e) => !text.split("\n").some((l) => l.trim() === e || l.trim() === e.slice(0, -1)));
+  const has = (e) => text.split("\n").some((l) => l.trim() === e || l.trim() === e.replace(/\/$/, ""));
+  const missing = entries.filter((e) => !has(e));
   if (missing.length === 0) return null;
   const block = `${text.trimEnd()}
 
-# Alexandria (conocimiento personal, no del repo)
+# Alexandria (conocimiento y config personal \u2014 no del repo)
 ${missing.join("\n")}
 `;
   fs3.writeFileSync(file, text.trim() ? block : block.trimStart());
   return file;
+}
+function untrackPersonalConfigs(projectDir) {
+  if (!fs3.existsSync(path3.join(projectDir, ".git"))) return [];
+  const untracked = [];
+  for (const f of PERSONAL_CONFIG_FILES) {
+    if (!fs3.existsSync(path3.join(projectDir, f))) continue;
+    try {
+      const tracked = execFileSync3("git", ["ls-files", "--error-unmatch", f], {
+        cwd: projectDir,
+        stdio: ["ignore", "pipe", "ignore"]
+      });
+      if (tracked.toString().trim()) {
+        execFileSync3("git", ["rm", "--cached", "--quiet", f], { cwd: projectDir, stdio: "ignore" });
+        untracked.push(f);
+      }
+    } catch {
+    }
+  }
+  return untracked;
 }
 var CLAUDE_MD_START = "<!-- alexandria:start -->";
 var CLAUDE_MD_END = "<!-- alexandria:end -->";
@@ -485,6 +515,24 @@ function configureClaudeMd(scope, projectDir) {
     text = (text.trimEnd() + "\n\n" + block + "\n").trimStart();
   }
   fs3.writeFileSync(file, text);
+  return file;
+}
+function removeClaudeMd(scope, projectDir) {
+  const file = scope === "project" ? path3.join(projectDir, "CLAUDE.md") : path3.join(os3.homedir(), ".claude", "CLAUDE.md");
+  let text;
+  try {
+    text = fs3.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+  if (!text.includes(CLAUDE_MD_START)) return null;
+  const re = new RegExp(`\\n*${CLAUDE_MD_START}[\\s\\S]*?${CLAUDE_MD_END}\\n*`);
+  const cleaned = text.replace(re, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (cleaned === "") {
+    fs3.rmSync(file, { force: true });
+  } else {
+    fs3.writeFileSync(file, cleaned + "\n");
+  }
   return file;
 }
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", ".next", "dist", "build", ".vault", ".claude", "coverage", "Alexandria", "KnowledgeVault"]);
@@ -544,15 +592,15 @@ ${readme.split("\n").slice(0, 15).join("\n")}`);
 }
 
 // src/cli.ts
-function registerAgentsMcp(agents, scope, cwd) {
+function registerAgentsMcp(agents, scope, cwd, portable = false) {
   for (const agent of agents) {
     if (agent.id === "claude") {
       if (scope === "project") {
-        const file = registerMcpProject(cwd);
+        const file = registerMcpProject(cwd, portable);
         console.log(pc.green(`\u2713 MCP \u2192 Claude Code (${file})`));
         continue;
       }
-      if (registerMcpGlobal()) {
+      if (registerMcpGlobal(portable)) {
         console.log(pc.green("\u2713 MCP \u2192 Claude Code (scope user, v\xEDa claude mcp add)"));
         continue;
       }
@@ -599,7 +647,7 @@ async function ensureReady(vault = getVault()) {
 program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: modelo, hooks (Claude Code) y MCP en tus agentes de IA (una sola vez, persiste entre sesiones)").option("--project", "registrar para este proyecto (cwd): .vault.json + .claude/settings.json + .mcp.json").option("--global", "registrar para todas las sesiones del usuario (default)").option(
   "--path <dir>",
   "ruta del vault Obsidian (existente o nuevo). Default: ./Alexandria con --project, ~/Alexandria en global"
-).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--no-protocol", "instalar sin el Protocolo Alexandria (solo b\xF3veda cl\xE1sica)").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
+).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--no-protocol", "instalar sin el Protocolo Alexandria (solo b\xF3veda cl\xE1sica)").option("--portable", "MCP con comando npx (commiteable en repos de equipo) en vez de ruta local").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
   "--agents <ids>",
   `agentes de IA donde registrar el MCP: "all", "detected" o csv de ${AGENTS.map((a) => a.id).join(",")} (default: claude + detectados)`
 ).action(async (opts) => {
@@ -625,13 +673,20 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   console.log(pc.dim("  SessionStart (digest) \xB7 UserPromptSubmit (contexto+captura) \xB7 Stop/PreCompact (sesiones)"));
   const scope = isProject ? "project" : "global";
   const chosen = opts.agents ? resolveAgents(opts.agents) : [...AGENTS.filter((a) => a.id === "claude" || a.detect())];
-  registerAgentsMcp(chosen, scope, cwd);
+  registerAgentsMcp(chosen, scope, cwd, opts.portable);
+  if (opts.portable) console.log(pc.dim("  MCP portable (npx) \u2014 apto para commitear en repos de equipo"));
   const skipped = AGENTS.filter((a) => !chosen.includes(a));
   if (skipped.length > 0) {
     console.log(pc.dim(`  Otros agentes disponibles: ${skipped.map((a) => a.id).join(", ")} \u2192 ale agents <ids>`));
   }
   if (isProject) {
     const gi = ensureGitignore(cwd, vault.root);
+    if (!opts.portable) {
+      const untracked = untrackPersonalConfigs(cwd);
+      if (untracked.length > 0) {
+        console.log(pc.green(`\u2713 Configs personales sacados del \xEDndice de git: ${untracked.join(", ")}`));
+      }
+    }
     if (gi) console.log(pc.green(`\u2713 B\xF3veda agregada a ${gi}`));
   }
   let auto = opts.auto ? true : opts.manual ? false : void 0;
@@ -947,11 +1002,31 @@ program.command("doctor").description("Verifica y repara la instalaci\xF3n (mode
   console.log(`${pc.green("\u2713")} \xCDndice al d\xEDa (${res.changed} reindexadas, ${Object.keys(idx.meta.notes).length} notas)
 `);
 });
-program.command("uninstall").description("Quita hooks de Claude Code (no borra la b\xF3veda ni las notas)").option("--project", "quitar del proyecto (cwd)").action((opts) => {
-  const settings = opts.project ? projectSettingsPath(process.cwd()) : globalSettingsPath();
+program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloque de CLAUDE.md y MCP del proyecto (no borra la b\xF3veda ni las notas)").option("--project", "quitar del proyecto (cwd)").action((opts) => {
+  const cwd = process.cwd();
+  const scope = opts.project ? "project" : "global";
+  const settings = opts.project ? projectSettingsPath(cwd) : globalSettingsPath();
   unregisterHooks(settings);
   console.log(pc.green(`\u2713 Hooks de alexandria eliminados de ${settings}`));
-  console.log(pc.dim("  MCP: qu\xEDtalo con `claude mcp remove alexandria` o borrando la entrada de .mcp.json. Tus notas quedan intactas."));
+  const claudeMd = removeClaudeMd(scope, cwd);
+  if (claudeMd) console.log(pc.green(`\u2713 Bloque de Alexandria removido de ${claudeMd}`));
+  if (opts.project) {
+    const mcpFile = path4.join(cwd, ".mcp.json");
+    try {
+      const cfg = JSON.parse(fs4.readFileSync(mcpFile, "utf8"));
+      if (cfg.mcpServers?.alexandria) {
+        delete cfg.mcpServers.alexandria;
+        if (Object.keys(cfg.mcpServers).length === 0) delete cfg.mcpServers;
+        if (Object.keys(cfg).length === 0) fs4.rmSync(mcpFile, { force: true });
+        else fs4.writeFileSync(mcpFile, JSON.stringify(cfg, null, 2) + "\n");
+        console.log(pc.green("\u2713 MCP removido de .mcp.json"));
+      }
+    } catch {
+    }
+    console.log(pc.dim('  Otros agentes (Cursor/OpenCode/\u2026): quita "alexandria" de su config si lo registraste.'));
+  } else {
+    console.log(pc.dim("  MCP global: qu\xEDtalo con `claude mcp remove alexandria`. Tus notas quedan intactas."));
+  }
 });
 program.command("serve-mcp").description("Correr el servidor MCP por stdio (lo usa Claude Code internamente)").action(async () => {
   await import("./mcp/server.js");
