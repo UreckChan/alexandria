@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alexandria — Documentación / Docs</title>
 <meta name="description" content="Alexandria: bóveda de conocimiento local para agentes de IA. Documentación de comandos, uso y dudas técnicas. / Local knowledge vault for AI agents. Command docs, usage and technical FAQ.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8860b' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 21 9.5 9h5L16 21Z'/%3E%3Cpath d='M6 21h12'/%3E%3Cpath d='M9.5 9V6h5v3'/%3E%3Cpath d='M9 6l3-3 3 3'/%3E%3Cpath d='M9.5 7.5 6 6'/%3E%3Cpath d='M14.5 7.5 18 6'/%3E%3Cpath d='M9.2 15h5.6'/%3E%3C/svg%3E">
 <style>
 :root{
   --bg:#f6f1e7; --bg-soft:#efe7d6; --card:#fffdf8; --ink:#2b2620; --ink-soft:#5c5445;
@@ -21,76 +21,84 @@
   --accent:#e0be6d; --shadow:0 1px 3px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:80px}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth;scroll-padding-top:76px;font-size:clamp(15px,1.4vw,16px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.2;color:var(--ink)}
 code{font-family:var(--mono);font-size:.88em;background:var(--bg-soft);border:1px solid var(--line);border-radius:5px;padding:.1em .4em}
-pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;line-height:1.55;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.05)}
+pre{background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:clamp(12px,2.6vw,13.5px);line-height:1.55;box-shadow:var(--shadow);border:1px solid rgba(255,255,255,.05)}
 pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.ic{width:1.05em;height:1.05em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.15em;flex:none}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);vertical-align:middle;margin:0 2px}
 .only-en{display:none}
 html[data-lang="en"] .only-es{display:none}
 html[data-lang="en"] .only-en{display:revert}
 
 /* Top bar */
 header.top{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.top-in{max-width:1180px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:14px}
-.brand{display:flex;align-items:center;gap:10px;font-family:var(--serif);font-weight:600;font-size:18px}
-.brand .logo{font-size:22px}
+.top-in{max-width:1180px;margin:0 auto;padding:10px clamp(14px,3vw,22px);display:flex;align-items:center;gap:10px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--serif);font-weight:600;font-size:clamp(16px,4vw,18px);color:var(--ink)}
+.brand .logo-mark{width:26px;height:26px;color:var(--gold)}
 .brand .ver{font-family:var(--mono);font-size:11px;color:var(--gold-2);border:1px solid var(--line);border-radius:20px;padding:2px 8px;background:var(--card)}
 .spacer{flex:1}
 .ctrl{display:flex;gap:8px}
-.btn{cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+.btn{cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:600;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;display:inline-flex;align-items:center;gap:6px;transition:.15s;line-height:1}
 .btn:hover{border-color:var(--gold);color:var(--gold-2)}
+.icon-btn{padding:7px 9px}
 .menu-btn{display:none}
 
 /* Layout */
-.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px 1fr;gap:36px;padding:0 22px}
-nav.side{position:sticky;top:70px;align-self:start;height:calc(100vh - 90px);overflow-y:auto;padding:26px 0 40px;font-size:14px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px 1fr;gap:clamp(20px,4vw,36px);padding:0 clamp(14px,3vw,22px)}
+nav.side{position:sticky;top:66px;align-self:start;height:calc(100vh - 86px);overflow-y:auto;padding:24px 0 40px;font-size:14px}
 nav.side .grp{font-family:var(--serif);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-2);margin:20px 0 8px;font-weight:700}
 nav.side a{display:block;color:var(--ink-soft);padding:5px 12px;border-left:2px solid transparent;border-radius:0 6px 6px 0}
 nav.side a:hover{color:var(--ink);background:var(--bg-soft);text-decoration:none}
 nav.side a.active{color:var(--gold-2);border-left-color:var(--gold);background:var(--bg-soft);font-weight:600}
-main{padding:26px 0 90px;min-width:0}
-section{margin-bottom:60px;scroll-margin-top:80px}
-section>h2{font-size:30px;margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid var(--line)}
-section h3{font-size:20px;margin:32px 0 8px}
+main{padding:24px 0 90px;min-width:0}
+section{margin-bottom:56px;scroll-margin-top:76px}
+section>h2{font-size:clamp(24px,5vw,30px);margin:0 0 6px;padding-bottom:10px;border-bottom:2px solid var(--line);display:flex;align-items:center;gap:10px}
+section>h2 .ic{color:var(--gold);width:.9em;height:.9em}
+section h3{font-size:clamp(18px,3.4vw,20px);margin:30px 0 8px}
 p{margin:12px 0}
 ul,ol{padding-left:22px}li{margin:6px 0}
 
 /* Hero */
-.hero{padding:56px 0 30px;text-align:center;border-bottom:1px solid var(--line);margin-bottom:20px}
-.hero .glyph{font-size:56px}
-.hero h1{font-size:46px;margin:10px 0 6px;background:linear-gradient(180deg,var(--ink),var(--gold-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.hero .tag{font-size:19px;color:var(--ink-soft);max-width:640px;margin:0 auto;font-family:var(--serif);font-style:italic}
-.hero .pills{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:22px}
-.pill{font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 13px;color:var(--ink-soft)}
-.hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px}
-.cta .primary{background:linear-gradient(180deg,var(--gold),var(--gold-2));color:#fff;border:none;padding:11px 22px;font-size:14px}
+.hero{padding:clamp(36px,7vw,56px) 0 30px;text-align:center;border-bottom:1px solid var(--line);margin-bottom:20px}
+.hero .logo-mark{width:clamp(56px,14vw,74px);height:clamp(56px,14vw,74px);color:var(--gold);filter:drop-shadow(0 4px 14px rgba(184,134,11,.28))}
+.hero h1{font-size:clamp(34px,9vw,48px);margin:12px 0 6px;background:linear-gradient(180deg,var(--ink),var(--gold-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tag{font-size:clamp(16px,3.6vw,19px);color:var(--ink-soft);max-width:640px;margin:0 auto;padding:0 8px;font-family:var(--serif);font-style:italic}
+.hero .pills{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:22px;padding:0 8px}
+.pill{font-size:12.5px;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:5px 13px;color:var(--ink-soft);display:inline-flex;align-items:center;gap:6px}
+.pill .ic{color:var(--gold-2);width:14px;height:14px}
+.hero .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:26px;padding:0 8px}
+.cta .btn{padding:11px 20px;font-size:14px}
+.cta .primary{background:linear-gradient(180deg,var(--gold),var(--gold-2));color:#fff;border:none}
 :root[data-theme="dark"] .cta .primary{color:#17140f}
 .cta .primary:hover{filter:brightness(1.07);color:#fff}
 :root[data-theme="dark"] .cta .primary:hover{color:#17140f}
 
 /* cards */
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin:18px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;margin:18px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
-.card .ico{font-size:24px;margin-bottom:6px}
+.card .ico{width:26px;height:26px;color:var(--gold);margin-bottom:8px}
 .card h3{margin:0 0 4px;font-size:16.5px}
 .card p{margin:0;font-size:14px;color:var(--ink-soft)}
 
 /* table */
-.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:12px}
+.tbl-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
 table{border-collapse:collapse;width:100%;font-size:14px;background:var(--card)}
 th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
 th{background:var(--bg-soft);font-family:var(--serif);font-weight:600;color:var(--gold-2);white-space:nowrap}
 tr:last-child td{border-bottom:none}
 td code{white-space:nowrap}
+.tick{width:16px;height:16px;color:#4a9e5c;stroke-width:2.4}
 
 /* callouts */
 .note{border-left:4px solid var(--gold);background:var(--bg-soft);border-radius:0 10px 10px 0;padding:12px 18px;margin:16px 0;font-size:14.5px}
 .note.warn{border-left-color:#c0392b}
-.note .lbl{font-family:var(--serif);font-weight:700;color:var(--gold-2);display:block;margin-bottom:2px}
+.note .lbl{font-family:var(--serif);font-weight:700;color:var(--gold-2);display:flex;align-items:center;gap:7px;margin-bottom:2px}
+.note .lbl .ic{width:16px;height:16px}
 .note.warn .lbl{color:#c0392b}
 
 /* command block */
@@ -103,24 +111,30 @@ td code{white-space:nowrap}
 /* faq */
 details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0;overflow:hidden}
 details[open]{box-shadow:var(--shadow)}
-summary{cursor:pointer;padding:15px 18px;font-family:var(--serif);font-weight:600;font-size:16px;list-style:none;position:relative;padding-right:44px}
+summary{cursor:pointer;padding:15px 18px;font-family:var(--serif);font-weight:600;font-size:clamp(15px,3.2vw,16px);list-style:none;position:relative;padding-right:44px}
 summary::-webkit-details-marker{display:none}
-summary::after{content:"+";position:absolute;right:18px;top:50%;transform:translateY(-50%);color:var(--gold);font-size:22px;font-weight:400}
-details[open] summary::after{content:"–"}
+summary::after{content:"";position:absolute;right:18px;top:calc(50% - 6px);width:12px;height:12px;border-right:2px solid var(--gold);border-bottom:2px solid var(--gold);transform:rotate(45deg);transition:.2s}
+details[open] summary::after{transform:rotate(-135deg);top:calc(50% - 2px)}
 details .body{padding:0 18px 16px;font-size:14.5px;color:var(--ink-soft)}
 details .body p:first-child{margin-top:0}
 
 footer{border-top:1px solid var(--line);padding:34px 22px;text-align:center;color:var(--ink-soft);font-size:14px}
 footer .links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+footer .links a{display:inline-flex;align-items:center;gap:6px}
 .copy-hint{color:var(--ink-soft);font-size:12px;margin-top:6px}
 
 @media(max-width:860px){
   .wrap{grid-template-columns:1fr}
-  nav.side{display:none;position:fixed;top:0;left:0;width:260px;height:100vh;background:var(--bg);z-index:60;padding:70px 14px 40px;border-right:1px solid var(--line);box-shadow:var(--shadow)}
+  nav.side{display:none;position:fixed;top:0;left:0;width:min(78vw,280px);height:100vh;background:var(--bg);z-index:60;padding:66px 14px 40px;border-right:1px solid var(--line);box-shadow:var(--shadow)}
   nav.side.open{display:block}
   .menu-btn{display:inline-flex}
-  .hero h1{font-size:34px}.hero .tag{font-size:17px}
-  section>h2{font-size:25px}
+}
+@media(max-width:560px){
+  .brand .ver{display:none}
+  .cta{flex-direction:column;align-items:stretch}
+  .cta .btn{justify-content:center}
+  section>h2{gap:8px}
+  footer .links{gap:12px}
 }
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:55}
 .overlay.open{display:block}
@@ -128,16 +142,53 @@ footer .links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin
 </head>
 <body>
 
+<!-- ICON SPRITE -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-lighthouse" viewBox="0 0 24 24"><path d="M8 21 9.5 9h5L16 21Z"/><path d="M6 21h12"/><path d="M9.5 9V6h5v3"/><path d="M9 6l3-3 3 3"/><path d="M9.5 7.5 6 6"/><path d="M14.5 7.5 18 6"/><path d="M9.2 15h5.6"/></symbol>
+  <symbol id="ic-menu" viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+  <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+  <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+  <symbol id="ic-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="ic-package" viewBox="0 0 24 24"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></symbol>
+  <symbol id="ic-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="ic-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+  <symbol id="ic-infinity" viewBox="0 0 24 24"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 1 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4Z"/></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></symbol>
+  <symbol id="ic-coffee" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></symbol>
+  <symbol id="ic-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+  <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="ic-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+  <symbol id="ic-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="ic-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91 0z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></symbol>
+  <symbol id="ic-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+  <symbol id="ic-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="ic-gitbranch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></symbol>
+  <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+  <symbol id="ic-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></symbol>
+  <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+</svg>
+
 <header class="top">
   <div class="top-in">
-    <button class="btn menu-btn" id="menuBtn" aria-label="menu">☰</button>
+    <button class="btn icon-btn menu-btn" id="menuBtn" aria-label="menu"><svg class="ic"><use href="#ic-menu"/></svg></button>
     <a class="brand" href="#top">
-      <span class="logo">🏛️</span> Alexandria <span class="ver">v0.5.3</span>
+      <svg class="logo-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-lighthouse"/></svg>
+      Alexandria <span class="ver">v0.5.3</span>
     </a>
     <div class="spacer"></div>
     <div class="ctrl">
-      <button class="btn" id="langBtn" title="Español / English">🌐 <span id="langLbl">EN</span></button>
-      <button class="btn" id="themeBtn" title="Tema / Theme">🌙</button>
+      <button class="btn" id="langBtn" title="Español / English"><svg class="ic"><use href="#ic-globe"/></svg> <span id="langLbl">EN</span></button>
+      <button class="btn icon-btn" id="themeBtn" title="Tema / Theme" aria-label="theme"><svg class="ic"><use href="#ic-moon" id="themeIcon"/></svg></button>
     </div>
   </div>
 </header>
@@ -166,50 +217,50 @@ footer .links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin
   <!-- MAIN -->
   <main>
     <div class="hero">
-      <div class="glyph">🏛️</div>
+      <svg class="logo-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-lighthouse"/></svg>
       <h1>Alexandria</h1>
       <p class="tag">
         <span class="only-es">Una bóveda de conocimiento local para tus agentes de IA — ahorra tokens, recuerda entre sesiones y convierte cualquier modelo en un ingeniero disciplinado.</span>
         <span class="only-en">A local knowledge vault for your AI agents — saves tokens, remembers across sessions, and turns every model into a disciplined engineer.</span>
       </p>
       <div class="pills">
-        <span class="pill">🔒 100% local</span>
-        <span class="pill"><span class="only-es">🧠 Búsqueda semántica offline</span><span class="only-en">🧠 Offline semantic search</span></span>
-        <span class="pill"><span class="only-es">🕸️ Grafo estilo Obsidian</span><span class="only-en">🕸️ Obsidian-style graph</span></span>
-        <span class="pill"><span class="only-es">💸 Sin API keys ni costo</span><span class="only-en">💸 No API keys, no cost</span></span>
+        <span class="pill"><svg class="ic"><use href="#ic-lock"/></svg> 100% local</span>
+        <span class="pill"><svg class="ic"><use href="#ic-search"/></svg> <span class="only-es">Búsqueda semántica offline</span><span class="only-en">Offline semantic search</span></span>
+        <span class="pill"><svg class="ic"><use href="#ic-share"/></svg> <span class="only-es">Grafo estilo Obsidian</span><span class="only-en">Obsidian-style graph</span></span>
+        <span class="pill"><svg class="ic"><use href="#ic-shield"/></svg> <span class="only-es">Sin API keys ni costo</span><span class="only-en">No API keys, no cost</span></span>
       </div>
       <div class="cta">
-        <a class="btn primary" href="#instalacion"><span class="only-es">▶ Empezar</span><span class="only-en">▶ Get started</span></a>
-        <a class="btn" href="https://github.com/UreckChan/alexandria" target="_blank">⭐ GitHub</a>
-        <a class="btn" href="https://www.npmjs.com/package/@ureck/alexandria" target="_blank">📦 npm</a>
+        <a class="btn primary" href="#instalacion"><svg class="ic"><use href="#ic-play"/></svg> <span class="only-es">Empezar</span><span class="only-en">Get started</span></a>
+        <a class="btn" href="https://github.com/UreckChan/alexandria" target="_blank" rel="noopener"><svg class="ic"><use href="#ic-star"/></svg> GitHub</a>
+        <a class="btn" href="https://www.npmjs.com/package/@ureck/alexandria" target="_blank" rel="noopener"><svg class="ic"><use href="#ic-package"/></svg> npm</a>
       </div>
     </div>
 
     <!-- QUE ES -->
     <section id="que-es">
-      <h2><span class="only-es">¿Qué es Alexandria?</span><span class="only-en">What is Alexandria?</span></h2>
+      <h2><svg class="ic"><use href="#ic-lighthouse"/></svg> <span class="only-es">¿Qué es Alexandria?</span><span class="only-en">What is Alexandria?</span></h2>
       <p>
         <span class="only-es">Alexandria captura automáticamente tus prompts y sesiones de IA, busca en ese conocimiento <strong>antes</strong> de gastar tokens, y lo conecta todo en un grafo estilo Obsidian. <strong>100% local</strong>: sin base de datos, sin API keys, sin telemetría, sin costo. Funciona con los agentes más populares vía MCP.</span>
         <span class="only-en">Alexandria automatically captures your AI prompts and sessions, searches that knowledge <strong>before</strong> spending tokens, and connects everything in an Obsidian-style graph. <strong>100% local</strong>: no database, no API keys, no telemetry, no cost. Works with the most popular agents via MCP.</span>
       </p>
       <div class="note">
-        <span class="lbl"><span class="only-es">El problema que resuelve</span><span class="only-en">The problem it solves</span></span>
+        <span class="lbl"><svg class="ic"><use href="#ic-info"/></svg> <span class="only-es">El problema que resuelve</span><span class="only-en">The problem it solves</span></span>
         <span class="only-es">Cada nueva sesión de IA empieza de cero: reexplora tu código, rederiva decisiones que ya tomaste, revuelve a gastar los mismos tokens. Alexandria rompe ese ciclo.</span>
         <span class="only-en">Every new AI session starts from zero: it re-explores your code, re-derives decisions you already made, re-spends the same tokens. Alexandria breaks that cycle.</span>
       </div>
       <div class="grid">
-        <div class="card"><div class="ico">💸</div><h3><span class="only-es">Ahorra tokens</span><span class="only-en">Saves tokens</span></h3><p><span class="only-es">Cada prompt dispara una búsqueda semántica local (&lt;100ms) que inyecta solo los fragmentos relevantes — en vez de releer archivos enteros.</span><span class="only-en">Every prompt triggers a local semantic search (&lt;100ms) that injects only the relevant fragments — instead of re-reading whole files.</span></p></div>
-        <div class="card"><div class="ico">🔁</div><h3><span class="only-es">Cero reanálisis</span><span class="only-en">Zero re-analysis</span></h3><p><span class="only-es">Al iniciar sesión, el agente recibe el mapa del proyecto y todo el conocimiento acumulado.</span><span class="only-en">On session start, the agent receives the project map and all accumulated knowledge.</span></p></div>
-        <div class="card"><div class="ico">🧩</div><h3><span class="only-es">Memoria de soluciones</span><span class="only-en">Solution memory</span></h3><p><span class="only-es">Si un prompt casi idéntico ya se resolvió, se inyecta la solución previa — el agente no la rederiva.</span><span class="only-en">If a nearly identical prompt was solved, the previous solution is injected — the agent doesn't re-derive it.</span></p></div>
-        <div class="card"><div class="ico">♾️</div><h3><span class="only-es">Contexto infinito</span><span class="only-en">Infinite context</span></h3><p><span class="only-es">El ruido viejo se archiva, nunca se borra — todo queda buscable para siempre.</span><span class="only-en">Old noise gets archived, never deleted — everything stays searchable forever.</span></p></div>
-        <div class="card"><div class="ico">🗂️</div><h3><span class="only-es">Vault de Obsidian válido</span><span class="only-en">Valid Obsidian vault</span></h3><p><span class="only-es">Markdown plano con <code>[[wikilinks]]</code>. Ábrelo en Obsidian cuando quieras.</span><span class="only-en">Plain markdown with <code>[[wikilinks]]</code>. Open it in Obsidian anytime.</span></p></div>
-        <div class="card"><div class="ico">🌎</div><h3><span class="only-es">Multiplataforma</span><span class="only-en">Cross-platform</span></h3><p><span class="only-es">Windows, macOS, Linux · Node, Bun o Deno. JS puro — sin dependencias nativas que rompan tu install.</span><span class="only-en">Windows, macOS, Linux · Node, Bun or Deno. Pure JS — no native deps to break your install.</span></p></div>
+        <div class="card"><svg class="ic ico"><use href="#ic-zap"/></svg><h3><span class="only-es">Ahorra tokens</span><span class="only-en">Saves tokens</span></h3><p><span class="only-es">Cada prompt dispara una búsqueda semántica local (&lt;100ms) que inyecta solo los fragmentos relevantes — en vez de releer archivos enteros.</span><span class="only-en">Every prompt triggers a local semantic search (&lt;100ms) that injects only the relevant fragments — instead of re-reading whole files.</span></p></div>
+        <div class="card"><svg class="ic ico"><use href="#ic-refresh"/></svg><h3><span class="only-es">Cero reanálisis</span><span class="only-en">Zero re-analysis</span></h3><p><span class="only-es">Al iniciar sesión, el agente recibe el mapa del proyecto y todo el conocimiento acumulado.</span><span class="only-en">On session start, the agent receives the project map and all accumulated knowledge.</span></p></div>
+        <div class="card"><svg class="ic ico"><use href="#ic-save"/></svg><h3><span class="only-es">Memoria de soluciones</span><span class="only-en">Solution memory</span></h3><p><span class="only-es">Si un prompt casi idéntico ya se resolvió, se inyecta la solución previa — el agente no la rederiva.</span><span class="only-en">If a nearly identical prompt was solved, the previous solution is injected — the agent doesn't re-derive it.</span></p></div>
+        <div class="card"><svg class="ic ico"><use href="#ic-infinity"/></svg><h3><span class="only-es">Contexto infinito</span><span class="only-en">Infinite context</span></h3><p><span class="only-es">El ruido viejo se archiva, nunca se borra — todo queda buscable para siempre.</span><span class="only-en">Old noise gets archived, never deleted — everything stays searchable forever.</span></p></div>
+        <div class="card"><svg class="ic ico"><use href="#ic-book"/></svg><h3><span class="only-es">Vault de Obsidian válido</span><span class="only-en">Valid Obsidian vault</span></h3><p><span class="only-es">Markdown plano con <code>[[wikilinks]]</code>. Ábrelo en Obsidian cuando quieras.</span><span class="only-en">Plain markdown with <code>[[wikilinks]]</code>. Open it in Obsidian anytime.</span></p></div>
+        <div class="card"><svg class="ic ico"><use href="#ic-monitor"/></svg><h3><span class="only-es">Multiplataforma</span><span class="only-en">Cross-platform</span></h3><p><span class="only-es">Windows, macOS, Linux · Node, Bun o Deno. JS puro — sin dependencias nativas que rompan tu install.</span><span class="only-en">Windows, macOS, Linux · Node, Bun or Deno. Pure JS — no native deps to break your install.</span></p></div>
       </div>
     </section>
 
     <!-- INSTALACION -->
     <section id="instalacion">
-      <h2><span class="only-es">Instalación</span><span class="only-en">Install</span></h2>
+      <h2><svg class="ic"><use href="#ic-download"/></svg> <span class="only-es">Instalación</span><span class="only-en">Install</span></h2>
       <p><span class="only-es">Requiere <strong>Node ≥ 20</strong>. Instala el binario global <code>ale</code> (alias <code>alexandria</code>):</span><span class="only-en">Requires <strong>Node ≥ 20</strong>. Installs the global binary <code>ale</code> (alias <code>alexandria</code>):</span></p>
 <pre><code># npm (Node ≥ 20)
 npm install -g @ureck/alexandria
@@ -227,7 +278,7 @@ deno install -grA -n ale npm:@ureck/alexandria/ale
 
     <!-- PRIMEROS PASOS -->
     <section id="primeros-pasos">
-      <h2><span class="only-es">Primeros pasos</span><span class="only-en">First steps</span></h2>
+      <h2><svg class="ic"><use href="#ic-rocket"/></svg> <span class="only-es">Primeros pasos</span><span class="only-en">First steps</span></h2>
       <p><span class="only-es">Un solo comando instala todo (modelo de embeddings ~130MB descargado una vez, hooks, registro MCP, índice):</span><span class="only-en">One command installs everything (embedding model ~130MB downloaded once, hooks, MCP registration, index):</span></p>
 <pre><code># Global — una bóveda compartida para todas tus sesiones (~/Alexandria)
 ale init
@@ -249,7 +300,7 @@ ale init --agents claude,cursor,opencode   # solo estos</code></pre>
         <li><span class="only-es">pregunta <em>«¿Configurar Claude para usar Alexandria automáticamente?»</em> y escribe las reglas de uso en <code>CLAUDE.md</code> (<code>--auto</code> / <code>--manual</code> para saltar la pregunta).</span><span class="only-en">asks <em>"Configure Claude to use Alexandria automatically?"</em> and writes the usage rules into <code>CLAUDE.md</code> (<code>--auto</code> / <code>--manual</code> to skip).</span></li>
       </ul>
       <div class="note warn">
-        <span class="lbl"><span class="only-es">Importante</span><span class="only-en">Important</span></span>
+        <span class="lbl"><svg class="ic"><use href="#ic-alert"/></svg> <span class="only-es">Importante</span><span class="only-en">Important</span></span>
         <span class="only-es">Los hooks cargan <strong>al iniciar una sesión</strong> — abre una sesión <em>nueva</em> del agente en esa carpeta (una ya abierta no los verá). Tras el <code>init</code> no hay nada que reconectar, nunca.</span>
         <span class="only-en">Hooks load <strong>when a session starts</strong> — open a <em>new</em> agent session in that folder (an already-open one won't see them). After <code>init</code> there is nothing to reconnect, ever.</span>
       </div>
@@ -257,7 +308,7 @@ ale init --agents claude,cursor,opencode   # solo estos</code></pre>
 
     <!-- COMANDOS -->
     <section id="comandos">
-      <h2><span class="only-es">Referencia de comandos</span><span class="only-en">Command reference</span></h2>
+      <h2><svg class="ic"><use href="#ic-terminal"/></svg> <span class="only-es">Referencia de comandos</span><span class="only-en">Command reference</span></h2>
       <p><span class="only-es"><code>alexandria</code> funciona como alias de <code>ale</code>. Ejecuta <code>ale &lt;comando&gt; --help</code> para ver todas las opciones.</span><span class="only-en"><code>alexandria</code> works as an alias of <code>ale</code>. Run <code>ale &lt;command&gt; --help</code> to see all options.</span></p>
 
       <div class="tbl-wrap">
@@ -321,7 +372,7 @@ ale init --agents claude,cursor,opencode   # solo estos</code></pre>
 
     <!-- EJEMPLOS -->
     <section id="ejemplos">
-      <h2><span class="only-es">Ejemplos diarios</span><span class="only-en">Daily examples</span></h2>
+      <h2><svg class="ic"><use href="#ic-list"/></svg> <span class="only-es">Ejemplos diarios</span><span class="only-en">Daily examples</span></h2>
 
       <h3><span class="only-es">Buscar por significado, no por keywords</span><span class="only-en">Search by meaning, not keywords</span></h3>
 <pre><code>$ ale search how do I publish my app to the google store
@@ -351,40 +402,40 @@ ale add "Vercel deploy" -c "Region cdg1, ver [[Prisma setup]]" -t deploy</code><
       <p><span class="only-es"><strong>El grafo se mantiene solo</strong> — cada cambio en la bóveda regenera <code>&lt;vault&gt;/grafo.html</code>.</span><span class="only-en"><strong>The graph maintains itself</strong> — every vault change regenerates <code>&lt;vault&gt;/grafo.html</code>.</span></p>
 <pre><code>ale graph                  # visor EN VIVO en tu navegador (auto-refresh cada 3s)
 ale graph --out other.html # copia estática en otro lugar (opcional)</code></pre>
-      <p><span class="only-es">Nodos = notas (tamaño = conexiones, color = tipo: 🟪 planes, 🟦 verificaciones, 🟨 lecciones, 🟩 sesiones…), líneas sólidas = <code>[[wikilinks]]</code>, punteadas = similitud semántica.</span><span class="only-en">Nodes = notes (size = connections, color = type: 🟪 plans, 🟦 verifications, 🟨 lessons, 🟩 sessions…), solid lines = <code>[[wikilinks]]</code>, dashed = semantic similarity.</span></p>
+      <p><span class="only-es">Nodos = notas (tamaño = conexiones, color = tipo: <span class="dot" style="--c:#9b59b6"></span> planes, <span class="dot" style="--c:#3b82c4"></span> verificaciones, <span class="dot" style="--c:#d9a93a"></span> lecciones, <span class="dot" style="--c:#4a9e5c"></span> sesiones), líneas sólidas = <code>[[wikilinks]]</code>, punteadas = similitud semántica.</span><span class="only-en">Nodes = notes (size = connections, color = type: <span class="dot" style="--c:#9b59b6"></span> plans, <span class="dot" style="--c:#3b82c4"></span> verifications, <span class="dot" style="--c:#d9a93a"></span> lessons, <span class="dot" style="--c:#4a9e5c"></span> sessions), solid lines = <code>[[wikilinks]]</code>, dashed = semantic similarity.</span></p>
 
       <h3><span class="only-es">Medir lo que te ahorra</span><span class="only-en">Measure what it saves you</span></h3>
 <pre><code>$ ale stats
 
-🧠 Vault: /Users/you/Alexandria (global)
+  Vault: /Users/you/Alexandria (global)
   Notes: 142 {"note":80,"prompt":38,"session":22,"map":2}
   Indexed chunks: 385 · Connections: 91
   Semantic search: active
 
-🏛️  Protocol
-  Plans: 6 (1 open) · Verifications: 14 (86% ✓)
+  Protocol
+  Plans: 6 (1 open) · Verifications: 14 (86% ok)
   Lessons: 9 (4 reused — each reuse = a debug session that never happened)
 
-📊 Measured (facts, not estimates)
+  Measured (facts, not estimates)
   Context injections: 57
   Solution cache hits: 12 (~9,400 tokens)
   Injected tokens (cost): ~21,300
 
-💰 Estimated savings (band, NOT audited)
+  Estimated savings (band, NOT audited)
   ~63,900 – 170,400 tokens</code></pre>
     </section>
 
     <!-- PROTOCOLO -->
     <section id="protocolo">
-      <h2><span class="only-es">El Protocolo Alexandria</span><span class="only-en">The Alexandria Protocol</span></h2>
+      <h2><svg class="ic"><use href="#ic-gitbranch"/></svg> <span class="only-es">El Protocolo Alexandria</span><span class="only-en">The Alexandria Protocol</span></h2>
       <p><span class="only-es">Más allá de la memoria, Alexandria trae un protocolo de ingeniería ligero que convierte <strong>cualquier</strong> modelo con MCP en un agente senior que planea, verifica con evidencia y aprende:</span><span class="only-en">Beyond memory, Alexandria ships a lightweight engineering protocol that turns <strong>any</strong> MCP-capable model into a senior agent that plans, verifies with evidence, and learns:</span></p>
-      <div class="note"><span class="lbl">Plan → Execute → Verify → Learn</span><span class="only-es"><strong>Planear → Ejecutar una tarea → Verificar con evidencia → (si falla: reusar lecciones pasadas) → Extraer la lección</strong></span><span class="only-en"><strong>Plan → Execute one task → Verify with evidence → (on failure: reuse past lessons) → Extract the lesson</strong></span></div>
+      <div class="note"><span class="lbl"><svg class="ic"><use href="#ic-gitbranch"/></svg> Plan → Execute → Verify → Learn</span><span class="only-es"><strong>Planear → Ejecutar una tarea → Verificar con evidencia → (si falla: reusar lecciones pasadas) → Extraer la lección</strong></span><span class="only-en"><strong>Plan → Execute one task → Verify with evidence → (on failure: reuse past lessons) → Extract the lesson</strong></span></div>
       <p><span class="only-es">Vive en las propias tools MCP — sus nombres y descripciones cargan las instrucciones — así funciona idéntico en todos los agentes, con o sin hooks:</span><span class="only-en">It lives in the MCP tools themselves — their names and descriptions carry the instructions — so it works identically across every agent, with or without hooks:</span></p>
       <div class="tbl-wrap"><table>
         <thead><tr><th>MCP tool</th><th><span class="only-es">Qué hace el agente</span><span class="only-en">What the agent does</span></th></tr></thead>
         <tbody>
           <tr><td><code>plan_create</code></td><td><span class="only-es">Escribe una nota-plan con <strong>Definition of Done</strong> y tareas numeradas antes de tocar código. Los planes abiertos se reinyectan la próxima sesión: el trabajo se reanuda, no se repite.</span><span class="only-en">Writes a plan note with a <strong>Definition of Done</strong> and numbered tasks before touching code. Open plans are re-injected next session so work is resumed, not repeated.</span></td></tr>
-          <tr><td><code>task_verify</code></td><td><span class="only-es">Registra el veredicto real de cada tarea (salida de test/build, compactada). "✅ 12/12" en vez de 500 líneas de log; al fallar, aflora lecciones pasadas que coinciden.</span><span class="only-en">Records the real verdict of each task (test/build output, compacted). "✅ 12/12" instead of a 500-line log; on failure it surfaces matching past lessons.</span></td></tr>
+          <tr><td><code>task_verify</code></td><td><span class="only-es">Registra el veredicto real de cada tarea (salida de test/build, compactada). "12/12 ok" en vez de 500 líneas de log; al fallar, aflora lecciones pasadas que coinciden.</span><span class="only-en">Records the real verdict of each task (test/build output, compacted). "12/12 ok" instead of a 500-line log; on failure it surfaces matching past lessons.</span></td></tr>
           <tr><td><code>lesson_extract</code></td><td><span class="only-es">Destila la causa raíz + fix tras resolver algo no obvio. ~200 tokens hoy reemplazan ~20,000 de re-debug el mes que viene.</span><span class="only-en">Distills the root cause + fix after solving something non-obvious. ~200 tokens today replace ~20,000 tokens of re-debugging next month.</span></td></tr>
         </tbody>
       </table></div>
@@ -396,7 +447,7 @@ ale init --no-protocol          # instalar sin él</code></pre>
 
     <!-- AGENTES -->
     <section id="agentes">
-      <h2><span class="only-es">Agentes soportados</span><span class="only-en">Supported agents</span></h2>
+      <h2><svg class="ic"><use href="#ic-users"/></svg> <span class="only-es">Agentes soportados</span><span class="only-en">Supported agents</span></h2>
       <p><span class="only-es">Los registros son <strong>merges idempotentes</strong> — tus otros servidores MCP nunca se tocan.</span><span class="only-en">Registrations are <strong>idempotent merges</strong> — your other MCP servers are never touched.</span></p>
 <pre><code>ale agents                 # lista con auto-detección (● = encontrado en tu máquina)
 ale agents all             # registra el MCP en todos
@@ -404,35 +455,35 @@ ale agents cursor,gemini   # solo estos</code></pre>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Agent</th><th><span class="only-es">Config escrita</span><span class="only-en">Config written</span></th><th><span class="only-es">Por proyecto</span><span class="only-en">Per-project</span></th></tr></thead>
         <tbody>
-          <tr><td>Claude Code</td><td><code>.mcp.json</code> / <code>claude mcp add</code> + hooks</td><td>✓</td></tr>
-          <tr><td>Cursor</td><td><code>~/.cursor/mcp.json</code> / <code>.cursor/mcp.json</code></td><td>✓</td></tr>
-          <tr><td>OpenCode</td><td><code>opencode.json</code></td><td>✓</td></tr>
+          <tr><td>Claude Code</td><td><code>.mcp.json</code> / <code>claude mcp add</code> + hooks</td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
+          <tr><td>Cursor</td><td><code>~/.cursor/mcp.json</code> / <code>.cursor/mcp.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
+          <tr><td>OpenCode</td><td><code>opencode.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
           <tr><td>Windsurf</td><td><code>~/.codeium/windsurf/mcp_config.json</code></td><td>—</td></tr>
           <tr><td>Cline</td><td><code>cline_mcp_settings.json</code> (VS Code)</td><td>—</td></tr>
           <tr><td>Codex CLI</td><td><code>~/.codex/config.toml</code></td><td>—</td></tr>
-          <tr><td>Gemini CLI</td><td><code>~/.gemini/settings.json</code> / <code>.gemini/settings.json</code></td><td>✓</td></tr>
-          <tr><td>VS Code (Copilot)</td><td><code>mcp.json</code> / <code>.vscode/mcp.json</code></td><td>✓</td></tr>
+          <tr><td>Gemini CLI</td><td><code>~/.gemini/settings.json</code> / <code>.gemini/settings.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
+          <tr><td>VS Code (Copilot)</td><td><code>mcp.json</code> / <code>.vscode/mcp.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
           <tr><td>OpenClaw</td><td><code>~/.openclaw/openclaw.json</code></td><td>—</td></tr>
           <tr><td>Hermes Agent (Nous)</td><td><code>hermes mcp add</code> / <code>~/.hermes/config.yaml</code></td><td>—</td></tr>
         </tbody>
       </table></div>
-      <div class="note"><span class="lbl"><span class="only-es">Nota</span><span class="only-en">Note</span></span><span class="only-es">La captura automática vía hooks (digest de sesión, inyección por prompt, guardado al cerrar) es <strong>solo Claude Code</strong> — otros agentes no tienen sistema de hooks. Ahí el conocimiento fluye por las tools MCP, que el agente usa por su cuenta (las instrucciones del protocolo viajan dentro de las descripciones de las tools).</span><span class="only-en">Automatic capture via hooks (session digest, per-prompt injection, session save on close) is <strong>Claude Code-only</strong> — other agents don't have a hook system. There, knowledge flows through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).</span></div>
+      <div class="note"><span class="lbl"><svg class="ic"><use href="#ic-info"/></svg> <span class="only-es">Nota</span><span class="only-en">Note</span></span><span class="only-es">La captura automática vía hooks (digest de sesión, inyección por prompt, guardado al cerrar) es <strong>solo Claude Code</strong> — otros agentes no tienen sistema de hooks. Ahí el conocimiento fluye por las tools MCP, que el agente usa por su cuenta (las instrucciones del protocolo viajan dentro de las descripciones de las tools).</span><span class="only-en">Automatic capture via hooks (session digest, per-prompt injection, session save on close) is <strong>Claude Code-only</strong> — other agents don't have a hook system. There, knowledge flows through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).</span></div>
     </section>
 
     <!-- COMO FUNCIONA -->
     <section id="como-funciona">
-      <h2><span class="only-es">Cómo funciona</span><span class="only-en">How it works</span></h2>
+      <h2><svg class="ic"><use href="#ic-cog"/></svg> <span class="only-es">Cómo funciona</span><span class="only-en">How it works</span></h2>
 <pre><code>AI agent session
-  │
-  ├─ SessionStart ──► inyecta digest: manifiesto del protocolo + mapa + planes abiertos  (hooks, Claude Code)
-  ├─ Cada prompt ──► búsqueda híbrida local → inyecta solo lo relevante                  (hooks, Claude Code)
-  │                  └─ prompt casi idéntico ya resuelto → inyecta la solución           (cache)
-  ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link             (todos los agentes)
-  │                   plan_create · task_verify · lesson_extract                         (el Protocolo)
-  └─ Stop/PreCompact► guarda el resultado de la sesión en la bóveda                      (hooks, Claude Code)
-                            │
-                    &lt;Obsidian vault&gt;/Alexandria/*.md   ← markdown, [[wikilinks]]
-                    &lt;vault&gt;/.vault/                    ← índice (regenerable)</code></pre>
+  |
+  +- SessionStart --> inyecta digest: manifiesto del protocolo + mapa + planes abiertos  (hooks, Claude Code)
+  +- Cada prompt --> búsqueda híbrida local -> inyecta solo lo relevante                 (hooks, Claude Code)
+  |                  +- prompt casi idéntico ya resuelto -> inyecta la solución          (cache)
+  +- MCP tools ----> vault_search · vault_save · vault_related · vault_link              (todos los agentes)
+  |                  plan_create · task_verify · lesson_extract                          (el Protocolo)
+  +- Stop/PreCompact> guarda el resultado de la sesión en la bóveda                      (hooks, Claude Code)
+                            |
+                    &lt;Obsidian vault&gt;/Alexandria/*.md   <- markdown, [[wikilinks]]
+                    &lt;vault&gt;/.vault/                    <- índice (regenerable)</code></pre>
       <ul>
         <li><span class="only-es"><strong>Búsqueda híbrida:</strong> embeddings locales (transformers.js, e5-small multilingüe) + BM25, combinados con RRF, ponderados por recencia, uso y tipo de nota (lecciones/soluciones rankean más alto).</span><span class="only-en"><strong>Hybrid search:</strong> local embeddings (transformers.js, multilingual e5-small) + BM25, combined with RRF, boosted by recency, usage, and note type (lessons/solutions rank highest).</span></li>
         <li><span class="only-es"><strong>Índice incremental:</strong> solo re-procesa notas cuyo mtime cambió. El grafo nunca se reconstruye desde cero.</span><span class="only-en"><strong>Incremental index:</strong> only re-processes notes whose mtime changed. The graph is never rebuilt from scratch.</span></li>
@@ -443,7 +494,7 @@ ale agents cursor,gemini   # solo estos</code></pre>
 
     <!-- PRIVACIDAD -->
     <section id="privacidad">
-      <h2><span class="only-es">Privacidad y seguridad</span><span class="only-en">Privacy &amp; security</span></h2>
+      <h2><svg class="ic"><use href="#ic-shield"/></svg> <span class="only-es">Privacidad y seguridad</span><span class="only-en">Privacy &amp; security</span></h2>
       <ul>
         <li><span class="only-es"><strong>Todo corre en tu máquina:</strong> el modelo de embeddings se descarga una vez (Hugging Face) y luego funciona offline. Tus notas nunca salen de tu disco. Sin telemetría.</span><span class="only-en"><strong>Everything runs on your machine:</strong> the embedding model is downloaded once (Hugging Face) and then works offline. Your notes never leave your disk. No telemetry.</span></li>
         <li><span class="only-es"><strong>Sin API keys, sin cuentas, sin costo.</strong></span><span class="only-en"><strong>No API keys, no accounts, no cost.</strong></span></li>
@@ -454,7 +505,7 @@ ale agents cursor,gemini   # solo estos</code></pre>
 
     <!-- FAQ -->
     <section id="faq">
-      <h2><span class="only-es">Dudas técnicas frecuentes</span><span class="only-en">Technical FAQ</span></h2>
+      <h2><svg class="ic"><use href="#ic-help"/></svg> <span class="only-es">Dudas técnicas frecuentes</span><span class="only-en">Technical FAQ</span></h2>
 
       <details><summary><span class="only-es">¿Necesito internet o una API key?</span><span class="only-en">Do I need internet or an API key?</span></summary>
         <div class="body"><p><span class="only-es">Solo internet una vez, para descargar el modelo de embeddings (~130MB) en el primer <code>init</code>. Después todo es offline. Nunca hay API keys ni cuentas.</span><span class="only-en">Internet only once, to download the embedding model (~130MB) on the first <code>init</code>. After that everything is offline. No API keys or accounts, ever.</span></p></div>
@@ -503,8 +554,8 @@ ale agents cursor,gemini   # solo estos</code></pre>
 
     <!-- CHANGELOG -->
     <section id="changelog">
-      <h2><span class="only-es">Historial de versiones</span><span class="only-en">Changelog</span></h2>
-      <p><span class="only-es">Versión actual: <strong>v0.5.3</strong>. Resumen de lo más reciente (ver el <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank">CHANGELOG completo</a>):</span><span class="only-en">Current version: <strong>v0.5.3</strong>. Recent highlights (see the <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank">full CHANGELOG</a>):</span></p>
+      <h2><svg class="ic"><use href="#ic-clock"/></svg> <span class="only-es">Historial de versiones</span><span class="only-en">Changelog</span></h2>
+      <p><span class="only-es">Versión actual: <strong>v0.5.3</strong>. Resumen de lo más reciente (ver el <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG completo</a>):</span><span class="only-en">Current version: <strong>v0.5.3</strong>. Recent highlights (see the <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener">full CHANGELOG</a>):</span></p>
       <div class="tbl-wrap"><table>
         <thead><tr><th><span class="only-es">Versión</span><span class="only-en">Version</span></th><th><span class="only-es">Cambios</span><span class="only-en">Changes</span></th></tr></thead>
         <tbody>
@@ -524,12 +575,12 @@ ale agents cursor,gemini   # solo estos</code></pre>
 
 <footer>
   <div class="links">
-    <a href="https://github.com/UreckChan/alexandria" target="_blank">GitHub</a>
-    <a href="https://www.npmjs.com/package/@ureck/alexandria" target="_blank">npm</a>
-    <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank">Changelog</a>
-    <a href="https://buymeacoffee.com/ureck" target="_blank">☕ Buy me a coffee</a>
+    <a href="https://github.com/UreckChan/alexandria" target="_blank" rel="noopener"><svg class="ic"><use href="#ic-star"/></svg> GitHub</a>
+    <a href="https://www.npmjs.com/package/@ureck/alexandria" target="_blank" rel="noopener"><svg class="ic"><use href="#ic-package"/></svg> npm</a>
+    <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener"><svg class="ic"><use href="#ic-clock"/></svg> Changelog</a>
+    <a href="https://buymeacoffee.com/ureck" target="_blank" rel="noopener"><svg class="ic"><use href="#ic-coffee"/></svg> Buy me a coffee</a>
   </div>
-  <div><span class="only-es">Construido con 🏛 por <strong>Ureck</strong> — Licencia MIT.</span><span class="only-en">Built with 🏛 by <strong>Ureck</strong> — MIT License.</span></div>
+  <div><span class="only-es">Construido con precisión por <strong>Ureck</strong> — Licencia MIT.</span><span class="only-en">Built with care by <strong>Ureck</strong> — MIT License.</span></div>
   <div class="copy-hint"><span class="only-es">Documentación de @ureck/alexandria · sin código fuente, solo uso.</span><span class="only-en">Documentation for @ureck/alexandria · no source code, usage only.</span></div>
 </footer>
 
@@ -537,13 +588,13 @@ ale agents cursor,gemini   # solo estos</code></pre>
 (function(){
   var root=document.documentElement;
   // theme
-  var savedTheme=localStorage.getItem('ale-theme')|| (matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+  var savedTheme=localStorage.getItem('ale-theme')||(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
   setTheme(savedTheme);
-  function setTheme(t){root.setAttribute('data-theme',t);localStorage.setItem('ale-theme',t);document.getElementById('themeBtn').textContent=t==='dark'?'☀️':'🌙';}
+  function setTheme(t){root.setAttribute('data-theme',t);localStorage.setItem('ale-theme',t);document.getElementById('themeIcon').setAttribute('href',t==='dark'?'#ic-sun':'#ic-moon');}
   document.getElementById('themeBtn').onclick=function(){setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark');};
   // lang
   var storedLang=localStorage.getItem('ale-lang');
-  var savedLang=storedLang || ((navigator.language||'es').slice(0,2)==='en'?'en':'es');
+  var savedLang=storedLang||((navigator.language||'es').slice(0,2)==='en'?'en':'es');
   setLang(savedLang);
   function setLang(l){root.setAttribute('data-lang',l);root.lang=l;localStorage.setItem('ale-lang',l);document.getElementById('langLbl').textContent=l==='es'?'EN':'ES';}
   document.getElementById('langBtn').onclick=function(){setLang(root.getAttribute('data-lang')==='es'?'en':'es');};
@@ -552,15 +603,13 @@ ale agents cursor,gemini   # solo estos</code></pre>
   function closeMenu(){side.classList.remove('open');ov.classList.remove('open');}
   document.getElementById('menuBtn').onclick=function(){side.classList.toggle('open');ov.classList.toggle('open');};
   ov.onclick=closeMenu;
-  side.addEventListener('click',function(e){if(e.target.tagName==='A')closeMenu();});
+  side.addEventListener('click',function(e){if(e.target.closest('a'))closeMenu();});
   // scrollspy
   var links=[].slice.call(document.querySelectorAll('nav.side a'));
   var secs=links.map(function(a){return document.querySelector(a.getAttribute('href'));}).filter(Boolean);
   var obs=new IntersectionObserver(function(entries){
     entries.forEach(function(en){
-      if(en.isIntersecting){
-        links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id);});
-      }
+      if(en.isIntersecting){links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+en.target.id);});}
     });
   },{rootMargin:'-70px 0px -70% 0px'});
   secs.forEach(function(s){obs.observe(s);});

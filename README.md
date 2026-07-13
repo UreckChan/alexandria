@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-ureck-yellow)](https://buymeacoffee.com/ureck)
 
-📖 **[Documentation / Documentación (ES · EN)](https://ureckchan.github.io/alexandria/)**
+[![docs](https://img.shields.io/badge/docs-ES%20%C2%B7%20EN-b8860b)](https://ureckchan.github.io/alexandria/) **[Documentation / Documentación](https://ureckchan.github.io/alexandria/)**
 
 Alexandria automatically captures your AI prompts and sessions, searches that knowledge **before** spending tokens, and connects everything in an Obsidian-style graph. **100% local**: no database, no API keys, no telemetry, no cost.
 
