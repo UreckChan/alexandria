@@ -1,4 +1,60 @@
 #!/usr/bin/env node
+import {
+  hybridSearch
+} from "./chunk-RZI7TYAG.js";
+
+// src/core/planning.ts
+async function planContext(vault, query) {
+  const out = { similarPlans: [], lessons: [] };
+  try {
+    const results = await hybridSearch(vault, query, 8);
+    for (const r of results) {
+      const excerpt = (r.excerpts[0] ?? "").replace(/\n+/g, " ").slice(0, 300);
+      if (r.note.type === "plan" && out.similarPlans.length < 3) {
+        out.similarPlans.push(`\xAB${r.note.title}\xBB (${r.note.status ?? "sin status"}): ${excerpt}`);
+      } else if ((r.note.type === "lesson" || r.note.type === "solution") && out.lessons.length < 3) {
+        out.lessons.push(`\xAB${r.note.title}\xBB: ${excerpt}`);
+      }
+    }
+  } catch {
+  }
+  return out;
+}
+var FAT_TASK_CHARS = 140;
+function planQualityHints(dod, tasks, design) {
+  const hints = [];
+  if (dod.length < 2) {
+    hints.push("DoD con menos de 2 criterios \u2014 agrega criterios verificables por comando (tests, build, curl).");
+  }
+  const vague = dod.filter((d) => /funcione bien|quede bonito|esté listo|sea mejor/i.test(d));
+  if (vague.length) {
+    hints.push(`Criterios no verificables (${vague.length}): reescr\xEDbelos como algo que un comando pueda confirmar.`);
+  }
+  const fat = tasks.filter((t) => t.length > FAT_TASK_CHARS);
+  if (fat.length) {
+    hints.push(`${fat.length} tarea(s) muy grandes (>${FAT_TASK_CHARS} chars) \u2014 div\xEDdelas: una tarea = un task_verify.`);
+  }
+  if (tasks.length > 5 && !design?.trim()) {
+    hints.push("Plan grande sin secci\xF3n de dise\xF1o \u2014 considera pasar `design` (stack/decisiones de arquitectura) para fijar el rumbo antes de ejecutar.");
+  }
+  return hints;
+}
+function architectBlock(ctx, hints) {
+  const parts = [];
+  if (ctx.similarPlans.length) {
+    parts.push(`PLANES SIMILARES PREVIOS (resume, no dupliques):
+${ctx.similarPlans.map((p) => `- ${p}`).join("\n")}`);
+  }
+  if (ctx.lessons.length) {
+    parts.push(`LECCIONES RELEVANTES (consid\xE9ralas al planear):
+${ctx.lessons.map((l) => `- ${l}`).join("\n")}`);
+  }
+  if (hints.length) {
+    parts.push(`SUGERENCIAS DE CALIDAD (el plan qued\xF3 guardado; mej\xF3ralo si aplican):
+${hints.map((h) => `- ${h}`).join("\n")}`);
+  }
+  return parts.join("\n\n");
+}
 
 // src/core/register.ts
 import fs from "fs";
@@ -128,6 +184,9 @@ function pkgVersion() {
 }
 
 export {
+  planContext,
+  planQualityHints,
+  architectBlock,
   distDir,
   registerHooks,
   unregisterHooks,

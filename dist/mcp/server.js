@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 import {
-  pkgVersion
-} from "../chunk-IQM5S5N4.js";
+  architectBlock,
+  pkgVersion,
+  planContext,
+  planQualityHints
+} from "../chunk-DHXL36RG.js";
 import {
   hybridSearch
-} from "../chunk-MEL3BE65.js";
+} from "../chunk-RZI7TYAG.js";
 import {
   ensureVaultStructure,
   resolveVault
 } from "../chunk-DYCARGQR.js";
 import {
   VaultIndex
-} from "../chunk-7G3NPKDO.js";
+} from "../chunk-D5ROL42O.js";
 import {
   createNote,
   setNoteStatus,
@@ -132,26 +135,31 @@ server.tool(
 );
 server.tool(
   "plan_create",
-  'PROTOCOLO paso 1 (solo tareas NO triviales \u2014 las simples resp\xF3ndelas directo, sin ceremonia): crea el plan con Definition of Done (criterios verificables de "terminado") y tareas numeradas. Verifica cada tarea con task_verify. El plan enfoca tu capacidad, no la limita; y deja huella reutilizable.',
+  "PROTOCOLO paso 1 (solo tareas NO triviales \u2014 las simples resp\xF3ndelas directo, sin ceremonia): crea el plan como un ARQUITECTO. Si el objetivo es vago, haz 2-3 preguntas de aclaraci\xF3n al usuario ANTES de crear el plan (qu\xE9 es \xE9xito, restricciones, alcance). DoD = criterios verificables por comando; tareas chicas y en orden de construcci\xF3n. Para planes grandes pasa `design` (stack/decisiones de arquitectura). La respuesta trae planes similares previos y lecciones \u2014 \xFAsalos para planear mejor. Verifica cada tarea con task_verify.",
   {
     title: z.string().describe('Nombre corto del objetivo, ej. "Login con Google"'),
     goal: z.string().describe("Qu\xE9 se quiere lograr, en una o dos frases"),
     dod: z.array(z.string()).describe("Definition of Done: criterios verificables de \xE9xito"),
-    tasks: z.array(z.string()).describe("Tareas numeradas, chicas y verificables")
+    tasks: z.array(z.string()).describe("Tareas numeradas, chicas y verificables, en orden de construcci\xF3n"),
+    design: z.string().optional().describe('Decisiones de arquitectura/stack del plan (el "blueprint"): qu\xE9 se eligi\xF3 y por qu\xE9. Recomendado en planes de >5 tareas.')
   },
-  async ({ title, goal, dod, tasks }) => {
+  async ({ title, goal, dod, tasks, design }) => {
     ensureVaultStructure(vault);
+    const ctx = await planContext(vault, `${title} ${goal}`);
+    const hints = planQualityHints(dod, tasks, design);
     const idx = VaultIndex.load(vault);
     const map = findMap(idx);
     const content = [
       `## Objetivo
 ${goal}`,
+      design?.trim() ? `## Dise\xF1o
+${design.trim()}` : "",
       `## Definition of Done
 ${dod.map((d) => `- [ ] ${d}`).join("\n")}`,
       `## Tareas
 ${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}`,
       map ? `Proyecto: [[${map.title}]]` : ""
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
     const file = createNote(vault.managed, {
       title: `Plan - ${title}`,
       type: "plan",
@@ -162,8 +170,11 @@ ${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}`,
     });
     await VaultIndex.load(vault).refresh().catch(() => {
     });
+    const extra = architectBlock(ctx, hints);
     return text(
-      `Plan guardado en ${path.relative(vault.root, file)}. Ejecuta las tareas UNA por una; tras cada una llama task_verify con evidencia real (salida de tests/build). Al terminar todo, llama lesson_extract.`
+      `Plan guardado en ${path.relative(vault.root, file)}. Ejecuta las tareas UNA por una; tras cada una llama task_verify con evidencia real (salida de tests/build). Al terminar todo, llama lesson_extract.` + (extra ? `
+
+${extra}` : "")
     );
   }
 );

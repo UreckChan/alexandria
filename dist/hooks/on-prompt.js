@@ -9,12 +9,12 @@ import {
 } from "../chunk-DEDAOKAV.js";
 import {
   hybridSearch
-} from "../chunk-MEL3BE65.js";
+} from "../chunk-RZI7TYAG.js";
 import {
   resolveVault,
   vaultExists
 } from "../chunk-DYCARGQR.js";
-import "../chunk-7G3NPKDO.js";
+import "../chunk-D5ROL42O.js";
 import {
   createNote,
   touchNote

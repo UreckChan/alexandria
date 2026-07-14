@@ -14,7 +14,7 @@ import {
 } from "../chunk-DYCARGQR.js";
 import {
   VaultIndex
-} from "../chunk-7G3NPKDO.js";
+} from "../chunk-D5ROL42O.js";
 import "../chunk-XWR74BQ2.js";
 import "../chunk-EDYBSJSS.js";
 
@@ -57,6 +57,12 @@ ${truncate(body.trim(), 4e3)}`);
     const lines = sessions.map((s) => `- ${s.title} (${(s.created ?? "").slice(0, 10)})`);
     parts.push(`## Sesiones recientes en la b\xF3veda
 ${lines.join("\n")}`);
+  }
+  const distilled = notes.filter((n) => n.type === "note" || n.type === "lesson").length;
+  if (map && distilled < 3) {
+    parts.push(
+      `B\xF3veda joven (${distilled} notas destiladas): al descubrir decisiones, m\xF3dulos o vocabulario del dominio, gu\xE1rdalos compactos con vault_save \u2014 tokens gratis en sesiones futuras.`
+    );
   }
   const titles = notes.filter((n) => n.type !== "prompt").sort((a, b) => (b.hits ?? 1) - (a.hits ?? 1)).slice(0, 25).map((n) => n.title);
   if (titles.length > 0) {

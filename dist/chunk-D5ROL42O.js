@@ -50,20 +50,41 @@ var VaultIndex = class _VaultIndex {
         try {
           const buf = fs.readFileSync(idx.embPath);
           const arr = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
-          if (arr.length === meta.chunks.length * meta.dim) idx.emb = arr.slice();
+          if (arr.length === meta.chunks.length * meta.dim) {
+            idx.emb = arr.slice();
+          } else {
+            idx.emb = null;
+            try {
+              fs.rmSync(idx.embPath, { force: true });
+            } catch {
+            }
+          }
         } catch {
           idx.emb = null;
         }
       }
-    } catch {
+    } catch (e) {
+      if (fs.existsSync(idx.metaPath)) {
+        try {
+          fs.rmSync(idx.metaPath, { force: true });
+          fs.rmSync(idx.embPath, { force: true });
+        } catch {
+        }
+      }
     }
     return idx;
   }
+  /** Escritura atómica: tmp + rename — un hook y un comando concurrentes nunca dejan el archivo a medias. */
+  writeAtomic(file, data) {
+    const tmp = `${file}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, data);
+    fs.renameSync(tmp, file);
+  }
   save() {
     fs.mkdirSync(this.vault.cache, { recursive: true });
-    fs.writeFileSync(this.metaPath, JSON.stringify(this.meta));
+    this.writeAtomic(this.metaPath, JSON.stringify(this.meta));
     if (this.emb) {
-      fs.writeFileSync(this.embPath, Buffer.from(this.emb.buffer, this.emb.byteOffset, this.emb.byteLength));
+      this.writeAtomic(this.embPath, Buffer.from(this.emb.buffer, this.emb.byteOffset, this.emb.byteLength));
     }
   }
   row(i) {
@@ -171,7 +192,7 @@ ${c.text}`),
     this.rebuildLinks();
     this.save();
     try {
-      const { writeStaticGraph } = await import("./viewer-G3N57646.js");
+      const { writeStaticGraph } = await import("./viewer-73ZWPIDC.js");
       writeStaticGraph(this);
     } catch {
     }

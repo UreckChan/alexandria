@@ -33,7 +33,7 @@ It lives in the MCP tools themselves — their names and descriptions carry the 
 
 | MCP tool | What the agent does with it | Token payoff |
 |---|---|---|
-| `plan_create(title, goal, dod, tasks)` | Writes a plan note with a **Definition of Done** and numbered tasks before touching code | No wandering; open plans are re-injected next session so work is resumed, not repeated |
+| `plan_create(title, goal, dod, tasks, design?)` | Plans like an **architect**: clarifies vague goals first, optionally records the architecture (`design` → a `## Design` section), and the response surfaces **similar past plans + relevant lessons** plus quality hints (verifiable DoD, small tasks) — suggestions, never a gate | No wandering; open plans are re-injected next session so work is resumed, not repeated |
 | `task_verify(plan, task, passed, verify_command)` | **Runs** `verify_command` (e.g. `npm test`) and takes the verdict from the real exit code — not from the agent's word. Flags a **discrepancy** if the agent claimed otherwise; without a command the note is tagged `self-reported` and `ale audit` calls it out | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
 | `lesson_extract(title, lesson, links)` | Distills the root cause + fix after solving something non-obvious | ~200 tokens today replace ~20,000 tokens of re-debugging next month |
 
@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-0.5.4
+1.0.0
 ```
 
 ## Getting started
@@ -131,6 +131,24 @@ ale add "Vercel deploy" -c "Region cdg1, see [[Prisma setup]]" -t deploy
 ```
 
 (Automatic capture via hooks already does this in every Claude Code session — `add` is for extra knowledge.)
+
+### Deep project context (`ale scan`)
+
+`ale init --project` already runs it; re-run anytime the project changes:
+
+```bash
+$ ale scan
+✓ API: 12 rutas · Env: 8 vars (solo nombres) · Datos: 5 · Convenciones: 4 · .gitignore ✓
+```
+
+Four read-only scanners write compact notes (one line per entry) that the agent receives **only when relevant** (per-prompt semantic search — the session digest doesn't grow):
+
+- **`API - <project>`** — App Router routes with HTTP methods, Pages Router handlers, `"use server"` actions, Express/Hono routes.
+- **`Env - <project>`** — environment variable **NAMES only, never values** (from `.env.example` / `.env` / `.env.local`).
+- **`Datos - <project>`** — data schema parsed from files (prisma models, drizzle tables, `CREATE TABLE` in migrations) — no DB connection.
+- **`Convenciones - <project>`** — package manager, monorepo, TS strict, import aliases, framework.
+
+It never touches your source code, and it guarantees the vault (and personal configs) are gitignored before writing — your notes never reach a shared repo, even if you never ran `ale init`.
 
 ### Create a plan from a file
 
@@ -259,10 +277,11 @@ AI agent session
 | Command | What it does |
 |---|---|
 | `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol] [--portable]` | Installs everything: vault, hooks, MCP, .gitignore, project scan, CLAUDE.md. `--portable` writes an npx-based MCP command safe to commit for teams |
+| `ale scan` | Deep project context: API routes, env var **names**, data schema (file parse), conventions → compact notes. Read-only; ensures .gitignore |
 | `ale agents [ids] [--project]` | List agents / register the MCP server |
 | `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors. With the Protocol on, appends the **chain** (plan + verification + lesson) connected to the top hit |
 | `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |
-| `ale plan <file> [--title t]` | Create a Protocol plan from a .md/.txt file (checkboxes → Definition of Done) |
+| `ale plan <file> [--title t]` | Create a Protocol plan from a .md/.txt file (checkboxes → Definition of Done); surfaces similar past plans + quality hints |
 | `ale graph [--out file.html] [--no-open]` | Live local graph viewer |
 | `ale audit` | Protocol health: plans without DoD, failures without lessons, orphan notes |
 | `ale stats` | Notes, connections, protocol metrics, estimated tokens saved |
@@ -280,6 +299,7 @@ AI agent session
 
 - **Everything runs on your machine**: the embedding model is downloaded once (Hugging Face) and then works offline. Your notes never leave your disk. No telemetry.
 - **No API keys, no accounts, no cost.**
+- **`ale scan` never reads secrets**: it extracts environment variable **names** only (values are never copied), parses schema **files** (no live DB connection), and guarantees the vault is gitignored before writing — your notes never reach a shared repo.
 - Dependency scanners (Socket, etc.) flag *network/shell/env access* in the dependency tree: those come from the ML runtime (`onnxruntime`/`transformers.js`, which needs filesystem access and the one-time model download) and the official MCP SDK — not from Alexandria's code. The published package runs no install scripts of its own.
 - Generated per-project configs (`.mcp.json`, `.vault.json`, etc.) point at your machine's install path, so `ale init --project` automatically gitignores them (and untracks any already committed) — they never leak to a shared repo. For a team that *wants* a shared MCP config, run `ale init --project --portable`, which writes an npx-based command that works on any machine.
 

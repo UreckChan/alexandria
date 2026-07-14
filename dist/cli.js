@@ -3,21 +3,24 @@ import {
   readStats
 } from "./chunk-XITAQVOZ.js";
 import {
+  architectBlock,
   distDir,
   globalSettingsPath,
   hooksRegistered,
   mcpRegisteredProject,
   pkgVersion,
+  planContext,
+  planQualityHints,
   projectSettingsPath,
   registerHooks,
   registerMcpGlobal,
   registerMcpProject,
   unregisterHooks
-} from "./chunk-IQM5S5N4.js";
+} from "./chunk-DHXL36RG.js";
 import {
   hybridSearch,
   protocolChain
-} from "./chunk-MEL3BE65.js";
+} from "./chunk-RZI7TYAG.js";
 import {
   defaultVaultPath,
   ensureVaultStructure,
@@ -32,10 +35,10 @@ import {
 } from "./chunk-DYCARGQR.js";
 import {
   serveGraph
-} from "./chunk-UTXUGXDB.js";
+} from "./chunk-DCKYTO4O.js";
 import {
   VaultIndex
-} from "./chunk-7G3NPKDO.js";
+} from "./chunk-D5ROL42O.js";
 import {
   createNote,
   slugify,
@@ -50,8 +53,8 @@ import {
 } from "./chunk-EDYBSJSS.js";
 
 // src/cli.ts
-import fs4 from "fs";
-import path4 from "path";
+import fs5 from "fs";
+import path5 from "path";
 import readline from "readline/promises";
 import { Command } from "commander";
 import pc from "picocolors";
@@ -542,6 +545,8 @@ function configureClaudeMd(scope, projectDir) {
     "- ANTES de explorar c\xF3digo o re-derivar contexto: busca con la tool MCP `vault_search`; si la b\xF3veda ya lo sabe, \xFAsalo.",
     "- El Protocolo Alexandria es palanca, no l\xEDmite: tareas simples se responden directo, sin ceremonia. En tareas no triviales: `plan_create` (objetivo + Definition of Done) \u2192 ejecutar con toda tu capacidad \u2192 `task_verify` con evidencia real (la evidencia elimina errores, no frena) \u2192 si algo falla, `vault_search` por lecciones previas antes de re-debuggear \u2192 `lesson_extract` al resolver algo no obvio. Soluciones cacheadas se validan contra el c\xF3digo actual antes de reutilizarse.",
     "- Al descubrir arquitectura o decisiones: `vault_save` (con `[[wikilinks]]`; el t\xEDtulo `Mapa - <proyecto>` actualiza el mapa que se inyecta al iniciar sesi\xF3n).",
+    "- Enriquece la b\xF3veda cuando el trabajo lo revele (no como tarea aparte): decisiones de arquitectura con su porqu\xE9 (por qu\xE9 X y no Y), qu\xE9 hace cada m\xF3dulo/feature al tocarlo, vocabulario propio del dominio, y errores no obvios con su fix (`lesson_extract`). Notas compactas: el objetivo es ahorrar tokens futuros, no escribir prosa.",
+    "- Las notas `API - <proyecto>` / `Env - <proyecto>` / `Datos - <proyecto>` / `Convenciones - <proyecto>` (de `ale scan`) ya traen rutas, variables (solo nombres) y esquema \u2014 cons\xFAltalas por b\xFAsqueda antes de releer esos archivos.",
     "- `vault_related` trae conocimiento conectado sin releer archivos.",
     CLAUDE_MD_END
   ].join("\n");
@@ -634,6 +639,247 @@ ${readme.split("\n").slice(0, 15).join("\n")}`);
   });
 }
 
+// src/core/scan.ts
+import fs4 from "fs";
+import path4 from "path";
+var SKIP_DIRS2 = /* @__PURE__ */ new Set([
+  "node_modules",
+  ".git",
+  ".next",
+  "dist",
+  "build",
+  ".vault",
+  ".claude",
+  "coverage",
+  "Alexandria",
+  "KnowledgeVault",
+  ".turbo",
+  ".vercel",
+  "out",
+  "vendor"
+]);
+var SOURCE_EXT = /* @__PURE__ */ new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+var MAX_FILES = 400;
+var MAX_FILE_BYTES = 64 * 1024;
+var MAX_ENTRIES = 80;
+function collectSourceFiles(projectDir) {
+  const out = [];
+  const walk = (dir, depth) => {
+    if (depth > 7 || out.length >= MAX_FILES) return;
+    let entries = [];
+    try {
+      entries = fs4.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (out.length >= MAX_FILES) return;
+      if (e.name.startsWith(".") || SKIP_DIRS2.has(e.name)) continue;
+      const full = path4.join(dir, e.name);
+      if (e.isDirectory()) {
+        walk(full, depth + 1);
+      } else if (e.isFile() && SOURCE_EXT.has(path4.extname(e.name))) {
+        try {
+          if (fs4.statSync(full).size > MAX_FILE_BYTES) continue;
+          out.push({
+            rel: path4.relative(projectDir, full).split(path4.sep).join("/"),
+            content: fs4.readFileSync(full, "utf8")
+          });
+        } catch {
+        }
+      }
+    }
+  };
+  walk(projectDir, 0);
+  return out;
+}
+var HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
+function appRoutePath(rel) {
+  const m = rel.match(/(?:^|\/)app\/(.*)route\.[tj]sx?$/);
+  if (!m) return "";
+  const segs = m[1].split("/").filter((s) => s && !/^\(.*\)$/.test(s));
+  return "/" + segs.join("/").replace(/\/$/, "");
+}
+function scanApi(files) {
+  const lines = [];
+  for (const f of files) {
+    if (lines.length >= MAX_ENTRIES) break;
+    if (/(^|\/)route\.[tj]sx?$/.test(f.rel) && /(^|\/)app\//.test(f.rel)) {
+      const methods = HTTP_METHODS.filter(
+        (m) => new RegExp(`export\\s+(?:async\\s+)?(?:function\\s+${m}\\b|const\\s+${m}\\s*=)`).test(f.content)
+      );
+      if (methods.length) lines.push(`- ${methods.join("/")} ${appRoutePath(f.rel)} \u2014 ${f.rel}`);
+      continue;
+    }
+    const pagesApi = f.rel.match(/(?:^|\/)pages\/api\/(.+)\.[tj]sx?$/);
+    if (pagesApi) {
+      lines.push(`- handler /api/${pagesApi[1].replace(/\/index$/, "")} \u2014 ${f.rel}`);
+      continue;
+    }
+    if (/^\s*['"]use server['"]/m.test(f.content.slice(0, 400))) {
+      const fns = [...f.content.matchAll(/export\s+(?:async\s+)?function\s+(\w+)/g)].map((m) => m[1]);
+      if (fns.length) lines.push(`- server actions: ${fns.slice(0, 8).join(", ")} \u2014 ${f.rel}`);
+      continue;
+    }
+    const expressHits = [...f.content.matchAll(/\b(?:app|router|api)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g)];
+    for (const h of expressHits.slice(0, 12)) {
+      lines.push(`- ${h[1].toUpperCase()} ${h[2]} \u2014 ${f.rel}`);
+      if (lines.length >= MAX_ENTRIES) break;
+    }
+  }
+  return lines.slice(0, MAX_ENTRIES);
+}
+function scanEnvNames(projectDir) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const file of [".env.example", ".env", ".env.local"]) {
+    let text;
+    try {
+      text = fs4.readFileSync(path4.join(projectDir, file), "utf8");
+    } catch {
+      continue;
+    }
+    for (const line of text.split("\n")) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+      if (m && !seen.has(m[1])) seen.set(m[1], file);
+    }
+  }
+  return [...seen.entries()].slice(0, MAX_ENTRIES).map(([name, src]) => `- ${name} (${src})`);
+}
+function scanDataSchema(projectDir, files) {
+  const lines = [];
+  try {
+    const schema = fs4.readFileSync(path4.join(projectDir, "prisma", "schema.prisma"), "utf8");
+    for (const m of schema.matchAll(/model\s+(\w+)\s*\{([^}]*)\}/g)) {
+      const fields = m[2].split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("@@") && !l.startsWith("//")).map((l) => l.split(/\s+/)[0]);
+      const shown = fields.slice(0, 8).join(", ");
+      lines.push(`- model ${m[1]}: ${shown}${fields.length > 8 ? ` (+${fields.length - 8})` : ""} \u2014 prisma/schema.prisma`);
+    }
+  } catch {
+  }
+  for (const f of files.filter((x) => /schema/i.test(x.rel))) {
+    for (const m of f.content.matchAll(/\b(?:pg|mysql|sqlite)Table\(\s*['"`](\w+)['"`]/g)) {
+      lines.push(`- table ${m[1]} (drizzle) \u2014 ${f.rel}`);
+    }
+  }
+  const migDirs = ["migrations", "db/migrations", "drizzle", "supabase/migrations"];
+  for (const dir of migDirs) {
+    let sqlFiles = [];
+    try {
+      sqlFiles = fs4.readdirSync(path4.join(projectDir, dir)).filter((f) => f.endsWith(".sql")).slice(0, 30);
+    } catch {
+      continue;
+    }
+    const tables = /* @__PURE__ */ new Set();
+    for (const f of sqlFiles) {
+      try {
+        const sql = fs4.readFileSync(path4.join(projectDir, dir, f), "utf8");
+        for (const m of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?["'`]?(\w+)/gi)) tables.add(m[1]);
+      } catch {
+      }
+    }
+    if (tables.size) lines.push(`- tablas (${dir}/*.sql): ${[...tables].slice(0, 20).join(", ")}`);
+  }
+  return lines.slice(0, MAX_ENTRIES);
+}
+function scanConventions(projectDir) {
+  const lines = [];
+  const has = (f) => fs4.existsSync(path4.join(projectDir, f));
+  const pm = has("bun.lockb") || has("bun.lock") ? "bun" : has("pnpm-lock.yaml") ? "pnpm" : has("yarn.lock") ? "yarn" : has("package-lock.json") ? "npm" : null;
+  if (pm) lines.push(`- gestor de paquetes: ${pm}`);
+  let pkg = {};
+  try {
+    pkg = JSON.parse(fs4.readFileSync(path4.join(projectDir, "package.json"), "utf8"));
+  } catch {
+  }
+  if (pkg.workspaces || has("pnpm-workspace.yaml") || has("turbo.json")) lines.push("- monorepo: s\xED (workspaces)");
+  try {
+    const ts = JSON.parse(fs4.readFileSync(path4.join(projectDir, "tsconfig.json"), "utf8"));
+    const co = ts.compilerOptions ?? {};
+    lines.push(`- TypeScript${co.strict ? " strict" : ""}`);
+    const paths = Object.keys(co.paths ?? {}).slice(0, 5);
+    if (paths.length) lines.push(`- alias de imports: ${paths.join(", ")}`);
+  } catch {
+  }
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const fw = [];
+  if (deps?.next) fw.push("Next.js");
+  if (deps?.astro) fw.push("Astro");
+  if (deps?.expo || deps?.["react-native"]) fw.push("React Native/Expo");
+  if (deps?.hono) fw.push("Hono");
+  if (deps?.express) fw.push("Express");
+  if (deps?.["@nestjs/core"]) fw.push("NestJS");
+  if (deps?.vue) fw.push("Vue");
+  if (deps?.svelte) fw.push("Svelte");
+  if (fw.length) lines.push(`- framework: ${fw.join(", ")}`);
+  return lines;
+}
+function linkMapToScans(vault, name, titles) {
+  if (titles.length === 0) return;
+  const mapFile = path4.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
+  try {
+    const text = fs4.readFileSync(mapFile, "utf8");
+    if (text.includes("Contexto ampliado:")) return;
+    fs4.appendFileSync(mapFile, `
+Contexto ampliado: ${titles.map((t) => `[[${t}]]`).join(" \xB7 ")}
+`);
+  } catch {
+  }
+}
+function scanAll(vault, projectDir) {
+  const name = path4.basename(projectDir);
+  const gitignored = ensureGitignore(projectDir, vault.root) !== null;
+  try {
+    untrackPersonalConfigs(projectDir);
+  } catch {
+  }
+  try {
+    scanProject(vault, projectDir);
+  } catch {
+  }
+  let files = [];
+  try {
+    files = collectSourceFiles(projectDir);
+  } catch {
+  }
+  const run = (fn) => {
+    try {
+      return fn();
+    } catch {
+      return [];
+    }
+  };
+  const api = run(() => scanApi(files));
+  const env = run(() => scanEnvNames(projectDir));
+  const data = run(() => scanDataSchema(projectDir, files));
+  const conventions = run(() => scanConventions(projectDir));
+  const notes = [];
+  const titles = [];
+  const write = (kind, title, header, lines) => {
+    if (lines.length === 0) return;
+    notes.push(
+      upsertNote(vault.managed, {
+        fixedName: `${kind}-${slugify(name)}`,
+        title,
+        type: "map",
+        tags: [name, kind],
+        dir: "notes",
+        content: `${header}
+
+${lines.join("\n")}
+
+Proyecto: [[Mapa - ${name}]]`
+      })
+    );
+    titles.push(title);
+  };
+  write("api", `API - ${name}`, `Rutas y server actions detectadas por \`ale scan\` (regenerable).`, api);
+  write("env", `Env - ${name}`, `Variables de entorno (SOLO nombres \u2014 los valores nunca se guardan).`, env);
+  write("datos", `Datos - ${name}`, `Esquema de datos detectado en archivos (sin conexi\xF3n a BD).`, data);
+  write("convenciones", `Convenciones - ${name}`, `Convenciones detectadas por \`ale scan\`.`, conventions);
+  linkMapToScans(vault, name, titles);
+  return { api: api.length, env: env.length, data: data.length, conventions: conventions.length, notes, gitignored };
+}
+
 // src/cli.ts
 function registerAgentsMcp(agents, scope, cwd, portable = false) {
   for (const agent of agents) {
@@ -696,7 +942,7 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
 ).action(async (opts) => {
   const isProject = Boolean(opts.project) && !opts.global;
   const cwd = process.cwd();
-  const vaultPath = path4.resolve(opts.path ?? (isProject ? path4.join(cwd, "Alexandria") : defaultVaultPath()));
+  const vaultPath = path5.resolve(opts.path ?? (isProject ? path5.join(cwd, "Alexandria") : defaultVaultPath()));
   await showBanner();
   console.log(pc.bold(`Instalaci\xF3n ${isProject ? "por proyecto" : "global"}
 `));
@@ -754,8 +1000,8 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
     opts.protocol !== false ? pc.green("\u2713 Protocolo Alexandria activo (plan_create \xB7 task_verify \xB7 lesson_extract) \u2014 ap\xE1galo con: ale config set protocol false") : pc.dim("  Protocolo desactivado (b\xF3veda cl\xE1sica) \u2014 act\xEDvalo con: ale config set protocol true")
   );
   if (isProject) {
-    const map = scanProject(vault, cwd);
-    if (map) console.log(pc.green(`\u2713 Proyecto escaneado \u2192 ${path4.relative(vault.root, map)} (mapa inicial)`));
+    const s = scanAll(vault, cwd);
+    console.log(pc.green(`\u2713 Proyecto escaneado \u2192 API: ${s.api} \xB7 Env: ${s.env} \xB7 Datos: ${s.data} \xB7 Convenciones: ${s.conventions} (re-ejecuta con: ale scan)`));
   }
   await downloadModelIfMissing();
   const idx = VaultIndex.load(vault);
@@ -768,10 +1014,10 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
 });
 program.command("plan").description("Crear un plan del Protocolo desde un archivo .md/.txt (en vez de escribirlo en la terminal)").argument("<file>", 'archivo con el plan (los checkboxes "- [ ]" se toman como Definition of Done)').option("--title <t>", "t\xEDtulo del plan (default: nombre del archivo o primer heading)").action(async (file, opts) => {
   const { vault } = await ensureReady();
-  const abs = path4.resolve(file);
-  const raw = fs4.readFileSync(abs, "utf8");
+  const abs = path5.resolve(file);
+  const raw = fs5.readFileSync(abs, "utf8");
   const heading = raw.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  const title = opts.title ?? heading ?? path4.basename(abs).replace(/\.(md|txt)$/i, "");
+  const title = opts.title ?? heading ?? path5.basename(abs).replace(/\.(md|txt)$/i, "");
   const dod = [...raw.matchAll(/^[-*]\s*\[[ x]\]\s*(.+)$/gim)].map((m) => m[1].trim());
   const noteFile = createNote(vault.managed, {
     title: title.startsWith("Plan - ") ? title : `Plan - ${title}`,
@@ -781,9 +1027,13 @@ program.command("plan").description("Crear un plan del Protocolo desde un archiv
     content: raw.trim()
   });
   await VaultIndex.load(vault).refresh();
-  console.log(pc.green(`\u2713 Plan creado: ${path4.relative(vault.root, noteFile)}`));
+  console.log(pc.green(`\u2713 Plan creado: ${path5.relative(vault.root, noteFile)}`));
   console.log(pc.dim(`  DoD detectada: ${dod.length} criterios${dod.length ? " \u2014 " + dod.slice(0, 3).join(" \xB7 ") + (dod.length > 3 ? " \u2026" : "") : ' (agrega checkboxes "- [ ]" para criterios verificables)'}`));
   console.log(pc.dim("  El agente lo ver\xE1 como plan abierto al iniciar sesi\xF3n y lo retomar\xE1 con task_verify."));
+  const tasks = [...raw.matchAll(/^\s*\d+[.)]\s+(.+)$/gm)].map((m) => m[1].trim());
+  const ctx = await planContext(vault, title);
+  const block = architectBlock(ctx, planQualityHints(dod, tasks));
+  if (block) console.log(pc.dim("\n" + block.split("\n").map((l) => "  " + l).join("\n")));
 });
 program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD, planes abiertos, fallos sin lecci\xF3n, verificaciones auto-reportadas, notas sueltas").action(async () => {
   const { vault, idx } = await ensureReady();
@@ -848,21 +1098,21 @@ program.command("consolidate").description("Archiva prompts viejos sin reuso: sa
     console.log(pc.dim("Nada que consolidar: sin prompts viejos sin uso."));
     return;
   }
-  const archiveDir = path4.join(vault.managed, "archive");
-  if (!opts.dry) fs4.mkdirSync(archiveDir, { recursive: true });
+  const archiveDir = path5.join(vault.managed, "archive");
+  if (!opts.dry) fs5.mkdirSync(archiveDir, { recursive: true });
   for (const n of stale) {
     console.log(
       `${opts.dry ? pc.yellow("se archivar\xEDa") : pc.cyan("archivado")}  ${n.rel} ${pc.dim(`(${(n.created ?? "").slice(0, 10)}, hits ${n.hits})`)}`
     );
     if (!opts.dry) {
-      fs4.renameSync(path4.join(vault.root, n.rel), path4.join(archiveDir, path4.basename(n.rel)));
+      fs5.renameSync(path5.join(vault.root, n.rel), path5.join(archiveDir, path5.basename(n.rel)));
     }
   }
   if (!opts.dry) {
     await VaultIndex.load(vault).refresh();
     console.log(
       pc.green(`
-\u2713 ${stale.length} prompts archivados en ${path4.relative(vault.root, archiveDir)}/ \u2014 fuera del grafo, siguen buscables. Nada se pierde.`)
+\u2713 ${stale.length} prompts archivados en ${path5.relative(vault.root, archiveDir)}/ \u2014 fuera del grafo, siguen buscables. Nada se pierde.`)
     );
   } else {
     console.log(pc.dim(`
@@ -893,10 +1143,10 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
   const { vault } = await ensureReady();
   let content = opts.content;
   if (!content && opts.file) {
-    content = fs4.readFileSync(path4.resolve(opts.file), "utf8");
+    content = fs5.readFileSync(path5.resolve(opts.file), "utf8");
   }
   if (!content && !process.stdin.isTTY) {
-    content = fs4.readFileSync(0, "utf8");
+    content = fs5.readFileSync(0, "utf8");
   }
   const file = createNote(vault.managed, {
     title,
@@ -904,7 +1154,7 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
     tags: opts.tags ? opts.tags.split(",").map((t) => t.trim()) : []
   });
   await VaultIndex.load(vault).refresh();
-  console.log(pc.green(`\u2713 ${path4.relative(vault.root, file)}`));
+  console.log(pc.green(`\u2713 ${path5.relative(vault.root, file)}`));
 });
 program.command("search").description("B\xFAsqueda h\xEDbrida (sem\xE1ntica + keyword) en la b\xF3veda").argument("<query...>", "qu\xE9 buscar").option("-k <n>", "n\xFAmero de resultados", "6").option("--expand", "incluir vecinos del grafo").action(async (query, opts) => {
   const vault = getVault();
@@ -951,6 +1201,21 @@ ${pc.bold(pc.cyan(r.note.title))} ${pc.dim(`(${r.note.rel}, ${r.note.type})`)}${
     }
   }
   console.log();
+});
+program.command("scan").description("Escanea el proyecto (API, env-nombres, datos, convenciones) \u2192 notas de contexto en la b\xF3veda. Re-ejecutable; solo-lectura del c\xF3digo; garantiza .gitignore").action(async () => {
+  const vault = getVault();
+  ensureVaultStructure(vault);
+  const cwd = process.cwd();
+  const s = scanAll(vault, cwd);
+  const idx = VaultIndex.load(vault);
+  await idx.refresh().catch(() => {
+  });
+  console.log(pc.green(`\u2713 API: ${s.api} rutas \xB7 Env: ${s.env} vars (solo nombres) \xB7 Datos: ${s.data} \xB7 Convenciones: ${s.conventions}${s.gitignored ? " \xB7 .gitignore \u2713" : ""}`));
+  if (s.notes.length) {
+    for (const n of s.notes) console.log(pc.dim(`  ${path5.relative(vault.root, n)}`));
+  } else {
+    console.log(pc.dim("  Nada detectado (\xBFproyecto sin package.json/api/env?)"));
+  }
 });
 program.command("reindex").description("Reindexar la b\xF3veda (incremental; --force para todo)").option("--force", "reindexar todo desde cero").action(async (opts) => {
   const vault = getVault();
@@ -1008,7 +1273,7 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
 async function runSkills(opts) {
   const { vault } = await ensureReady();
   const cwd = process.cwd();
-  const targetDir = opts.project ? path4.join(cwd, ".claude", "skills") : path4.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
+  const targetDir = opts.project ? path5.join(cwd, ".claude", "skills") : path5.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
   const recs = await recommendSkills(vault, [targetDir]);
   if (recs.length === 0) {
     console.log(pc.dim("Sin recomendaciones nuevas: la b\xF3veda a\xFAn no tiene suficientes patrones (o ya est\xE1 todo instalado)."));
@@ -1076,8 +1341,29 @@ program.command("doctor").description("Verifica y repara la instalaci\xF3n (mode
   }
   const idx = VaultIndex.load(vault);
   const res = await idx.refresh();
-  console.log(`${pc.green("\u2713")} \xCDndice al d\xEDa (${res.changed} reindexadas, ${Object.keys(idx.meta.notes).length} notas)
-`);
+  console.log(`${pc.green("\u2713")} \xCDndice al d\xEDa (${res.changed} reindexadas, ${Object.keys(idx.meta.notes).length} notas)`);
+  if (idx.emb && idx.emb.length !== idx.meta.chunks.length * idx.meta.dim) {
+    console.log(pc.yellow("\u26A0 Embeddings desalineados con el \xEDndice \u2014 corre `ale reindex --force`"));
+  } else if (idx.emb) {
+    console.log(`${pc.green("\u2713")} Embeddings alineados (${idx.meta.chunks.length} chunks)`);
+  }
+  try {
+    const name = path5.basename(cwd);
+    const mapFile = path5.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
+    const pkgM = fs5.statSync(path5.join(cwd, "package.json")).mtimeMs;
+    const mapM = fs5.statSync(mapFile).mtimeMs;
+    if (pkgM > mapM) {
+      console.log(pc.yellow("\u26A0 package.json cambi\xF3 despu\xE9s del \xFAltimo escaneo \u2014 corre `ale scan` para refrescar el contexto"));
+    } else {
+      console.log(`${pc.green("\u2713")} Contexto del proyecto al d\xEDa (ale scan)`);
+    }
+  } catch {
+  }
+  const skillsRepoCfg = localSkillsRepo();
+  if (skillsRepoCfg && !fs5.existsSync(skillsRepoCfg)) {
+    console.log(pc.yellow(`\u26A0 skills.repo apunta a ${skillsRepoCfg} y no existe \u2014 corr\xEDgelo: ale config set skills.repo <ruta>`));
+  }
+  console.log();
 });
 program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloque de CLAUDE.md y MCP del proyecto (no borra la b\xF3veda ni las notas)").option("--project", "quitar del proyecto (cwd)").action((opts) => {
   const cwd = process.cwd();
@@ -1088,14 +1374,14 @@ program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloq
   const claudeMd = removeClaudeMd(scope, cwd);
   if (claudeMd) console.log(pc.green(`\u2713 Bloque de Alexandria removido de ${claudeMd}`));
   if (opts.project) {
-    const mcpFile = path4.join(cwd, ".mcp.json");
+    const mcpFile = path5.join(cwd, ".mcp.json");
     try {
-      const cfg = JSON.parse(fs4.readFileSync(mcpFile, "utf8"));
+      const cfg = JSON.parse(fs5.readFileSync(mcpFile, "utf8"));
       if (cfg.mcpServers?.alexandria) {
         delete cfg.mcpServers.alexandria;
         if (Object.keys(cfg.mcpServers).length === 0) delete cfg.mcpServers;
-        if (Object.keys(cfg).length === 0) fs4.rmSync(mcpFile, { force: true });
-        else fs4.writeFileSync(mcpFile, JSON.stringify(cfg, null, 2) + "\n");
+        if (Object.keys(cfg).length === 0) fs5.rmSync(mcpFile, { force: true });
+        else fs5.writeFileSync(mcpFile, JSON.stringify(cfg, null, 2) + "\n");
         console.log(pc.green("\u2713 MCP removido de .mcp.json"));
       }
     } catch {
