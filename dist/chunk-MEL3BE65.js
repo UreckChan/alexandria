@@ -118,7 +118,32 @@ async function hybridSearch(vault, query, k = 6, opts = {}) {
   }
   return results;
 }
+function protocolChain(vault, rel, maxNotes = 6) {
+  const idx = VaultIndex.load(vault);
+  if (!idx.meta.notes[rel]) return [];
+  const wanted = /* @__PURE__ */ new Set(["plan", "task", "verification", "lesson", "solution"]);
+  const seen = /* @__PURE__ */ new Set([rel]);
+  const out = [];
+  let frontier = [rel];
+  for (let depth = 0; depth < 2 && out.length < maxNotes; depth++) {
+    const next = [];
+    for (const r of frontier) {
+      for (const nb of idx.neighbors(r)) {
+        if (seen.has(nb.note.rel)) continue;
+        seen.add(nb.note.rel);
+        next.push(nb.note.rel);
+        if (wanted.has(nb.note.type)) out.push(nb.note);
+        if (out.length >= maxNotes) break;
+      }
+      if (out.length >= maxNotes) break;
+    }
+    frontier = next;
+  }
+  const rank = { plan: 0, verification: 1, lesson: 2, solution: 3, task: 4 };
+  return out.sort((a, b) => (rank[a.type] ?? 9) - (rank[b.type] ?? 9));
+}
 
 export {
-  hybridSearch
+  hybridSearch,
+  protocolChain
 };

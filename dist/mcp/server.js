@@ -4,7 +4,7 @@ import {
 } from "../chunk-IQM5S5N4.js";
 import {
   hybridSearch
-} from "../chunk-3ETM6PKR.js";
+} from "../chunk-MEL3BE65.js";
 import {
   ensureVaultStructure,
   resolveVault
@@ -23,12 +23,14 @@ import "../chunk-EDYBSJSS.js";
 // src/mcp/server.ts
 import path from "path";
 import fs from "fs";
+import { execSync } from "child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 var vault = resolveVault({ cwd: process.cwd() });
 var server = new McpServer({ name: "alexandria", version: pkgVersion() });
 var text = (t) => ({ content: [{ type: "text", text: t }] });
+var tail = (s, n) => s.length > n ? "\u2026\n" + s.slice(-n) : s;
 function findMap(idx) {
   return Object.values(idx.meta.notes).find((n) => n.type === "map" || n.title.startsWith("Mapa - "));
 }
@@ -167,55 +169,97 @@ ${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}`,
 );
 server.tool(
   "task_verify",
-  "PROTOCOLO paso 2: registra el resultado VERIFICADO de una tarea con evidencia real (salida de tests, build, curl \u2014 no lo des por hecho sin correrlo). Guarda el veredicto compacto; si fall\xF3, busca lecciones previas con vault_search antes de improvisar.",
+  'PROTOCOLO paso 2: verifica una tarea con EVIDENCIA REAL, no con tu palabra. Pasa verify_command (ej. "npm test", "npm run build", "curl -sf localhost:3000") y Alexandria lo EJECUTA \u2014 el veredicto sale del exit code real. Si no puedes correr un comando, pasa evidence textual, pero se marca como auto-reportado (m\xE1s d\xE9bil). Si falla, busca lecciones previas antes de improvisar.',
   {
     plan: z.string().describe('T\xEDtulo del plan al que pertenece (ej. "Plan - Login con Google")'),
     task: z.string().describe("Qu\xE9 tarea se verific\xF3"),
-    passed: z.boolean().describe("true si la evidencia confirma que funciona"),
-    evidence: z.string().describe('Evidencia compacta: "npm test \u2192 12/12 passed", c\xF3digo de error, etc.'),
+    passed: z.boolean().describe("Lo que T\xDA crees que pas\xF3 (se compara contra el resultado real del comando)"),
+    verify_command: z.string().optional().describe('Comando a EJECUTAR para verificar de verdad; exit 0 = pas\xF3. Ej. "npm test", "npm run build". Preferido sobre evidence.'),
+    evidence: z.string().optional().describe("Solo si NO hay comando: evidencia textual (queda marcada como auto-reportada, sin verificar)."),
     completes_plan: z.boolean().optional().describe("true si esta era la \xFAltima tarea y el plan queda completado")
   },
-  async ({ plan, task, passed, evidence, completes_plan }) => {
+  async ({ plan, task, passed, verify_command, evidence, completes_plan }) => {
     ensureVaultStructure(vault);
     const idx = VaultIndex.load(vault);
     const planNote = findByTitle(idx, plan);
+    let realPassed = passed;
+    let realEvidence;
+    let verified = false;
+    let discrepancy = "";
+    if (verify_command && verify_command.trim()) {
+      verified = true;
+      try {
+        const out = execSync(verify_command, {
+          cwd: process.cwd(),
+          timeout: 18e4,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+          maxBuffer: 10 * 1024 * 1024
+        });
+        realPassed = true;
+        realEvidence = `$ ${verify_command}
+(exit 0)
+${tail(out, 1500)}`;
+      } catch (e) {
+        const err = e;
+        realPassed = false;
+        const output = ((err.stdout ?? "") + "\n" + (err.stderr ?? "")).trim() || err.message;
+        realEvidence = `$ ${verify_command}
+(exit ${err.status ?? "\u22600"})
+${tail(output, 1500)}`;
+      }
+      if (passed !== realPassed) {
+        discrepancy = `
+
+\u26A0 DISCREPANCIA: afirmaste passed=${passed}, pero el comando dio ${realPassed ? "\xC9XITO" : "FALLO"}. Alexandria registr\xF3 el resultado REAL (${realPassed}). Revisa lo que hiciste \u2014 no des por hecho lo que no corriste.`;
+      }
+    } else {
+      realEvidence = `(auto-reportado, SIN comando de verificaci\xF3n \u2014 no ejecutado)
+${tail(evidence ?? "sin evidencia", 1500)}`;
+    }
     const file = createNote(vault.managed, {
-      title: `${passed ? "OK" : "FALLO"} - ${task.slice(0, 60)}`,
+      title: `${realPassed ? "OK" : "FALLO"} - ${task.slice(0, 60)}`,
       type: "verification",
-      status: passed ? "completed" : "failed",
-      tags: ["verificacion"],
+      status: realPassed ? "completed" : "failed",
+      tags: verified ? ["verificacion", "verificado"] : ["verificacion", "auto-reportado"],
       dir: "notes",
       content: `**Tarea:** ${task}
 
-**Veredicto:** ${passed ? "\u2705 pas\xF3" : "\u274C fall\xF3"}
+**Veredicto:** ${realPassed ? "\u2705 pas\xF3" : "\u274C fall\xF3"} ${verified ? "(verificado ejecutando el comando)" : "(\u26A0 auto-reportado, sin ejecutar)"}
 
 **Evidencia:**
 \`\`\`
-${evidence.slice(0, 1500)}
+${realEvidence}
 \`\`\`
 
 ${planNote ? `Plan: [[${planNote.title}]]` : ""}`
     });
     if (completes_plan && planNote) {
       try {
-        setNoteStatus(path.join(vault.root, planNote.rel), passed ? "completed" : "failed");
+        setNoteStatus(path.join(vault.root, planNote.rel), realPassed ? "completed" : "failed");
       } catch {
       }
     }
     await VaultIndex.load(vault).refresh().catch(() => {
     });
-    if (!passed) {
-      const lessons = await hybridSearch(vault, `${task} ${evidence.slice(0, 200)}`, 3);
+    if (!realPassed) {
+      const lessons = await hybridSearch(vault, `${task} ${realEvidence.slice(0, 200)}`, 3);
       const useful = lessons.filter((l) => l.note.type === "lesson" || l.note.type === "solution");
+      const head = `Fallo ${verified ? "CONFIRMADO por el comando" : "registrado (auto-reportado)"} (${path.relative(vault.root, file)}).${discrepancy}`;
       if (useful.length > 0) {
         return text(
-          `Fallo registrado (${path.relative(vault.root, file)}). LECCIONES PREVIAS que podr\xEDan aplicar \u2014 \xFAsalas antes de improvisar:
+          `${head}
+LECCIONES PREVIAS que podr\xEDan aplicar \u2014 \xFAsalas antes de improvisar:
 ` + useful.map((l) => `- \xAB${l.note.title}\xBB: ${l.excerpts[0]?.slice(0, 300) ?? ""}`).join("\n")
         );
       }
-      return text(`Fallo registrado. Sin lecciones previas para esto \u2014 cuando lo resuelvas, guarda la lecci\xF3n con lesson_extract.`);
+      return text(`${head}
+Sin lecciones previas \u2014 cuando lo resuelvas, gu\xE1rdala con lesson_extract.`);
     }
-    return text(`Verificaci\xF3n guardada${completes_plan ? " y plan marcado como completado" : ""}. ${completes_plan ? "Cierra con lesson_extract si hubo aprendizaje." : "Siguiente tarea."}`);
+    const verdictHint = verified ? "Verificaci\xF3n REAL guardada (comando ejecutado, exit 0)." : "\u26A0 Verificaci\xF3n auto-reportada guardada \u2014 sin comando, no se comprob\xF3 de verdad. Pasa verify_command la pr\xF3xima.";
+    return text(
+      `${verdictHint}${completes_plan ? " Plan marcado como completado." : ""}${discrepancy} ${completes_plan ? "Cierra con lesson_extract si hubo aprendizaje." : "Siguiente tarea."}`
+    );
   }
 );
 server.tool(

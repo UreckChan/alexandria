@@ -9,7 +9,7 @@ import {
 } from "../chunk-DEDAOKAV.js";
 import {
   hybridSearch
-} from "../chunk-3ETM6PKR.js";
+} from "../chunk-MEL3BE65.js";
 import {
   resolveVault,
   vaultExists

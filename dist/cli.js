@@ -15,13 +15,15 @@ import {
   unregisterHooks
 } from "./chunk-IQM5S5N4.js";
 import {
-  hybridSearch
-} from "./chunk-3ETM6PKR.js";
+  hybridSearch,
+  protocolChain
+} from "./chunk-MEL3BE65.js";
 import {
   defaultVaultPath,
   ensureVaultStructure,
   getConfigKey,
   globalConfigPath,
+  protocolEnabled,
   resolveVault,
   setConfigKey,
   vaultExists,
@@ -41,6 +43,8 @@ import {
 } from "./chunk-XWR74BQ2.js";
 import {
   MODEL_ID,
+  dot,
+  embed,
   getEmbedder,
   modelPresent
 } from "./chunk-EDYBSJSS.js";
@@ -58,27 +62,35 @@ import os from "os";
 import path from "path";
 import { execFileSync } from "child_process";
 var RULES = [
-  { skill: "pdf-report-gen", keywords: ["pdf", "reporte pdf", "membrete"] },
-  { skill: "excel-report-gen", keywords: ["excel", "xlsx", "spreadsheet", "hoja de calculo", "hoja de c\xE1lculo"] },
-  { skill: "qr-checkin", keywords: ["qr", "codigo qr", "c\xF3digo qr", "check-in", "checkin"] },
-  { skill: "auth-standard", keywords: ["auth", "login", "jwt", "sesion", "autenticacion", "autenticaci\xF3n"] },
-  { skill: "prisma-workflow", keywords: ["prisma", "migracion", "migraci\xF3n", "orm"] },
-  { skill: "flutter-offline-scaffold", keywords: ["flutter", "dart", "riverpod", "drift"] },
-  { skill: "mapbox-geo", keywords: ["mapbox", "geolocalizacion", "geolocalizaci\xF3n", "geocode", "leaflet"] },
-  { skill: "spanish-form-validation", keywords: ["curp", "rfc", "zod", "validacion", "validaci\xF3n", "formulario"] },
-  { skill: "testing-ci-setup", keywords: ["vitest", "playwright", "test", "ci", "github actions"] },
-  { skill: "tiptap-rich-text", keywords: ["tiptap", "editor de texto", "wysiwyg", "rich text"] },
-  { skill: "signature-upload-optimizer", keywords: ["firma", "signature", "compress", "upload", "subir foto"] },
-  { skill: "security-headers-baseline", keywords: ["csp", "security headers", "hsts", "seguridad web"] },
-  { skill: "server-state-standard", keywords: ["react-query", "tanstack", "zustand", "estado"] },
-  { skill: "nextjs-folder-structure", keywords: ["next.js", "nextjs", "app router"] }
+  { skill: "pdf-report-gen", desc: "generar documentos y reportes PDF con membrete", keywords: ["pdf", "reporte pdf", "membrete"] },
+  { skill: "excel-report-gen", desc: "exportar e importar hojas de c\xE1lculo Excel xlsx", keywords: ["excel", "xlsx", "spreadsheet", "hoja de calculo", "hoja de c\xE1lculo"] },
+  { skill: "qr-checkin", desc: "generar y escanear c\xF3digos QR para check-in y tickets", keywords: ["qr", "codigo qr", "c\xF3digo qr", "check-in", "checkin"] },
+  { skill: "auth-standard", desc: "autenticaci\xF3n con login, JWT y sesiones seguras", keywords: ["auth", "login", "jwt", "sesion", "autenticacion", "autenticaci\xF3n"] },
+  { skill: "prisma-workflow", desc: "ORM Prisma, modelos, migraciones y seed de base de datos", keywords: ["prisma", "migracion", "migraci\xF3n", "orm"] },
+  { skill: "flutter-offline-scaffold", desc: "app Flutter offline-first con riverpod y base de datos local", keywords: ["flutter", "dart", "riverpod", "drift"] },
+  { skill: "mapbox-geo", desc: "mapas, marcadores y geolocalizaci\xF3n con Mapbox", keywords: ["mapbox", "geolocalizacion", "geolocalizaci\xF3n", "geocode", "leaflet"] },
+  { skill: "spanish-form-validation", desc: "validaci\xF3n de formularios con Zod, CURP, RFC y tel\xE9fono mexicano", keywords: ["curp", "rfc", "zod", "validacion", "validaci\xF3n", "formulario"] },
+  { skill: "testing-ci-setup", desc: "pruebas automatizadas con vitest, Playwright y CI en GitHub Actions", keywords: ["vitest", "playwright", "test", "ci", "github actions"] },
+  { skill: "tiptap-rich-text", desc: "editor de texto enriquecido WYSIWYG con tiptap y plantillas", keywords: ["tiptap", "editor de texto", "wysiwyg", "rich text"] },
+  { skill: "signature-upload-optimizer", desc: "captura de firma en canvas y compresi\xF3n de im\xE1genes antes de subir", keywords: ["firma", "signature", "compress", "upload", "subir foto"] },
+  { skill: "security-headers-baseline", desc: "cabeceras de seguridad web CSP, HSTS y X-Frame-Options", keywords: ["csp", "security headers", "hsts", "seguridad web"] },
+  { skill: "server-state-standard", desc: "estado del servidor con react-query TanStack y zustand para UI", keywords: ["react-query", "tanstack", "zustand", "estado"] },
+  { skill: "nextjs-folder-structure", desc: "estructura de carpetas y organizaci\xF3n de un proyecto Next.js App Router", keywords: ["next.js", "nextjs", "app router"] }
 ];
 var MIN_MENTIONS = 3;
+var SEM_Z_STRONG = 1.5;
+var SEM_Z_WEAK = 1;
 function localSkillsRepo() {
-  return path.join(os.homedir(), "Documents", "Projects", "Skills");
+  const configured = getConfigKey("skills.repo");
+  if (typeof configured === "string" && configured.trim()) {
+    return configured.trim().replace(/^~(?=$|[/\\])/, os.homedir());
+  }
+  return null;
 }
-function recommendSkills(vault, installedDirs) {
+async function recommendSkills(vault, installedDirs) {
   const idx = VaultIndex.load(vault);
+  await idx.refresh().catch(() => {
+  });
   const corpus = (idx.meta.chunks.map((c) => c.text).join("\n") + "\n" + Object.values(idx.meta.notes).map((n) => `${n.title} ${n.tags.join(" ")}`).join("\n")).toLowerCase();
   const installed = /* @__PURE__ */ new Set();
   for (const dir of installedDirs) {
@@ -87,9 +99,30 @@ function recommendSkills(vault, installedDirs) {
     } catch {
     }
   }
+  let semZByRule = null;
+  if (idx.emb && idx.meta.chunks.length > 0 && modelPresent()) {
+    try {
+      const profiles = RULES.map((r) => `${r.skill.replace(/-/g, " ")}. ${r.desc} ${r.keywords.join(" ")}`);
+      const vecs = await embed(profiles, "query");
+      const best = vecs.map((v) => {
+        let m = 0;
+        for (let i = 0; i < idx.meta.chunks.length; i++) {
+          const s = dot(v, idx.row(i));
+          if (s > m) m = s;
+        }
+        return m;
+      });
+      const mean = best.reduce((a, b) => a + b, 0) / best.length;
+      const std = Math.sqrt(best.reduce((a, b) => a + (b - mean) ** 2, 0) / best.length);
+      semZByRule = std > 1e-6 ? best.map((b) => (b - mean) / std) : null;
+    } catch {
+      semZByRule = null;
+    }
+  }
+  const repo = localSkillsRepo();
   const out = [];
-  for (const rule of RULES) {
-    if (installed.has(rule.skill)) continue;
+  RULES.forEach((rule, ri) => {
+    if (installed.has(rule.skill)) return;
     let mentions = 0;
     const found = [];
     for (const kw of rule.keywords) {
@@ -98,26 +131,36 @@ function recommendSkills(vault, installedDirs) {
       if (count > 0) found.push(kw);
       mentions += count;
     }
-    if (mentions >= MIN_MENTIONS) {
-      const local = fs.existsSync(path.join(localSkillsRepo(), rule.skill));
-      out.push({
-        skill: rule.skill,
-        mentions,
-        reason: `detect\xE9 ${mentions} menciones de ${found.slice(0, 3).join(", ")} en la b\xF3veda`,
-        source: local ? "local" : "skills.sh"
-      });
-    }
-  }
-  return out.sort((a, b) => b.mentions - a.mentions);
+    const semZ = semZByRule ? semZByRule[ri] : 0;
+    const semStrong = semZ >= SEM_Z_WEAK;
+    const qualifies = mentions >= MIN_MENTIONS || mentions >= 1 && semZ >= SEM_Z_WEAK || semZ >= SEM_Z_STRONG;
+    if (!qualifies) return;
+    const local = repo ? fs.existsSync(path.join(repo, rule.skill)) : false;
+    const parts = [];
+    if (found.length) parts.push(`${mentions} menciones de ${found.slice(0, 3).join(", ")}`);
+    if (semStrong) parts.push(`afinidad sem\xE1ntica alta (z=${semZ.toFixed(1)})`);
+    out.push({
+      skill: rule.skill,
+      mentions,
+      // el z-score reordena: una skill que sobresale semánticamente sube aunque
+      // tenga pocas menciones literales
+      score: mentions + (semStrong ? Math.min(semZ, 4) * 1.5 : 0),
+      reason: parts.length ? `detect\xE9 ${parts.join(" + ")} en la b\xF3veda` : `afinidad sem\xE1ntica (z=${semZ.toFixed(1)})`,
+      source: local ? "local" : "skills.sh"
+    });
+  });
+  return out.sort((a, b) => b.score - a.score);
 }
 function installSkill(rec, targetDir) {
   fs.mkdirSync(targetDir, { recursive: true });
   const dest = path.join(targetDir, rec.skill);
   if (fs.existsSync(dest)) return { ok: true, detail: "ya instalada" };
   if (rec.source === "local") {
+    const repo = localSkillsRepo();
+    if (!repo) return { ok: false, detail: "repo local no configurado (ale config set skills.repo <ruta>)" };
     try {
-      fs.cpSync(path.join(localSkillsRepo(), rec.skill), dest, { recursive: true });
-      return { ok: true, detail: `copiada desde ${localSkillsRepo()}` };
+      fs.cpSync(path.join(repo, rec.skill), dest, { recursive: true });
+      return { ok: true, detail: `copiada desde ${repo}` };
     } catch (e) {
       return { ok: false, detail: `error copiando: ${e.message}` };
     }
@@ -742,7 +785,7 @@ program.command("plan").description("Crear un plan del Protocolo desde un archiv
   console.log(pc.dim(`  DoD detectada: ${dod.length} criterios${dod.length ? " \u2014 " + dod.slice(0, 3).join(" \xB7 ") + (dod.length > 3 ? " \u2026" : "") : ' (agrega checkboxes "- [ ]" para criterios verificables)'}`));
   console.log(pc.dim("  El agente lo ver\xE1 como plan abierto al iniciar sesi\xF3n y lo retomar\xE1 con task_verify."));
 });
-program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD, planes abiertos, fallos sin lecci\xF3n, notas sueltas").action(async () => {
+program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD, planes abiertos, fallos sin lecci\xF3n, verificaciones auto-reportadas, notas sueltas").action(async () => {
   const { vault, idx } = await ensureReady();
   const notes = Object.values(idx.meta.notes).filter((n) => !n.rel.split("/").includes("archive"));
   const plans = notes.filter((n) => n.type === "plan");
@@ -758,19 +801,25 @@ program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD
     console.log(pc.yellow(`  \u26A0 Planes sin Definition of Done: ${noDod.length}`));
     for (const p of noDod.slice(0, 5)) console.log(pc.dim(`    - ${p.title}`));
   }
-  const fails = notes.filter((n) => n.type === "verification" && n.status === "failed");
+  const verifs = notes.filter((n) => n.type === "verification");
+  const fails = verifs.filter((n) => n.status === "failed");
   const lessons = notes.filter((n) => n.type === "lesson");
-  console.log(`  Verificaciones: ${notes.filter((n) => n.type === "verification").length} (${pc.red(`${fails.length} fallos`)}) \xB7 Lecciones: ${pc.green(String(lessons.length))}`);
+  console.log(`  Verificaciones: ${verifs.length} (${pc.red(`${fails.length} fallos`)}) \xB7 Lecciones: ${pc.green(String(lessons.length))}`);
   if (fails.length > lessons.length) {
     console.log(pc.yellow(`  \u26A0 Hay m\xE1s fallos (${fails.length}) que lecciones (${lessons.length}) \u2014 fallos resueltos sin destilar aprendizaje.`));
+  }
+  const selfReported = verifs.filter((n) => n.tags.includes("auto-reportado"));
+  if (selfReported.length > 0) {
+    console.log(pc.yellow(`  \u26A0 Verificaciones auto-reportadas (sin ejecutar \u2014 no comprobadas): ${selfReported.length} \u2014 re-verifica con task_verify + verify_command.`));
+    for (const v of selfReported.slice(0, 5)) console.log(pc.dim(`    - ${v.title}`));
   }
   const loose = notes.filter((n) => n.type !== "prompt" && n.type !== "session" && !linked.has(n.rel));
   if (loose.length > 0) {
     console.log(pc.yellow(`  \u26A0 Notas sin conexiones (invisibles para vault_related): ${loose.length}`));
     for (const n of loose.slice(0, 5)) console.log(pc.dim(`    - ${n.title} \u2192 con\xE9ctala con vault_link o [[wikilinks]]`));
   }
-  if (noDod.length === 0 && loose.length === 0 && fails.length <= lessons.length) {
-    console.log(pc.green("\n  \u2713 B\xF3veda sana: planes con DoD, conocimiento conectado, fallos con lecci\xF3n."));
+  if (noDod.length === 0 && loose.length === 0 && fails.length <= lessons.length && selfReported.length === 0) {
+    console.log(pc.green("\n  \u2713 B\xF3veda sana: planes con DoD, verificaciones reales, conocimiento conectado, fallos con lecci\xF3n."));
   }
   console.log();
 });
@@ -884,6 +933,23 @@ ${pc.bold(pc.cyan(r.note.title))} ${pc.dim(`(${r.note.rel}, ${r.note.type})`)}${
       console.log(pc.dim("  " + e.replace(/\n+/g, " ").slice(0, 220)));
     }
   }
+  if (protocolEnabled()) {
+    const chain = protocolChain(vault, results[0].note.rel);
+    if (chain.length > 0) {
+      const label = {
+        plan: "Plan",
+        verification: "Verificaci\xF3n",
+        lesson: "Lecci\xF3n",
+        solution: "Soluci\xF3n",
+        task: "Tarea"
+      };
+      console.log(pc.bold("\n  \u{1F517} Cadena del Protocolo (hilo conectado al mejor resultado):"));
+      for (const n of chain) {
+        const mark = n.type === "verification" ? n.status === "failed" ? pc.red(" \u2717") : n.status === "completed" ? pc.green(" \u2713") : "" : "";
+        console.log(`    ${pc.dim((label[n.type] ?? n.type) + ":")} ${n.title}${mark} ${pc.dim(`(${n.rel})`)}`);
+      }
+    }
+  }
   console.log();
 });
 program.command("reindex").description("Reindexar la b\xF3veda (incremental; --force para todo)").option("--force", "reindexar todo desde cero").action(async (opts) => {
@@ -943,7 +1009,7 @@ async function runSkills(opts) {
   const { vault } = await ensureReady();
   const cwd = process.cwd();
   const targetDir = opts.project ? path4.join(cwd, ".claude", "skills") : path4.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
-  const recs = recommendSkills(vault, [targetDir]);
+  const recs = await recommendSkills(vault, [targetDir]);
   if (recs.length === 0) {
     console.log(pc.dim("Sin recomendaciones nuevas: la b\xF3veda a\xFAn no tiene suficientes patrones (o ya est\xE1 todo instalado)."));
     return;
@@ -954,6 +1020,12 @@ async function runSkills(opts) {
   for (const r of recs) {
     console.log(`  ${pc.cyan(r.skill)} ${pc.dim(`[${r.source}]`)} \u2014 ${r.reason}`);
   }
+  const skillsRepo = localSkillsRepo();
+  console.log(pc.dim(
+    skillsRepo ? `
+  Repo local de skills: ${skillsRepo}  (c\xE1mbialo con: ale config set skills.repo <ruta>)` : `
+  Origen: registro p\xFAblico skills.sh. \xBFRepo local propio? ale config set skills.repo <ruta>`
+  ));
   let selected = recs;
   if (!opts.yes) {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });

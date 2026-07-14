@@ -34,7 +34,7 @@ It lives in the MCP tools themselves — their names and descriptions carry the 
 | MCP tool | What the agent does with it | Token payoff |
 |---|---|---|
 | `plan_create(title, goal, dod, tasks)` | Writes a plan note with a **Definition of Done** and numbered tasks before touching code | No wandering; open plans are re-injected next session so work is resumed, not repeated |
-| `task_verify(plan, task, passed, evidence)` | Records the real verdict of each task (test/build output, compacted) | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
+| `task_verify(plan, task, passed, verify_command)` | **Runs** `verify_command` (e.g. `npm test`) and takes the verdict from the real exit code — not from the agent's word. Flags a **discrepancy** if the agent claimed otherwise; without a command the note is tagged `self-reported` and `ale audit` calls it out | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
 | `lesson_extract(title, lesson, links)` | Distills the root cause + fix after solving something non-obvious | ~200 tokens today replace ~20,000 tokens of re-debugging next month |
 
 Lessons and solutions get a ranking boost in search, so the most valuable knowledge always surfaces first. The protocol is **on by default**; toggle it anytime:
@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-0.5.2
+0.5.4
 ```
 
 ## Getting started
@@ -260,14 +260,14 @@ AI agent session
 |---|---|
 | `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol] [--portable]` | Installs everything: vault, hooks, MCP, .gitignore, project scan, CLAUDE.md. `--portable` writes an npx-based MCP command safe to commit for teams |
 | `ale agents [ids] [--project]` | List agents / register the MCP server |
-| `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors |
+| `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors. With the Protocol on, appends the **chain** (plan + verification + lesson) connected to the top hit |
 | `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |
 | `ale plan <file> [--title t]` | Create a Protocol plan from a .md/.txt file (checkboxes → Definition of Done) |
 | `ale graph [--out file.html] [--no-open]` | Live local graph viewer |
 | `ale audit` | Protocol health: plans without DoD, failures without lessons, orphan notes |
 | `ale stats` | Notes, connections, protocol metrics, estimated tokens saved |
 | `ale config <get\|set> <key> [value]` | Configuration (e.g. `protocol` true/false) |
-| `ale skills [-y] [--project]` | Recommends & installs Claude skills based on your patterns |
+| `ale skills [-y] [--project]` | Recommends & installs Claude skills — semantic (e5) + keyword detection over your vault. Local source configurable with `ale config set skills.repo <path>`; otherwise installs from skills.sh |
 | `ale reindex [--force]` | Reindex (incremental by default) |
 | `ale consolidate [--days n] [--dry]` | Archive old unused prompts — never deletes |
 | `ale doctor [--project]` | Check & repair: model, hooks, MCP, index |
