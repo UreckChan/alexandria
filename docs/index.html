@@ -205,6 +205,8 @@ footer .links a{display:inline-flex;align-items:center;gap:6px}
     <div class="grp"><span class="only-es">Uso</span><span class="only-en">Usage</span></div>
     <a href="#comandos"><span class="only-es">Referencia de comandos</span><span class="only-en">Command reference</span></a>
     <a href="#ejemplos"><span class="only-es">Ejemplos diarios</span><span class="only-en">Daily examples</span></a>
+    <a href="#tokens"><span class="only-es">Control de tokens</span><span class="only-en">Token control</span></a>
+    <a href="#scan"><span class="only-es">Escaneo del proyecto</span><span class="only-en">Project scan</span></a>
     <a href="#protocolo"><span class="only-es">El Protocolo</span><span class="only-en">The Protocol</span></a>
     <a href="#agentes"><span class="only-es">Agentes soportados</span><span class="only-en">Supported agents</span></a>
     <div class="grp"><span class="only-es">Profundizar</span><span class="only-en">Deep dive</span></div>
@@ -274,6 +276,11 @@ deno install -grA -n ale npm:@ureck/alexandria/ale
       <p><span class="only-es">Verifica:</span><span class="only-en">Verify:</span></p>
 <pre><code>$ ale --version
 1.1.0</code></pre>
+      <h3><span class="only-es">Desinstalar</span><span class="only-en">Uninstall</span></h3>
+<pre><code>ale uninstall            # global: quita hooks + bloque de CLAUDE.md
+ale uninstall --project  # solo de este proyecto (hooks + .mcp.json)
+npm uninstall -g @ureck/alexandria   # y el binario, si quieres</code></pre>
+      <p><span class="only-es">La reversión es limpia: <strong>nunca borra la bóveda ni tus notas</strong> — quedan como markdown normal, legibles en Obsidian o cualquier editor. Si reinstalas después, <code>ale init</code> reconecta con todo tu conocimiento intacto.</span><span class="only-en">The revert is clean: <strong>it never deletes the vault or your notes</strong> — they remain plain markdown, readable in Obsidian or any editor. If you reinstall later, <code>ale init</code> reconnects with all your knowledge intact.</span></p>
     </section>
 
     <!-- PRIMEROS PASOS -->
@@ -348,7 +355,32 @@ ale init --agents claude,cursor,opencode   # solo estos</code></pre>
           <tr><td>--auto / --manual</td><td><span class="only-es">configurar CLAUDE.md sin preguntar / no tocarlo</span><span class="only-en">configure CLAUDE.md without asking / don't touch it</span></td></tr>
           <tr><td>--no-protocol</td><td><span class="only-es">instalar sin el Protocolo (solo bóveda clásica)</span><span class="only-en">install without the Protocol (classic vault only)</span></td></tr>
           <tr><td>--portable</td><td><span class="only-es">MCP con comando npx (commiteable en repos de equipo)</span><span class="only-en">npx-based MCP command (safe to commit for teams)</span></td></tr>
+          <tr><td>--off &lt;keys&gt;</td><td><span class="only-es">desactivar comportamientos que gastan tokens desde el inicio (csv, ej. <code>architect.enrich,digest.map</code> — lista completa: <code>ale toggles</code>)</span><span class="only-en">disable token-spending behaviors from the start (csv, e.g. <code>architect.enrich,digest.map</code> — full list: <code>ale toggles</code>)</span></td></tr>
           <tr><td>--agents &lt;ids&gt;</td><td><span class="only-es">"all", "detected" o csv de agentes</span><span class="only-en">"all", "detected" or csv of agents</span></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="cmd">
+        <h3>ale toggles</h3>
+        <p class="desc"><span class="only-es">Menú interactivo para activar/desactivar cada comportamiento que gasta tokens, con su costo aproximado real. Funciona <strong>antes o después de instalar</strong> (la config es global, independiente de la bóveda). En terminal no interactiva imprime la lista y sale sin colgar.</span><span class="only-en">Interactive menu to enable/disable each token-spending behavior, with its real approximate cost. Works <strong>before or after installing</strong> (the config is global, independent of the vault). In a non-interactive terminal it prints the list and exits without hanging.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>(sin opciones)</td><td><span class="only-es">equivalente scriptable: <code>ale config set &lt;key&gt; true|false</code></span><span class="only-en">scriptable equivalent: <code>ale config set &lt;key&gt; true|false</code></span></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="cmd">
+        <h3>ale scan</h3>
+        <p class="desc"><span class="only-es">Escaneo profundo del proyecto (solo-lectura) → notas compactas de contexto. Re-ejecutable cuando el proyecto cambie; <code>ale doctor</code> avisa si quedó obsoleto.</span><span class="only-en">Deep project scan (read-only) → compact context notes. Re-run whenever the project changes; <code>ale doctor</code> warns when stale.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>scan.maxEntries</td><td><span class="only-es">override del cap por nota: <code>ale config set scan.maxEntries &lt;n&gt;</code> (default: adaptativo 80→200)</span><span class="only-en">per-note cap override: <code>ale config set scan.maxEntries &lt;n&gt;</code> (default: adaptive 80→200)</span></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="cmd">
+        <h3>ale uninstall</h3>
+        <p class="desc"><span class="only-es">Reversión limpia: quita los hooks, el bloque marcado de CLAUDE.md y la entrada MCP del proyecto. <strong>Nunca borra la bóveda ni las notas</strong> — tu conocimiento queda intacto en markdown.</span><span class="only-en">Clean revert: removes hooks, the marked CLAUDE.md block and the project's MCP entry. <strong>Never deletes the vault or your notes</strong> — your knowledge stays intact as markdown.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>--project</td><td><span class="only-es">quitar del proyecto (cwd) en vez de lo global</span><span class="only-en">remove from the project (cwd) instead of global</span></td></tr>
         </tbody></table></div>
       </div>
 
@@ -425,6 +457,43 @@ ale graph --out other.html # copia estática en otro lugar (opcional)</code></pr
 
   Estimated savings (band, NOT audited)
   ~63,900 – 170,400 tokens</code></pre>
+    </section>
+
+    <!-- CONTROL DE TOKENS -->
+    <section id="tokens">
+      <h2><svg class="ic"><use href="#ic-zap"/></svg> <span class="only-es">Control de tokens (apagar y prender)</span><span class="only-en">Token control (turn things on/off)</span></h2>
+      <p><span class="only-es">Todo lo que gasta tokens es opt-out. Tres formas, y funcionan <strong>antes o después de instalar</strong> (la configuración es global e independiente de la bóveda):</span><span class="only-en">Everything that spends tokens is opt-out. Three ways, and they work <strong>before or after installing</strong> (the config is global and independent of the vault):</span></p>
+<pre><code>ale toggles                                  # menú interactivo con costos
+ale init --off architect.enrich,digest.map   # desactivar desde la instalación
+ale config set tokens.solutionCache false    # scriptable, uno por uno</code></pre>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Key</th><th><span class="only-es">Qué hace</span><span class="only-en">What it does</span></th><th><span class="only-es">Costo aproximado</span><span class="only-en">Approx. cost</span></th></tr></thead>
+        <tbody>
+          <tr><td><code>protocol</code></td><td><span class="only-es">Ciclo plan → verificar → aprender (manifiesto + tools MCP)</span><span class="only-en">Plan → verify → learn cycle (manifest + MCP tools)</span></td><td><span class="only-es">~6% del digest (~120 tokens); su ahorro es diferido</span><span class="only-en">~6% of the digest (~120 tokens); its savings are deferred</span></td></tr>
+          <tr><td><code>architect.enrich</code></td><td><span class="only-es">Arquitecto en <code>plan_create</code>: similares + lecciones + hints</span><span class="only-en">Architect in <code>plan_create</code>: similar plans + lessons + hints</span></td><td><span class="only-es">~+90 tokens por plan (escala con el contexto hallado, tope 2+2+3)</span><span class="only-en">~+90 tokens per plan (scales with found context, capped at 2+2+3)</span></td></tr>
+          <tr><td><code>tokens.solutionCache</code></td><td><span class="only-es">Inyecta la solución de un prompt casi idéntico anterior</span><span class="only-en">Injects the solution of a nearly identical past prompt</span></td><td><span class="only-es">hasta ~500 tokens/prompt; evita re-derivar completo</span><span class="only-en">up to ~500 tokens/prompt; avoids full re-derivation</span></td></tr>
+          <tr><td><code>tokens.promptSearch</code></td><td><span class="only-es">Búsqueda semántica por prompt — el mecanismo PRINCIPAL de ahorro</span><span class="only-en">Per-prompt semantic search — the MAIN saving mechanism</span></td><td><span class="only-es">hasta ~1500 tokens/prompt; apagarlo apaga la razón de ser de Alexandria</span><span class="only-en">up to ~1500 tokens/prompt; turning it off defeats Alexandria's purpose</span></td></tr>
+          <tr><td><code>digest.map</code></td><td><span class="only-es">Mapa del proyecto al iniciar sesión</span><span class="only-en">Project map at session start</span></td><td><span class="only-es">hasta ~50% del digest (~1000 tokens); evita re-explorar</span><span class="only-en">up to ~50% of the digest (~1000 tokens); avoids re-exploring</span></td></tr>
+          <tr><td><code>digest.titleIndex</code></td><td><span class="only-es">Índice de hasta 25 títulos que la bóveda ya sabe</span><span class="only-en">Index of up to 25 titles the vault already knows</span></td><td><span class="only-es">~10% del digest (~200 tokens)</span><span class="only-en">~10% of the digest (~200 tokens)</span></td></tr>
+        </tbody>
+      </table></div>
+      <div class="note"><span class="lbl"><svg class="ic"><use href="#ic-info"/></svg> <span class="only-es">Todo activo por defecto</span><span class="only-en">All on by default</span></span><span class="only-es">Si no tocas nada, nada cambia. Los costos son aproximados, calculados de los presupuestos reales del código (digest ≈2000 tokens, inyección por prompt ≈1500) — el gasto real medido lo ves siempre con <code>ale stats</code>.</span><span class="only-en">If you touch nothing, nothing changes. Costs are approximate, computed from the code's real budgets (digest ≈2000 tokens, per-prompt injection ≈1500) — you can always see the real measured spend with <code>ale stats</code>.</span></div>
+    </section>
+
+    <!-- ESCANEO -->
+    <section id="scan">
+      <h2><svg class="ic"><use href="#ic-search"/></svg> <span class="only-es">Escaneo del proyecto (<code>ale scan</code>)</span><span class="only-en">Project scan (<code>ale scan</code>)</span></h2>
+      <p><span class="only-es"><code>ale init --project</code> ya lo corre; re-ejecútalo cuando el proyecto cambie (<code>ale doctor</code> te avisa si quedó obsoleto):</span><span class="only-en"><code>ale init --project</code> already runs it; re-run whenever the project changes (<code>ale doctor</code> warns you when it's stale):</span></p>
+<pre><code>$ ale scan
+✓ API: 12 rutas · Env: 8 vars (solo nombres) · Datos: 5 · Convenciones: 4 · .gitignore ✓</code></pre>
+      <p><span class="only-es">Cuatro escáneres de solo-lectura escriben notas compactas (una línea por entrada) que el agente recibe <strong>solo cuando son relevantes</strong> — el digest de inicio no crece:</span><span class="only-en">Four read-only scanners write compact notes (one line per entry) that the agent receives <strong>only when relevant</strong> — the session digest doesn't grow:</span></p>
+      <ul>
+        <li><span class="only-es"><strong><code>API - &lt;proyecto&gt;</code></strong> — rutas del App Router con métodos HTTP, Pages Router, server actions (<code>"use server"</code>), Express/Hono.</span><span class="only-en"><strong><code>API - &lt;project&gt;</code></strong> — App Router routes with HTTP methods, Pages Router, server actions (<code>"use server"</code>), Express/Hono.</span></li>
+        <li><span class="only-es"><strong><code>Env - &lt;proyecto&gt;</code></strong> — SOLO NOMBRES de variables de entorno (los valores jamás se copian).</span><span class="only-en"><strong><code>Env - &lt;project&gt;</code></strong> — env var NAMES only (values are never copied).</span></li>
+        <li><span class="only-es"><strong><code>Datos - &lt;proyecto&gt;</code></strong> — esquema por parseo de archivos (prisma, drizzle, migrations SQL) — sin conexión a BD.</span><span class="only-en"><strong><code>Datos - &lt;project&gt;</code></strong> — schema from file parsing (prisma, drizzle, SQL migrations) — no DB connection.</span></li>
+        <li><span class="only-es"><strong><code>Convenciones - &lt;proyecto&gt;</code></strong> — gestor de paquetes, monorepo, TS strict, alias, framework.</span><span class="only-en"><strong><code>Convenciones - &lt;project&gt;</code></strong> — package manager, monorepo, TS strict, aliases, framework.</span></li>
+      </ul>
+      <p><span class="only-es">Cap adaptativo: proyectos chicos quedan en 80 entradas por nota; con más señal real escala hasta <strong>200</strong>, con marca visible de truncado (<code>… +N más</code>) y override <code>ale config set scan.maxEntries &lt;n&gt;</code>. En monorepos el muestreo es justo por carpeta — una carpeta gigante no esconde las rutas de sus hermanas (v1.1.0). Y antes de escribir garantiza que la bóveda esté en <code>.gitignore</code>: tus notas nunca llegan a un repo compartido.</span><span class="only-en">Adaptive cap: small projects stay at 80 entries per note; with more real signal it scales up to <strong>200</strong>, with a visible truncation mark (<code>… +N more</code>) and the <code>ale config set scan.maxEntries &lt;n&gt;</code> override. In monorepos sampling is fair per folder — one huge folder can't hide its siblings' routes (v1.1.0). And before writing it guarantees the vault is in <code>.gitignore</code>: your notes never reach a shared repo.</span></p>
     </section>
 
     <!-- PROTOCOLO -->
