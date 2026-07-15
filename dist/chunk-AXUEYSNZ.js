@@ -35,6 +35,9 @@ var VaultIndex = class _VaultIndex {
   meta;
   /** filas de embeddings alineadas 1:1 con meta.chunks; null = índice sin vectores */
   emb = null;
+  /** diccionario lazy tag/type → rels; la bóveda nunca borra, así que los
+   *  escaneos lineales sobre TODAS las notas crecen para siempre — esto los evita */
+  _tagIndex = null;
   get metaPath() {
     return path.join(this.vault.cache, "meta.json");
   }
@@ -112,6 +115,7 @@ var VaultIndex = class _VaultIndex {
     if (changed.length === 0 && removed.length === 0) {
       return { changed: 0, removed: 0, embedded: this.emb !== null };
     }
+    this._tagIndex = null;
     const keep = new Set(
       this.meta.chunks.map((_, i) => i).filter((i) => {
         const rel = this.meta.chunks[i].note;
@@ -192,7 +196,7 @@ ${c.text}`),
     this.rebuildLinks();
     this.save();
     try {
-      const { writeStaticGraph } = await import("./viewer-73ZWPIDC.js");
+      const { writeStaticGraph } = await import("./viewer-2YMJBQRH.js");
       writeStaticGraph(this);
     } catch {
     }
@@ -248,6 +252,24 @@ ${c.text}`),
       }
     }
     this.meta.links = links;
+  }
+  /**
+   * Notas por tag o por tipo (`notesByTag('plan')`, `notesByTag('oauth')`) —
+   * lookup O(1) contra el diccionario en vez de filtrar todas las notas.
+   */
+  notesByTag(key) {
+    if (!this._tagIndex) {
+      const m = /* @__PURE__ */ new Map();
+      for (const n of Object.values(this.meta.notes)) {
+        for (const k of [n.type, ...n.tags]) {
+          const arr = m.get(k);
+          if (arr) arr.push(n.rel);
+          else m.set(k, [n.rel]);
+        }
+      }
+      this._tagIndex = m;
+    }
+    return (this._tagIndex.get(key) ?? []).map((rel) => this.meta.notes[rel]).filter(Boolean);
   }
   /** Vecinos directos de una nota en el grafo (sin releer archivos). */
   neighbors(rel) {

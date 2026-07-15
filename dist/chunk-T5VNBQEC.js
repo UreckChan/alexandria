@@ -1,18 +1,20 @@
 #!/usr/bin/env node
 import {
   hybridSearch
-} from "./chunk-RZI7TYAG.js";
+} from "./chunk-AHBSZGSC.js";
 
 // src/core/planning.ts
+var MAX_ITEMS = 2;
+var EXCERPT_CHARS = 150;
 async function planContext(vault, query) {
   const out = { similarPlans: [], lessons: [] };
   try {
     const results = await hybridSearch(vault, query, 8);
     for (const r of results) {
-      const excerpt = (r.excerpts[0] ?? "").replace(/\n+/g, " ").slice(0, 300);
-      if (r.note.type === "plan" && out.similarPlans.length < 3) {
-        out.similarPlans.push(`\xAB${r.note.title}\xBB (${r.note.status ?? "sin status"}): ${excerpt}`);
-      } else if ((r.note.type === "lesson" || r.note.type === "solution") && out.lessons.length < 3) {
+      const excerpt = (r.excerpts[0] ?? "").replace(/\n+/g, " ").slice(0, EXCERPT_CHARS);
+      if (r.note.type === "plan" && out.similarPlans.length < MAX_ITEMS) {
+        out.similarPlans.push(`\xAB${r.note.title}\xBB (${r.note.status ?? "?"}): ${excerpt}`);
+      } else if ((r.note.type === "lesson" || r.note.type === "solution") && out.lessons.length < MAX_ITEMS) {
         out.lessons.push(`\xAB${r.note.title}\xBB: ${excerpt}`);
       }
     }
@@ -21,39 +23,23 @@ async function planContext(vault, query) {
   return out;
 }
 var FAT_TASK_CHARS = 140;
+var MAX_HINTS = 3;
 function planQualityHints(dod, tasks, design) {
   const hints = [];
-  if (dod.length < 2) {
-    hints.push("DoD con menos de 2 criterios \u2014 agrega criterios verificables por comando (tests, build, curl).");
-  }
-  const vague = dod.filter((d) => /funcione bien|quede bonito|esté listo|sea mejor/i.test(d));
-  if (vague.length) {
-    hints.push(`Criterios no verificables (${vague.length}): reescr\xEDbelos como algo que un comando pueda confirmar.`);
-  }
   const fat = tasks.filter((t) => t.length > FAT_TASK_CHARS);
-  if (fat.length) {
-    hints.push(`${fat.length} tarea(s) muy grandes (>${FAT_TASK_CHARS} chars) \u2014 div\xEDdelas: una tarea = un task_verify.`);
-  }
-  if (tasks.length > 5 && !design?.trim()) {
-    hints.push("Plan grande sin secci\xF3n de dise\xF1o \u2014 considera pasar `design` (stack/decisiones de arquitectura) para fijar el rumbo antes de ejecutar.");
-  }
-  return hints;
+  if (fat.length) hints.push(`${fat.length} tarea(s) gorda(s) (>${FAT_TASK_CHARS}c) \u2014 1 tarea = 1 task_verify`);
+  if (dod.length < 2) hints.push("DoD <2 criterios verificables");
+  const vague = dod.filter((d) => /funcione bien|quede bonito|esté listo|sea mejor/i.test(d));
+  if (vague.length) hints.push(`${vague.length} criterio(s) no verificable(s) por comando`);
+  if (tasks.length > 5 && !design?.trim()) hints.push("sin `design` (plan grande)");
+  return hints.slice(0, MAX_HINTS);
 }
 function architectBlock(ctx, hints) {
   const parts = [];
-  if (ctx.similarPlans.length) {
-    parts.push(`PLANES SIMILARES PREVIOS (resume, no dupliques):
-${ctx.similarPlans.map((p) => `- ${p}`).join("\n")}`);
-  }
-  if (ctx.lessons.length) {
-    parts.push(`LECCIONES RELEVANTES (consid\xE9ralas al planear):
-${ctx.lessons.map((l) => `- ${l}`).join("\n")}`);
-  }
-  if (hints.length) {
-    parts.push(`SUGERENCIAS DE CALIDAD (el plan qued\xF3 guardado; mej\xF3ralo si aplican):
-${hints.map((h) => `- ${h}`).join("\n")}`);
-  }
-  return parts.join("\n\n");
+  for (const p of ctx.similarPlans) parts.push(`Similar: ${p}`);
+  for (const l of ctx.lessons) parts.push(`Lecci\xF3n: ${l}`);
+  if (hints.length) parts.push(`Hints: ${hints.join(" \xB7 ")}`);
+  return parts.join("\n");
 }
 
 // src/core/register.ts

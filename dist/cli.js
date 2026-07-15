@@ -16,12 +16,13 @@ import {
   registerMcpGlobal,
   registerMcpProject,
   unregisterHooks
-} from "./chunk-DHXL36RG.js";
+} from "./chunk-T5VNBQEC.js";
 import {
   hybridSearch,
   protocolChain
-} from "./chunk-RZI7TYAG.js";
+} from "./chunk-AHBSZGSC.js";
 import {
+  TOKEN_TOGGLES,
   defaultVaultPath,
   ensureVaultStructure,
   getConfigKey,
@@ -29,16 +30,17 @@ import {
   protocolEnabled,
   resolveVault,
   setConfigKey,
+  toggleEnabled,
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-DYCARGQR.js";
+} from "./chunk-TFQ7WSIB.js";
 import {
   serveGraph
-} from "./chunk-DCKYTO4O.js";
+} from "./chunk-XY7U4CAQ.js";
 import {
   VaultIndex
-} from "./chunk-D5ROL42O.js";
+} from "./chunk-AXUEYSNZ.js";
 import {
   createNote,
   slugify,
@@ -659,38 +661,84 @@ var SKIP_DIRS2 = /* @__PURE__ */ new Set([
   "vendor"
 ]);
 var SOURCE_EXT = /* @__PURE__ */ new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
-var MAX_FILES = 400;
+var MAX_FILES = 800;
 var MAX_FILE_BYTES = 64 * 1024;
-var MAX_ENTRIES = 80;
+var MAX_DEPTH = 7;
+var BASE_ENTRIES = 80;
+var HARD_ENTRIES = 200;
+function entryCap(rawCount) {
+  const cfg = getConfigKey("scan.maxEntries");
+  const n = typeof cfg === "number" ? cfg : typeof cfg === "string" ? parseInt(cfg, 10) : NaN;
+  if (Number.isFinite(n) && n > 0) return n;
+  return Math.min(Math.max(rawCount, BASE_ENTRIES), HARD_ENTRIES);
+}
+function capLines(lines, cap) {
+  if (lines.length <= cap) return lines;
+  return [
+    ...lines.slice(0, cap),
+    `\u2026 +${lines.length - cap} m\xE1s (trunca a ${cap}; sube con: ale config set scan.maxEntries <n>)`
+  ];
+}
+var TRAVERSE_SAFETY = 2e4;
 function collectSourceFiles(projectDir) {
-  const out = [];
-  const walk = (dir, depth) => {
-    if (depth > 7 || out.length >= MAX_FILES) return;
-    let entries = [];
-    try {
-      entries = fs4.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      if (out.length >= MAX_FILES) return;
-      if (e.name.startsWith(".") || SKIP_DIRS2.has(e.name)) continue;
-      const full = path4.join(dir, e.name);
-      if (e.isDirectory()) {
-        walk(full, depth + 1);
-      } else if (e.isFile() && SOURCE_EXT.has(path4.extname(e.name))) {
-        try {
-          if (fs4.statSync(full).size > MAX_FILE_BYTES) continue;
-          out.push({
-            rel: path4.relative(projectDir, full).split(path4.sep).join("/"),
-            content: fs4.readFileSync(full, "utf8")
-          });
-        } catch {
+  const candidates = [];
+  let level = [projectDir];
+  for (let depth = 0; depth <= MAX_DEPTH && level.length > 0 && candidates.length < TRAVERSE_SAFETY; depth++) {
+    const next = [];
+    for (const dir of level) {
+      let entries = [];
+      try {
+        entries = fs4.readdirSync(dir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const e of entries) {
+        if (e.name.startsWith(".") || SKIP_DIRS2.has(e.name)) continue;
+        const full = path4.join(dir, e.name);
+        if (e.isDirectory()) next.push(full);
+        else if (e.isFile() && SOURCE_EXT.has(path4.extname(e.name))) {
+          candidates.push(full);
+          if (candidates.length >= TRAVERSE_SAFETY) break;
         }
       }
+      if (candidates.length >= TRAVERSE_SAFETY) break;
     }
-  };
-  walk(projectDir, 0);
+    level = next;
+  }
+  let chosen = candidates;
+  if (candidates.length > MAX_FILES) {
+    const groups = /* @__PURE__ */ new Map();
+    for (const c of candidates) {
+      const key = path4.relative(projectDir, c).split(path4.sep)[0];
+      const g = groups.get(key);
+      if (g) g.push(c);
+      else groups.set(key, [c]);
+    }
+    const lists = [...groups.values()];
+    chosen = [];
+    for (let i = 0; chosen.length < MAX_FILES; i++) {
+      let any = false;
+      for (const list of lists) {
+        if (i < list.length) {
+          chosen.push(list[i]);
+          any = true;
+          if (chosen.length >= MAX_FILES) break;
+        }
+      }
+      if (!any) break;
+    }
+  }
+  const out = [];
+  for (const full of chosen) {
+    try {
+      if (fs4.statSync(full).size > MAX_FILE_BYTES) continue;
+      out.push({
+        rel: path4.relative(projectDir, full).split(path4.sep).join("/"),
+        content: fs4.readFileSync(full, "utf8")
+      });
+    } catch {
+    }
+  }
   return out;
 }
 var HTTP_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -700,10 +748,11 @@ function appRoutePath(rel) {
   const segs = m[1].split("/").filter((s) => s && !/^\(.*\)$/.test(s));
   return "/" + segs.join("/").replace(/\/$/, "");
 }
+var RAW_SAFETY = 1e3;
 function scanApi(files) {
   const lines = [];
   for (const f of files) {
-    if (lines.length >= MAX_ENTRIES) break;
+    if (lines.length >= RAW_SAFETY) break;
     if (/(^|\/)route\.[tj]sx?$/.test(f.rel) && /(^|\/)app\//.test(f.rel)) {
       const methods = HTTP_METHODS.filter(
         (m) => new RegExp(`export\\s+(?:async\\s+)?(?:function\\s+${m}\\b|const\\s+${m}\\s*=)`).test(f.content)
@@ -724,10 +773,10 @@ function scanApi(files) {
     const expressHits = [...f.content.matchAll(/\b(?:app|router|api)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g)];
     for (const h of expressHits.slice(0, 12)) {
       lines.push(`- ${h[1].toUpperCase()} ${h[2]} \u2014 ${f.rel}`);
-      if (lines.length >= MAX_ENTRIES) break;
+      if (lines.length >= RAW_SAFETY) break;
     }
   }
-  return lines.slice(0, MAX_ENTRIES);
+  return lines;
 }
 function scanEnvNames(projectDir) {
   const seen = /* @__PURE__ */ new Map();
@@ -743,7 +792,7 @@ function scanEnvNames(projectDir) {
       if (m && !seen.has(m[1])) seen.set(m[1], file);
     }
   }
-  return [...seen.entries()].slice(0, MAX_ENTRIES).map(([name, src]) => `- ${name} (${src})`);
+  return [...seen.entries()].map(([name, src]) => `- ${name} (${src})`);
 }
 function scanDataSchema(projectDir, files) {
   const lines = [];
@@ -779,7 +828,7 @@ function scanDataSchema(projectDir, files) {
     }
     if (tables.size) lines.push(`- tablas (${dir}/*.sql): ${[...tables].slice(0, 20).join(", ")}`);
   }
-  return lines.slice(0, MAX_ENTRIES);
+  return lines;
 }
 function scanConventions(projectDir) {
   const lines = [];
@@ -854,8 +903,12 @@ function scanAll(vault, projectDir) {
   const conventions = run(() => scanConventions(projectDir));
   const notes = [];
   const titles = [];
-  const write = (kind, title, header, lines) => {
-    if (lines.length === 0) return;
+  const truncated = [];
+  const write = (kind, title, header, rawLines) => {
+    if (rawLines.length === 0) return;
+    const cap = entryCap(rawLines.length);
+    if (rawLines.length > cap) truncated.push(kind);
+    const lines = capLines(rawLines, cap);
     notes.push(
       upsertNote(vault.managed, {
         fixedName: `${kind}-${slugify(name)}`,
@@ -877,7 +930,7 @@ Proyecto: [[Mapa - ${name}]]`
   write("datos", `Datos - ${name}`, `Esquema de datos detectado en archivos (sin conexi\xF3n a BD).`, data);
   write("convenciones", `Convenciones - ${name}`, `Convenciones detectadas por \`ale scan\`.`, conventions);
   linkMapToScans(vault, name, titles);
-  return { api: api.length, env: env.length, data: data.length, conventions: conventions.length, notes, gitignored };
+  return { api: api.length, env: env.length, data: data.length, conventions: conventions.length, notes, gitignored, truncated };
 }
 
 // src/cli.ts
@@ -936,7 +989,7 @@ async function ensureReady(vault = getVault()) {
 program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: modelo, hooks (Claude Code) y MCP en tus agentes de IA (una sola vez, persiste entre sesiones)").option("--project", "registrar para este proyecto (cwd): .vault.json + .claude/settings.json + .mcp.json").option("--global", "registrar para todas las sesiones del usuario (default)").option(
   "--path <dir>",
   "ruta del vault Obsidian (existente o nuevo). Default: ./Alexandria con --project, ~/Alexandria en global"
-).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--no-protocol", "instalar sin el Protocolo Alexandria (solo b\xF3veda cl\xE1sica)").option("--portable", "MCP con comando npx (commiteable en repos de equipo) en vez de ruta local").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option(
+).option("--auto", "configurar el uso autom\xE1tico en CLAUDE.md sin preguntar").option("--manual", "no tocar CLAUDE.md (config\xFAralo t\xFA)").option("--no-protocol", "instalar sin el Protocolo Alexandria (solo b\xF3veda cl\xE1sica)").option("--portable", "MCP con comando npx (commiteable en repos de equipo) en vez de ruta local").option("--skills", "al final, recomendar e instalar skills seg\xFAn el contenido").option("--off <keys>", "desactivar desde el inicio comportamientos que gastan tokens (csv, ej. architect.enrich,digest.map \u2014 lista: ale toggles)").option(
   "--agents <ids>",
   `agentes de IA donde registrar el MCP: "all", "detected" o csv de ${AGENTS.map((a) => a.id).join(",")} (default: claude + detectados)`
 ).action(async (opts) => {
@@ -999,6 +1052,19 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   console.log(
     opts.protocol !== false ? pc.green("\u2713 Protocolo Alexandria activo (plan_create \xB7 task_verify \xB7 lesson_extract) \u2014 ap\xE1galo con: ale config set protocol false") : pc.dim("  Protocolo desactivado (b\xF3veda cl\xE1sica) \u2014 act\xEDvalo con: ale config set protocol true")
   );
+  if (opts.off) {
+    const valid = new Set(TOKEN_TOGGLES.map((t) => t.key));
+    for (const raw of opts.off.split(",")) {
+      const key = raw.trim();
+      if (!key) continue;
+      if (valid.has(key)) {
+        setConfigKey(key, false);
+        console.log(pc.yellow(`\u2717 desactivado: ${key}`));
+      } else {
+        console.log(pc.yellow(`  \u26A0 toggle desconocido \xAB${key}\xBB \u2014 lista: ale toggles`));
+      }
+    }
+  }
   if (isProject) {
     const s = scanAll(vault, cwd);
     console.log(pc.green(`\u2713 Proyecto escaneado \u2192 API: ${s.api} \xB7 Env: ${s.env} \xB7 Datos: ${s.data} \xB7 Convenciones: ${s.conventions} (re-ejecuta con: ale scan)`));
@@ -1009,7 +1075,8 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   console.log(pc.green(`\u2713 \xCDndice: ${Object.keys(idx.meta.notes).length} notas, ${idx.meta.links.length} conexiones${res.embedded ? "" : " (keyword-only)"}`));
   console.log(pc.bold(pc.green("\n\u2705 Listo. Abre una sesi\xF3n de tu agente y todo funciona solo \u2014 nada que reconectar nunca.")));
   console.log(pc.dim("   Hooks (captura autom\xE1tica) solo en Claude Code; los dem\xE1s agentes usan las tools MCP."));
-  console.log(pc.dim('   Prueba: ale search "algo" \xB7 ale graph \xB7 ale stats \xB7 ale agents\n'));
+  console.log(pc.dim('   Prueba: ale search "algo" \xB7 ale graph \xB7 ale stats \xB7 ale agents'));
+  console.log(pc.dim("   Controla qu\xE9 gasta tokens (antes o despu\xE9s de instalar): ale toggles\n"));
   if (opts.skills) await runSkills({ yes: false, project: isProject });
 });
 program.command("plan").description("Crear un plan del Protocolo desde un archivo .md/.txt (en vez de escribirlo en la terminal)").argument("<file>", 'archivo con el plan (los checkboxes "- [ ]" se toman como Definition of Done)').option("--title <t>", "t\xEDtulo del plan (default: nombre del archivo o primer heading)").action(async (file, opts) => {
@@ -1037,8 +1104,9 @@ program.command("plan").description("Crear un plan del Protocolo desde un archiv
 });
 program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD, planes abiertos, fallos sin lecci\xF3n, verificaciones auto-reportadas, notas sueltas").action(async () => {
   const { vault, idx } = await ensureReady();
-  const notes = Object.values(idx.meta.notes).filter((n) => !n.rel.split("/").includes("archive"));
-  const plans = notes.filter((n) => n.type === "plan");
+  const noArchive = (n) => !n.rel.split("/").includes("archive");
+  const notes = Object.values(idx.meta.notes).filter(noArchive);
+  const plans = idx.notesByTag("plan").filter(noArchive);
   const linked = new Set(idx.meta.links.flatMap((l) => [l.from, l.to]));
   console.log(pc.bold("\n\u{1F3DB}\uFE0F  Auditor\xEDa del Protocolo Alexandria\n"));
   const openPlans = plans.filter((p) => p.status === "active");
@@ -1051,9 +1119,9 @@ program.command("audit").description("Auditor\xEDa del Protocolo: planes sin DoD
     console.log(pc.yellow(`  \u26A0 Planes sin Definition of Done: ${noDod.length}`));
     for (const p of noDod.slice(0, 5)) console.log(pc.dim(`    - ${p.title}`));
   }
-  const verifs = notes.filter((n) => n.type === "verification");
+  const verifs = idx.notesByTag("verification").filter(noArchive);
   const fails = verifs.filter((n) => n.status === "failed");
-  const lessons = notes.filter((n) => n.type === "lesson");
+  const lessons = idx.notesByTag("lesson").filter(noArchive);
   console.log(`  Verificaciones: ${verifs.length} (${pc.red(`${fails.length} fallos`)}) \xB7 Lecciones: ${pc.green(String(lessons.length))}`);
   if (fails.length > lessons.length) {
     console.log(pc.yellow(`  \u26A0 Hay m\xE1s fallos (${fails.length}) que lecciones (${lessons.length}) \u2014 fallos resueltos sin destilar aprendizaje.`));
@@ -1202,6 +1270,39 @@ ${pc.bold(pc.cyan(r.note.title))} ${pc.dim(`(${r.note.rel}, ${r.note.type})`)}${
   }
   console.log();
 });
+program.command("toggles").description("Activa/desactiva comportamientos que gastan tokens (con costo aproximado de cada uno)").action(async () => {
+  const printList = () => {
+    console.log(pc.bold("\n\u26A1 Consumo de tokens \u2014 toggles\n"));
+    TOKEN_TOGGLES.forEach((t, i) => {
+      const on = toggleEnabled(t.key);
+      console.log(`  ${i + 1}. ${on ? pc.green("\u2713") : pc.red("\u2717")} ${pc.bold(t.label)} ${pc.dim(`(${t.key})`)}`);
+      console.log(pc.dim(`     ${t.desc}`));
+      console.log(pc.dim(`     ${t.impact}`));
+    });
+  };
+  printList();
+  if (!process.stdin.isTTY) {
+    console.log(pc.dim("\n  (no-TTY: cambia con `ale config set <key> true|false`)\n"));
+    return;
+  }
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const ans = (await rl.question(pc.bold("\nN\xFAmeros a cambiar (coma), Enter para salir: "))).trim();
+  rl.close();
+  if (!/^[\d,\s]+$/.test(ans) || !ans) {
+    console.log(pc.dim("Sin cambios.\n"));
+    return;
+  }
+  const nums = ans.split(",").map((n) => parseInt(n.trim(), 10) - 1);
+  for (const i of nums) {
+    const t = TOKEN_TOGGLES[i];
+    if (!t) continue;
+    const next = !toggleEnabled(t.key);
+    setConfigKey(t.key, next);
+    console.log(`${next ? pc.green("\u2713 activado") : pc.yellow("\u2717 desactivado")}: ${t.label}`);
+  }
+  printList();
+  console.log();
+});
 program.command("scan").description("Escanea el proyecto (API, env-nombres, datos, convenciones) \u2192 notas de contexto en la b\xF3veda. Re-ejecutable; solo-lectura del c\xF3digo; garantiza .gitignore").action(async () => {
   const vault = getVault();
   ensureVaultStructure(vault);
@@ -1211,6 +1312,9 @@ program.command("scan").description("Escanea el proyecto (API, env-nombres, dato
   await idx.refresh().catch(() => {
   });
   console.log(pc.green(`\u2713 API: ${s.api} rutas \xB7 Env: ${s.env} vars (solo nombres) \xB7 Datos: ${s.data} \xB7 Convenciones: ${s.conventions}${s.gitignored ? " \xB7 .gitignore \u2713" : ""}`));
+  if (s.truncated.length) {
+    console.log(pc.yellow(`  \u26A0 Notas truncadas por el cap: ${s.truncated.join(", ")} \u2014 s\xFAbelo con: ale config set scan.maxEntries <n>`));
+  }
   if (s.notes.length) {
     for (const n of s.notes) console.log(pc.dim(`  ${path5.relative(vault.root, n)}`));
   } else {

@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.0.0
+1.1.0
 ```
 
 ## Getting started
@@ -131,6 +131,18 @@ ale add "Vercel deploy" -c "Region cdg1, see [[Prisma setup]]" -t deploy
 ```
 
 (Automatic capture via hooks already does this in every Claude Code session — `add` is for extra knowledge.)
+
+### Control what spends tokens (`ale toggles`)
+
+Every token-spending behavior is opt-out — before or after installing (the config is global, independent of the vault):
+
+```bash
+$ ale toggles          # interactive menu: each toggle with its real approximate cost
+ale init --off architect.enrich,digest.map   # disable from the start
+ale config set tokens.solutionCache false    # scriptable, one by one
+```
+
+The six toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens). All on by default; nothing changes unless you touch them.
 
 ### Deep project context (`ale scan`)
 
@@ -277,7 +289,8 @@ AI agent session
 | Command | What it does |
 |---|---|
 | `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol] [--portable]` | Installs everything: vault, hooks, MCP, .gitignore, project scan, CLAUDE.md. `--portable` writes an npx-based MCP command safe to commit for teams |
-| `ale scan` | Deep project context: API routes, env var **names**, data schema (file parse), conventions → compact notes. Read-only; ensures .gitignore |
+| `ale scan` | Deep project context: API routes, env var **names**, data schema (file parse), conventions → compact notes (adaptive cap ≤200 entries, fair sampling in monorepos). Read-only; ensures .gitignore |
+| `ale toggles` | Interactive menu to enable/disable every token-spending behavior, each with its real approximate cost. Works before or after install; scriptable via `ale init --off <keys>` |
 | `ale agents [ids] [--project]` | List agents / register the MCP server |
 | `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors. With the Protocol on, appends the **chain** (plan + verification + lesson) connected to the top hit |
 | `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |

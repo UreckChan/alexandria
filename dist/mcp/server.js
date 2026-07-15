@@ -4,17 +4,18 @@ import {
   pkgVersion,
   planContext,
   planQualityHints
-} from "../chunk-DHXL36RG.js";
+} from "../chunk-T5VNBQEC.js";
 import {
   hybridSearch
-} from "../chunk-RZI7TYAG.js";
+} from "../chunk-AHBSZGSC.js";
 import {
   ensureVaultStructure,
-  resolveVault
-} from "../chunk-DYCARGQR.js";
+  resolveVault,
+  toggleEnabled
+} from "../chunk-TFQ7WSIB.js";
 import {
   VaultIndex
-} from "../chunk-D5ROL42O.js";
+} from "../chunk-AXUEYSNZ.js";
 import {
   createNote,
   setNoteStatus,
@@ -145,8 +146,9 @@ server.tool(
   },
   async ({ title, goal, dod, tasks, design }) => {
     ensureVaultStructure(vault);
-    const ctx = await planContext(vault, `${title} ${goal}`);
-    const hints = planQualityHints(dod, tasks, design);
+    const enrich = toggleEnabled("architect.enrich");
+    const ctx = enrich ? await planContext(vault, `${title} ${goal}`) : { similarPlans: [], lessons: [] };
+    const hints = enrich ? planQualityHints(dod, tasks, design) : [];
     const idx = VaultIndex.load(vault);
     const map = findMap(idx);
     const content = [

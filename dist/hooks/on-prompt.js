@@ -9,12 +9,13 @@ import {
 } from "../chunk-DEDAOKAV.js";
 import {
   hybridSearch
-} from "../chunk-RZI7TYAG.js";
+} from "../chunk-AHBSZGSC.js";
 import {
   resolveVault,
+  toggleEnabled,
   vaultExists
-} from "../chunk-DYCARGQR.js";
-import "../chunk-D5ROL42O.js";
+} from "../chunk-TFQ7WSIB.js";
+import "../chunk-AXUEYSNZ.js";
 import {
   createNote,
   touchNote
@@ -45,11 +46,13 @@ runHook(25e3, async (input) => {
   });
   const maxCos = results.reduce((m, r) => Math.max(m, r.cosine), 0);
   const relevant = maxCos > 0 ? results.filter((r) => r.cosine >= RELEVANT_COSINE && r.cosine >= maxCos - RELEVANT_MARGIN) : results.filter((r) => r.score > 0.02);
+  const solutionCacheOn = toggleEnabled("tokens.solutionCache");
+  const promptSearchOn = toggleEnabled("tokens.promptSearch");
   let injected = "";
-  if (relevant.length > 0) {
-    const cached = relevant.find(
+  if (relevant.length > 0 && (solutionCacheOn || promptSearchOn)) {
+    const cached = solutionCacheOn ? relevant.find(
       (r) => (r.note.type === "prompt" || r.note.type === "session") && r.cosine >= SOLUTION_COSINE
-    );
+    ) : void 0;
     const lines = [];
     if (cached) {
       lines.push(
@@ -57,28 +60,32 @@ runHook(25e3, async (input) => {
 ${truncate(cached.excerpts.join("\n"), 2e3)}`
       );
     }
-    for (const r of relevant) {
-      if (r === cached) continue;
-      lines.push(`\u2022 \xAB${r.note.title}\xBB (${r.note.rel}):
+    if (promptSearchOn) {
+      for (const r of relevant) {
+        if (r === cached) continue;
+        lines.push(`\u2022 \xAB${r.note.title}\xBB (${r.note.rel}):
 ${truncate(r.excerpts.join("\n"), 900)}`);
-      if (lines.join("\n\n").length > MAX_INJECT_CHARS) break;
+        if (lines.join("\n\n").length > MAX_INJECT_CHARS) break;
+      }
     }
-    injected = `<alexandria-contexto>
+    if (lines.length > 0) {
+      injected = `<alexandria-contexto>
 Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o re-explorar):
 
 ` + truncate(lines.join("\n\n"), MAX_INJECT_CHARS) + `
 </alexandria-contexto>`;
-    process.stdout.write(injected);
-    logInjection(vault, {
-      kind: cached ? "solution-cache" : "inject",
-      injectedChars: injected.length,
-      promptChars: prompt.length
-    });
-    for (const r of relevant) {
-      if (r.note.type === "lesson" || r.note.type === "solution") {
-        try {
-          touchNote(path.join(vault.root, r.note.rel));
-        } catch {
+      process.stdout.write(injected);
+      logInjection(vault, {
+        kind: cached ? "solution-cache" : "inject",
+        injectedChars: injected.length,
+        promptChars: prompt.length
+      });
+      for (const r of relevant) {
+        if (r.note.type === "lesson" || r.note.type === "solution") {
+          try {
+            touchNote(path.join(vault.root, r.note.rel));
+          } catch {
+          }
         }
       }
     }

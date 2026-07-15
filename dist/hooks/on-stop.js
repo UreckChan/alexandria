@@ -8,7 +8,7 @@ import {
   ensureVaultStructure,
   resolveVault,
   vaultExists
-} from "../chunk-DYCARGQR.js";
+} from "../chunk-TFQ7WSIB.js";
 import {
   appendToNote
 } from "../chunk-XWR74BQ2.js";
