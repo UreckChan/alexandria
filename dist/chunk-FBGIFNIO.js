@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-AXUEYSNZ.js";
+} from "./chunk-QB37UGO6.js";
 
 // src/graph/viewer.ts
 import fs from "fs";

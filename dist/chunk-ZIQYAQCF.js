@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   hybridSearch
-} from "./chunk-AHBSZGSC.js";
+} from "./chunk-UWB6RKVN.js";
 
 // src/core/planning.ts
 var MAX_ITEMS = 2;
@@ -173,12 +173,12 @@ export {
   planContext,
   planQualityHints,
   architectBlock,
-  distDir,
   registerHooks,
   unregisterHooks,
   projectSettingsPath,
   globalSettingsPath,
   hooksRegistered,
+  serverCommand,
   registerMcpProject,
   registerMcpGlobal,
   mcpRegisteredProject,

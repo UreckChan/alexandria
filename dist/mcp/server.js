@@ -4,24 +4,22 @@ import {
   pkgVersion,
   planContext,
   planQualityHints
-} from "../chunk-T5VNBQEC.js";
+} from "../chunk-ZIQYAQCF.js";
 import {
   hybridSearch
-} from "../chunk-AHBSZGSC.js";
+} from "../chunk-UWB6RKVN.js";
 import {
   ensureVaultStructure,
   resolveVault,
   toggleEnabled
-} from "../chunk-TFQ7WSIB.js";
+} from "../chunk-CIOCSIB5.js";
 import {
-  VaultIndex
-} from "../chunk-AXUEYSNZ.js";
-import {
+  VaultIndex,
   createNote,
   setNoteStatus,
   slugify,
   upsertNote
-} from "../chunk-XWR74BQ2.js";
+} from "../chunk-QB37UGO6.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/mcp/server.ts

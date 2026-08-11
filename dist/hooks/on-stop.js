@@ -3,18 +3,24 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-DEDAOKAV.js";
+} from "../chunk-53SIGH5A.js";
 import {
   ensureVaultStructure,
   resolveVault,
+  toggleEnabled,
   vaultExists
-} from "../chunk-TFQ7WSIB.js";
+} from "../chunk-CIOCSIB5.js";
 import {
+  VaultIndex,
   appendToNote
-} from "../chunk-XWR74BQ2.js";
+} from "../chunk-QB37UGO6.js";
+import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-stop.ts
 import fs from "fs";
+import path from "path";
+import { spawn } from "child_process";
+import { fileURLToPath } from "url";
 function textOf(msg) {
   const c = msg.message?.content;
   if (typeof c === "string") return c;
@@ -62,4 +68,22 @@ runHook(25e3, async (input) => {
 
 Proyecto: [[Mapa - ${proj}]]`
   });
+  await maybeRebuildInBackground(vault);
 });
+async function maybeRebuildInBackground(vault) {
+  try {
+    if (!toggleEnabled("index.autoRebuild")) return;
+    const idx = VaultIndex.load(vault);
+    if (!idx.needsRebuild() && !idx.isDegraded()) return;
+    const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "cli.js");
+    if (!fs.existsSync(cli)) return;
+    const child = spawn(process.execPath, [cli, "--vault", vault.root, "reindex", "--force"], {
+      detached: true,
+      stdio: "ignore",
+      env: { ...process.env, ALEXANDRIA_HOOK: "" }
+      // proceso CLI: sí puede reconstruir
+    });
+    child.unref();
+  } catch {
+  }
+}

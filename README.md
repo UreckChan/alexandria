@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.1.0
+1.2.0
 ```
 
 ## Getting started
@@ -159,6 +159,7 @@ Four read-only scanners write compact notes (one line per entry) that the agent 
 - **`Env - <project>`** — environment variable **NAMES only, never values** (from `.env.example` / `.env` / `.env.local`).
 - **`Datos - <project>`** — data schema parsed from files (prisma models, drizzle tables, `CREATE TABLE` in migrations) — no DB connection.
 - **`Convenciones - <project>`** — package manager, monorepo, TS strict, import aliases, framework.
+- **`Flujo - <project>`** — what a request goes through: `GET /api/x → auth: requirePermiso(...) → datos: getX, createX → audits`, plus what the middleware protects. The others say what exists; this one says how it connects.
 
 It never touches your source code, and it guarantees the vault (and personal configs) are gitignored before writing — your notes never reach a shared repo, even if you never ran `ale init`.
 
@@ -291,6 +292,7 @@ AI agent session
 | `ale init [--project] [--path <dir>] [--agents <ids>] [--auto\|--manual] [--no-protocol] [--portable]` | Installs everything: vault, hooks, MCP, .gitignore, project scan, CLAUDE.md. `--portable` writes an npx-based MCP command safe to commit for teams |
 | `ale scan` | Deep project context: API routes, env var **names**, data schema (file parse), conventions → compact notes (adaptive cap ≤200 entries, fair sampling in monorepos). Read-only; ensures .gitignore |
 | `ale toggles` | Interactive menu to enable/disable every token-spending behavior, each with its real approximate cost. Works before or after install; scriptable via `ale init --off <keys>` |
+| `ale skills:evolve` | Generates/updates a **living skill for the project** from what the vault knows (stack, conventions, app flow, lessons). Always shows a diff and asks before writing |
 | `ale agents [ids] [--project]` | List agents / register the MCP server |
 | `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors. With the Protocol on, appends the **chain** (plan + verification + lesson) connected to the top hit |
 | `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |

@@ -6,20 +6,19 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-DEDAOKAV.js";
+} from "../chunk-53SIGH5A.js";
 import {
   hybridSearch
-} from "../chunk-AHBSZGSC.js";
+} from "../chunk-UWB6RKVN.js";
 import {
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-TFQ7WSIB.js";
-import "../chunk-AXUEYSNZ.js";
+} from "../chunk-CIOCSIB5.js";
 import {
   createNote,
   touchNote
-} from "../chunk-XWR74BQ2.js";
+} from "../chunk-QB37UGO6.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-prompt.ts
@@ -31,12 +30,13 @@ var DEDUP_COSINE = 0.93;
 var SOLUTION_COSINE = 0.93;
 var RELEVANT_COSINE = 0.82;
 var RELEVANT_MARGIN = 0.04;
-runHook(25e3, async (input) => {
+var KEYWORD_REL_FACTOR = 0.6;
+runHook(5e3, async (input) => {
   const prompt = (input.prompt ?? "").trim();
   if (prompt.length < MIN_PROMPT_CHARS || prompt.startsWith("/")) return;
   const vault = resolveVault({ cwd: input.cwd });
   if (!vaultExists(vault)) return;
-  const rawResults = await hybridSearch(vault, prompt, 5, { expand: true });
+  const rawResults = await hybridSearch(vault, prompt, 5, { expand: true, refresh: false });
   const STALE_DAYS = 60;
   const results = rawResults.filter((r) => {
     if (r.note.type !== "prompt" && r.note.type !== "session") return true;
@@ -45,7 +45,14 @@ runHook(25e3, async (input) => {
     return age <= STALE_DAYS;
   });
   const maxCos = results.reduce((m, r) => Math.max(m, r.cosine), 0);
-  const relevant = maxCos > 0 ? results.filter((r) => r.cosine >= RELEVANT_COSINE && r.cosine >= maxCos - RELEVANT_MARGIN) : results.filter((r) => r.score > 0.02);
+  const maxScore = results.reduce((m, r) => Math.max(m, r.score), 0);
+  const relevant = maxCos > 0 ? results.filter((r) => r.cosine >= RELEVANT_COSINE && r.cosine >= maxCos - RELEVANT_MARGIN) : (
+    // Keyword-only: criterio RELATIVO al mejor resultado, nunca absoluto. El
+    // umbral fijo de 0.02 era inalcanzable — el RRF máximo es 1/(60+1)=0.0164,
+    // así que notas tipo note/session/prompt (boost ≤1.0) jamás lo cruzaban y
+    // la mayoría de la bóveda quedaba invisible en modo degradado.
+    results.filter((r) => maxScore > 0 && r.score >= maxScore * KEYWORD_REL_FACTOR).slice(0, 3)
+  );
   const solutionCacheOn = toggleEnabled("tokens.solutionCache");
   const promptSearchOn = toggleEnabled("tokens.promptSearch");
   let injected = "";

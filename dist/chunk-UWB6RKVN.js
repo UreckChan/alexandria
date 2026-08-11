@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-AXUEYSNZ.js";
+} from "./chunk-QB37UGO6.js";
 import {
   dot,
   embed,
@@ -61,6 +61,7 @@ async function hybridSearch(vault, query, k = 6, opts = {}) {
     await idx.refresh().catch(() => {
     });
   }
+  if (idx.isDegraded()) idx.markNeedsRebuild();
   if (idx.meta.chunks.length === 0) return [];
   const rrf = /* @__PURE__ */ new Map();
   const cosineByChunk = /* @__PURE__ */ new Map();

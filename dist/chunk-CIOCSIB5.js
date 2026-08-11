@@ -135,6 +135,12 @@ var TOKEN_TOGGLES = [
     label: "\xCDndice de t\xEDtulos en el digest",
     desc: "Lista hasta 25 t\xEDtulos de lo que la b\xF3veda ya sabe",
     impact: "cuesta ~10% del digest (~200 tokens); orienta al agente sobre qu\xE9 buscar"
+  },
+  {
+    key: "index.autoRebuild",
+    label: "Reparar el \xEDndice al cerrar sesi\xF3n",
+    desc: "Si el \xEDndice qued\xF3 sin vectores, reconstruirlo en segundo plano al terminar la sesi\xF3n",
+    impact: "no gasta tokens; sin esto la b\xFAsqueda puede quedarse en keyword-only (peor contexto por prompt)"
   }
 ];
 function writeProjectConfig(projectDir, vaultPath) {

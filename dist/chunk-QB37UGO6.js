@@ -1,10 +1,5 @@
 #!/usr/bin/env node
 import {
-  ensureAlias,
-  listMarkdownFiles,
-  parseNote
-} from "./chunk-XWR74BQ2.js";
-import {
   DIM,
   MODEL_ID,
   chunkMarkdown,
@@ -13,9 +8,169 @@ import {
   modelPresent
 } from "./chunk-EDYBSJSS.js";
 
-// src/core/index.ts
+// src/core/notes.ts
 import fs from "fs";
 import path from "path";
+import matter from "gray-matter";
+var NOTE_TYPES = [
+  "note",
+  "prompt",
+  "session",
+  "map",
+  "plan",
+  "task",
+  "verification",
+  "lesson",
+  "solution"
+];
+var SKIP_DIRS = /* @__PURE__ */ new Set([".obsidian", ".vault", ".trash", ".git", "node_modules"]);
+function extractWikilinks(content) {
+  const out = /* @__PURE__ */ new Set();
+  const re = /\[\[([^\]|#\n]+)(?:[|#][^\]]*)?\]\]/g;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    const target = m[1].trim();
+    if (target) out.add(target);
+  }
+  return [...out];
+}
+function slugify(text) {
+  return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "nota";
+}
+function listMarkdownFiles(root) {
+  const out = [];
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (e.name.startsWith(".") || SKIP_DIRS.has(e.name)) continue;
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.isFile() && e.name.endsWith(".md")) out.push(full);
+    }
+  };
+  walk(root);
+  return out;
+}
+function parseNote(root, absPath) {
+  const raw = fs.readFileSync(absPath, "utf8");
+  const { data, content } = matter(raw);
+  const rel = path.relative(root, absPath).split(path.sep).join("/");
+  const title = typeof data.title === "string" && data.title || path.basename(absPath, ".md");
+  const type = NOTE_TYPES.includes(data.type) ? data.type : "note";
+  const status = ["active", "completed", "failed"].includes(data.status) ? data.status : void 0;
+  const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
+  return {
+    rel,
+    title,
+    type,
+    status,
+    tags,
+    created: data.created ? String(data.created) : void 0,
+    hits: typeof data.hits === "number" ? data.hits : 1,
+    content,
+    links: extractWikilinks(content)
+  };
+}
+function frontmatter(n) {
+  const lines = [
+    "---",
+    `title: ${JSON.stringify(n.title)}`,
+    // aliases: Obsidian resuelve [[wikilinks]] contra alias, no contra el title
+    // del frontmatter — sin esto su graph view muestra los enlaces como rotos
+    `aliases: [${JSON.stringify(n.title)}]`,
+    `type: ${n.type}`,
+    ...n.status ? [`status: ${n.status}`] : [],
+    `tags: [${n.tags.map((t) => JSON.stringify(t)).join(", ")}]`,
+    `created: ${(/* @__PURE__ */ new Date()).toISOString()}`,
+    `hits: ${n.hits ?? 1}`,
+    "---",
+    ""
+  ];
+  return lines.join("\n");
+}
+function ensureAlias(absPath) {
+  try {
+    const raw = fs.readFileSync(absPath, "utf8");
+    const { data, content } = matter(raw);
+    if (!data.title || data.aliases) return false;
+    data.aliases = [String(data.title)];
+    fs.writeFileSync(absPath, matter.stringify(content, data));
+    return true;
+  } catch {
+    return false;
+  }
+}
+function createNote(managed, n) {
+  const dir = path.join(managed, n.dir ?? "notes");
+  fs.mkdirSync(dir, { recursive: true });
+  const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const base = `${date}-${slugify(n.title)}`;
+  let file = path.join(dir, `${base}.md`);
+  let i = 2;
+  while (fs.existsSync(file)) file = path.join(dir, `${base}-${i++}.md`);
+  fs.writeFileSync(
+    file,
+    frontmatter({ title: n.title, type: n.type ?? "note", tags: n.tags ?? [], status: n.status }) + n.content.trim() + "\n"
+  );
+  return file;
+}
+function setNoteStatus(absPath, status) {
+  const raw = fs.readFileSync(absPath, "utf8");
+  const { data, content } = matter(raw);
+  data.status = status;
+  data.updated = (/* @__PURE__ */ new Date()).toISOString();
+  fs.writeFileSync(absPath, matter.stringify(content, data));
+}
+function touchNote(absPath) {
+  const raw = fs.readFileSync(absPath, "utf8");
+  const { data, content } = matter(raw);
+  data.hits = (typeof data.hits === "number" ? data.hits : 1) + 1;
+  data.updated = (/* @__PURE__ */ new Date()).toISOString();
+  fs.writeFileSync(absPath, matter.stringify(content, data));
+}
+function upsertNote(managed, n) {
+  const dir = path.join(managed, n.dir ?? "notes");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${n.fixedName}.md`);
+  if (fs.existsSync(file)) {
+    const raw = fs.readFileSync(file, "utf8");
+    const { data } = matter(raw);
+    data.updated = (/* @__PURE__ */ new Date()).toISOString();
+    fs.writeFileSync(file, matter.stringify(n.content.trim() + "\n", data));
+  } else {
+    fs.writeFileSync(
+      file,
+      frontmatter({ title: n.title, type: n.type ?? "note", tags: n.tags ?? [], status: n.status }) + n.content.trim() + "\n"
+    );
+  }
+  return file;
+}
+function appendToNote(managed, n) {
+  const dir = path.join(managed, n.dir ?? "sessions");
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, `${n.fixedName}.md`);
+  if (fs.existsSync(file)) {
+    fs.appendFileSync(file, "\n" + n.content.trim() + "\n");
+  } else {
+    fs.writeFileSync(
+      file,
+      frontmatter({ title: n.title, type: n.type ?? "session", tags: n.tags ?? [], status: n.status }) + n.content.trim() + "\n"
+    );
+  }
+  return file;
+}
+
+// src/core/index.ts
+import fs2 from "fs";
+import path2 from "path";
+function isHookProcess() {
+  return process.env.ALEXANDRIA_HOOK === "1";
+}
 var SEMANTIC_THRESHOLD = 0.9;
 var SEMANTIC_TOP = 3;
 var VaultIndex = class _VaultIndex {
@@ -38,27 +193,34 @@ var VaultIndex = class _VaultIndex {
   /** diccionario lazy tag/type → rels; la bóveda nunca borra, así que los
    *  escaneos lineales sobre TODAS las notas crecen para siempre — esto los evita */
   _tagIndex = null;
+  /**
+   * ¿Puede este contexto reconstruir el índice entero (caro)? true en CLI,
+   * false en hooks — un hook con presupuesto corto jamás debe intentarlo.
+   * Default = lo que diga el proceso (runHook marca el proceso como hook), así
+   * queda cubierto CUALQUIER camino de código, no solo los que pasan el flag.
+   */
+  allowFullRebuild = !isHookProcess();
   get metaPath() {
-    return path.join(this.vault.cache, "meta.json");
+    return path2.join(this.vault.cache, "meta.json");
   }
   get embPath() {
-    return path.join(this.vault.cache, "embeddings.bin");
+    return path2.join(this.vault.cache, "embeddings.bin");
   }
   static load(vault) {
     const idx = new _VaultIndex(vault);
     try {
-      const meta = JSON.parse(fs.readFileSync(idx.metaPath, "utf8"));
+      const meta = JSON.parse(fs2.readFileSync(idx.metaPath, "utf8"));
       if (meta.version === 1 && meta.model === MODEL_ID) {
         idx.meta = meta;
         try {
-          const buf = fs.readFileSync(idx.embPath);
+          const buf = fs2.readFileSync(idx.embPath);
           const arr = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
           if (arr.length === meta.chunks.length * meta.dim) {
             idx.emb = arr.slice();
           } else {
             idx.emb = null;
             try {
-              fs.rmSync(idx.embPath, { force: true });
+              fs2.rmSync(idx.embPath, { force: true });
             } catch {
             }
           }
@@ -67,24 +229,50 @@ var VaultIndex = class _VaultIndex {
         }
       }
     } catch (e) {
-      if (fs.existsSync(idx.metaPath)) {
+      if (fs2.existsSync(idx.metaPath)) {
         try {
-          fs.rmSync(idx.metaPath, { force: true });
-          fs.rmSync(idx.embPath, { force: true });
+          fs2.rmSync(idx.metaPath, { force: true });
+          fs2.rmSync(idx.embPath, { force: true });
         } catch {
         }
       }
     }
     return idx;
   }
+  get rebuildFlagPath() {
+    return path2.join(this.vault.cache, "needs-rebuild");
+  }
+  /** Deja constancia de que el índice está degradado y hace falta un reindex completo. */
+  markNeedsRebuild() {
+    try {
+      if (fs2.existsSync(this.rebuildFlagPath)) return;
+      fs2.mkdirSync(this.vault.cache, { recursive: true });
+      fs2.writeFileSync(this.rebuildFlagPath, (/* @__PURE__ */ new Date()).toISOString());
+    } catch {
+    }
+  }
+  /** ¿El índice tiene chunks pero le faltan los vectores (búsqueda degradada)? */
+  isDegraded() {
+    return this.emb === null && this.meta.chunks.length > 0 && modelPresent();
+  }
+  /** ¿El índice quedó marcado como degradado (chunks sin vectores)? */
+  needsRebuild() {
+    return fs2.existsSync(this.rebuildFlagPath);
+  }
+  clearNeedsRebuild() {
+    try {
+      fs2.rmSync(this.rebuildFlagPath, { force: true });
+    } catch {
+    }
+  }
   /** Escritura atómica: tmp + rename — un hook y un comando concurrentes nunca dejan el archivo a medias. */
   writeAtomic(file, data) {
     const tmp = `${file}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, data);
-    fs.renameSync(tmp, file);
+    fs2.writeFileSync(tmp, data);
+    fs2.renameSync(tmp, file);
   }
   save() {
-    fs.mkdirSync(this.vault.cache, { recursive: true });
+    fs2.mkdirSync(this.vault.cache, { recursive: true });
     this.writeAtomic(this.metaPath, JSON.stringify(this.meta));
     if (this.emb) {
       this.writeAtomic(this.embPath, Buffer.from(this.emb.buffer, this.emb.byteOffset, this.emb.byteLength));
@@ -101,11 +289,16 @@ var VaultIndex = class _VaultIndex {
     const files = listMarkdownFiles(this.vault.root);
     const onDisk = /* @__PURE__ */ new Map();
     for (const abs of files) {
-      const rel = path.relative(this.vault.root, abs).split(path.sep).join("/");
-      onDisk.set(rel, { abs, mtime: fs.statSync(abs).mtimeMs });
+      const rel = path2.relative(this.vault.root, abs).split(path2.sep).join("/");
+      onDisk.set(rel, { abs, mtime: fs2.statSync(abs).mtimeMs });
     }
     if (withEmbeddings && this.emb === null && this.meta.chunks.length > 0) {
-      force = true;
+      if (this.allowFullRebuild) {
+        force = true;
+      } else {
+        this.markNeedsRebuild();
+        withEmbeddings = false;
+      }
     }
     const changed = [];
     for (const [rel, info] of onDisk) {
@@ -133,10 +326,10 @@ var VaultIndex = class _VaultIndex {
     for (const rel of changed) {
       const info = onDisk.get(rel);
       try {
-        const managedRel = path.relative(this.vault.root, this.vault.managed).split(path.sep).join("/");
+        const managedRel = path2.relative(this.vault.root, this.vault.managed).split(path2.sep).join("/");
         const inManaged = managedRel === "" || rel.startsWith(`${managedRel}/`);
         if (inManaged && ensureAlias(info.abs)) {
-          info.mtime = fs.statSync(info.abs).mtimeMs;
+          info.mtime = fs2.statSync(info.abs).mtimeMs;
         }
         const note = parseNote(this.vault.root, info.abs);
         this.meta.notes[rel] = {
@@ -195,8 +388,10 @@ ${c.text}`),
     }
     this.rebuildLinks();
     this.save();
+    if (this.emb !== null) this.clearNeedsRebuild();
+    else if (this.meta.chunks.length > 0 && modelPresent()) this.markNeedsRebuild();
     try {
-      const { writeStaticGraph } = await import("./viewer-2YMJBQRH.js");
+      const { writeStaticGraph } = await import("./viewer-JQCSWJ3C.js");
       writeStaticGraph(this);
     } catch {
     }
@@ -285,5 +480,11 @@ ${c.text}`),
 };
 
 export {
+  slugify,
+  createNote,
+  setNoteStatus,
+  touchNote,
+  upsertNote,
+  appendToNote,
   VaultIndex
 };

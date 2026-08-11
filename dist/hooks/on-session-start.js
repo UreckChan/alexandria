@@ -6,17 +6,16 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-DEDAOKAV.js";
+} from "../chunk-53SIGH5A.js";
 import {
   protocolEnabled,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-TFQ7WSIB.js";
+} from "../chunk-CIOCSIB5.js";
 import {
   VaultIndex
-} from "../chunk-AXUEYSNZ.js";
-import "../chunk-XWR74BQ2.js";
+} from "../chunk-QB37UGO6.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-session-start.ts
