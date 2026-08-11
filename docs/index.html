@@ -378,6 +378,15 @@ ale init --agents claude,cursor,opencode   # solo estos</code></pre>
       </div>
 
       <div class="cmd">
+        <h3>ale skills:evolve</h3>
+        <p class="desc"><span class="only-es">Genera/actualiza la skill viva del proyecto desde la bóveda (stack, convenciones, flujo, lecciones). <strong>Siempre muestra el diff y pide aprobación</strong>; en terminal no interactiva no escribe nada.</span><span class="only-en">Generates/updates the project's living skill from the vault (stack, conventions, flow, lessons). <strong>Always shows a diff and asks for approval</strong>; writes nothing in a non-interactive terminal.</span></p>
+        <div class="tbl-wrap"><table class="opt"><tbody>
+          <tr><td>-y, --yes</td><td><span class="only-es">escribir sin preguntar (para scripts)</span><span class="only-en">write without asking (for scripts)</span></td></tr>
+          <tr><td>--global</td><td><span class="only-es">guardar en <code>~/.claude/skills</code> en vez del proyecto</span><span class="only-en">save to <code>~/.claude/skills</code> instead of the project</span></td></tr>
+        </tbody></table></div>
+      </div>
+
+      <div class="cmd">
         <h3>ale uninstall</h3>
         <p class="desc"><span class="only-es">Reversión limpia: quita los hooks, el bloque marcado de CLAUDE.md y la entrada MCP del proyecto. <strong>Nunca borra la bóveda ni las notas</strong> — tu conocimiento queda intacto en markdown.</span><span class="only-en">Clean revert: removes hooks, the marked CLAUDE.md block and the project's MCP entry. <strong>Never deletes the vault or your notes</strong> — your knowledge stays intact as markdown.</span></p>
         <div class="tbl-wrap"><table class="opt"><tbody>
@@ -475,6 +484,7 @@ ale config set tokens.solutionCache false    # scriptable, uno por uno</code></p
           <tr><td><code>tokens.solutionCache</code></td><td><span class="only-es">Inyecta la solución de un prompt casi idéntico anterior</span><span class="only-en">Injects the solution of a nearly identical past prompt</span></td><td><span class="only-es">hasta ~500 tokens/prompt; evita re-derivar completo</span><span class="only-en">up to ~500 tokens/prompt; avoids full re-derivation</span></td></tr>
           <tr><td><code>tokens.promptSearch</code></td><td><span class="only-es">Búsqueda semántica por prompt — el mecanismo PRINCIPAL de ahorro</span><span class="only-en">Per-prompt semantic search — the MAIN saving mechanism</span></td><td><span class="only-es">hasta ~1500 tokens/prompt; apagarlo apaga la razón de ser de Alexandria</span><span class="only-en">up to ~1500 tokens/prompt; turning it off defeats Alexandria's purpose</span></td></tr>
           <tr><td><code>digest.map</code></td><td><span class="only-es">Mapa del proyecto al iniciar sesión</span><span class="only-en">Project map at session start</span></td><td><span class="only-es">hasta ~50% del digest (~1000 tokens); evita re-explorar</span><span class="only-en">up to ~50% of the digest (~1000 tokens); avoids re-exploring</span></td></tr>
+          <tr><td><code>index.autoRebuild</code></td><td><span class="only-es">Reparar el índice en segundo plano al cerrar la sesión si quedó sin vectores (v1.2.0)</span><span class="only-en">Rebuild the index in the background at session close if it lost its vectors (v1.2.0)</span></td><td><span class="only-es">no gasta tokens; sin esto la búsqueda puede quedarse en keyword-only (peor contexto por prompt)</span><span class="only-en">costs no tokens; without it search can stay keyword-only (worse context per prompt)</span></td></tr>
           <tr><td><code>digest.titleIndex</code></td><td><span class="only-es">Índice de hasta 25 títulos que la bóveda ya sabe</span><span class="only-en">Index of up to 25 titles the vault already knows</span></td><td><span class="only-es">~10% del digest (~200 tokens)</span><span class="only-en">~10% of the digest (~200 tokens)</span></td></tr>
         </tbody>
       </table></div>
