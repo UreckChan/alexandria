@@ -183,7 +183,7 @@ footer .links a{display:inline-flex;align-items:center;gap:6px}
     <button class="btn icon-btn menu-btn" id="menuBtn" aria-label="menu"><svg class="ic"><use href="#ic-menu"/></svg></button>
     <a class="brand" href="#top">
       <svg class="logo-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-lighthouse"/></svg>
-      Alexandria <span class="ver">v1.2.0</span>
+      Alexandria <span class="ver">v1.3.0</span>
     </a>
     <div class="spacer"></div>
     <div class="ctrl">
@@ -275,7 +275,7 @@ deno install -grA -n ale npm:@ureck/alexandria/ale
 # (si Deno se queja de "minimum dependency date", añade --minimum-dependency-age=0)</code></pre>
       <p><span class="only-es">Verifica:</span><span class="only-en">Verify:</span></p>
 <pre><code>$ ale --version
-1.2.0</code></pre>
+1.3.0</code></pre>
       <h3><span class="only-es">Desinstalar</span><span class="only-en">Uninstall</span></h3>
 <pre><code>ale uninstall            # global: quita hooks + bloque de CLAUDE.md
 ale uninstall --project  # solo de este proyecto (hooks + .mcp.json)
@@ -541,7 +541,8 @@ ale agents cursor,gemini   # solo estos</code></pre>
           <tr><td>Claude Code</td><td><code>.mcp.json</code> / <code>claude mcp add</code> + hooks</td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
           <tr><td>Cursor</td><td><code>~/.cursor/mcp.json</code> / <code>.cursor/mcp.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
           <tr><td>OpenCode</td><td><code>opencode.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
-          <tr><td>Windsurf</td><td><code>~/.codeium/windsurf/mcp_config.json</code></td><td>—</td></tr>
+          <tr><td>Devin CLI (Cognition)</td><td><code>.devin/mcp_config.local.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
+          <tr><td>Windsurf <span class="only-es">(legacy)</span><span class="only-en">(legacy)</span></td><td><code>~/.codeium/windsurf/mcp_config.json</code></td><td>—</td></tr>
           <tr><td>Cline</td><td><code>cline_mcp_settings.json</code> (VS Code)</td><td>—</td></tr>
           <tr><td>Codex CLI</td><td><code>~/.codex/config.toml</code></td><td>—</td></tr>
           <tr><td>Gemini CLI</td><td><code>~/.gemini/settings.json</code> / <code>.gemini/settings.json</code></td><td><svg class="ic tick"><use href="#ic-check"/></svg></td></tr>
@@ -662,10 +663,11 @@ ale agents cursor,gemini   # solo estos</code></pre>
     <!-- CHANGELOG -->
     <section id="changelog">
       <h2><svg class="ic"><use href="#ic-clock"/></svg> <span class="only-es">Historial de versiones</span><span class="only-en">Changelog</span></h2>
-      <p><span class="only-es">Versión actual: <strong>v1.2.0</strong>. Resumen de lo más reciente (ver el <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG completo</a>):</span><span class="only-en">Current version: <strong>v1.2.0</strong>. Recent highlights (see the <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener">full CHANGELOG</a>):</span></p>
+      <p><span class="only-es">Versión actual: <strong>v1.3.0</strong>. Resumen de lo más reciente (ver el <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener">CHANGELOG completo</a>):</span><span class="only-en">Current version: <strong>v1.3.0</strong>. Recent highlights (see the <a href="https://github.com/UreckChan/alexandria/blob/main/CHANGELOG.md" target="_blank" rel="noopener">full CHANGELOG</a>):</span></p>
       <div class="tbl-wrap"><table>
         <thead><tr><th><span class="only-es">Versión</span><span class="only-en">Version</span></th><th><span class="only-es">Cambios</span><span class="only-en">Changes</span></th></tr></thead>
         <tbody>
+          <tr><td><code>1.3.0</code></td><td><span class="only-es">Soporte para <strong>Devin CLI</strong> (sucesor de Windsurf): <code>ale agents devin --project</code>, verificado contra el CLI real. Antes, en 1.2.1, <code>task_verify</code> aceptó <code>cwd</code> — el comando de verificación corría desde la raíz del workspace y rompía rutas relativas (detectado probando en OpenCode).</span><span class="only-en">Support for <strong>Devin CLI</strong> (Windsurf's successor): <code>ale agents devin --project</code>, verified against the real CLI. Earlier, in 1.2.1, <code>task_verify</code> gained <code>cwd</code> — the verify command ran from the workspace root and broke relative paths (found while testing in OpenCode).</span></td></tr>
           <tr><td><code>1.2.0</code></td><td><span class="only-es"><strong>Fix del contexto que "a veces no entraba"</strong>: los hooks ya no reconstruyen el índice (bucle que moría a los 25-30s y dejaba la búsqueda rota para siempre) — ahora ~550ms medidos; errores de hook con registro en vez de silencio; <code>ale skills:evolve</code> (skill viva del proyecto, con diff y aprobación); escáner de <strong>flujo</strong> (ruta→auth→datos); fix de config de Codex que se corrompía al re-registrar; <code>--portable</code> ahora aplica a los 10 agentes; tests 33→48.</span><span class="only-en"><strong>Fix for context that "sometimes didn't show up"</strong>: hooks no longer rebuild the index (a loop that died at 25-30s and left search broken forever) — now ~550ms measured; hook errors logged instead of silent; <code>ale skills:evolve</code> (living project skill, diff + approval); <strong>flow</strong> scanner (route→auth→data); fixed Codex config corruption on re-register; <code>--portable</code> now applies to all 10 agents; tests 33→48.</span></td></tr>
           <tr><td><code>1.1.0</code></td><td><span class="only-es"><code>ale toggles</code>: control de todo lo que gasta tokens con costos reales, antes o después de instalar (<code>init --off</code>); Arquitecto a mitad de costo (193→90 tokens medidos); <code>ale scan</code> con cap adaptativo ≤200 y muestreo justo en monorepos (ya no pierde carpetas); diccionario interno por tag para que audit/digest escalen con años de bóveda.</span><span class="only-en"><code>ale toggles</code>: control everything that spends tokens with real costs, before or after install (<code>init --off</code>); Architect at half cost (193→90 measured tokens); <code>ale scan</code> with adaptive cap ≤200 and fair sampling in monorepos (no more lost folders); internal tag dictionary so audit/digest scale with years of vault.</span></td></tr>
           <tr><td><code>1.0.0</code></td><td><span class="only-es">Primera estable: <code>ale scan</code> (contexto profundo — API, env solo-nombres, esquema por archivos, convenciones — gitignoreado y re-ejecutable); <code>plan_create</code> planea como Arquitecto (diseño + planes similares + lecciones + hints); índice a prueba de corrupción (escritura atómica + auto-reconstrucción); doctor ampliado; tests 9→27.</span><span class="only-en">First stable: <code>ale scan</code> (deep context — API, env names-only, schema from files, conventions — gitignored & re-runnable); <code>plan_create</code> plans like an Architect (design + similar plans + lessons + hints); corruption-proof index (atomic writes + self-rebuild); expanded doctor; tests 9→27.</span></td></tr>

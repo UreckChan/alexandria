@@ -10,7 +10,7 @@
 
 Alexandria automatically captures your AI prompts and sessions, searches that knowledge **before** spending tokens, and connects everything in an Obsidian-style graph. **100% local**: no database, no API keys, no telemetry, no cost.
 
-Works with the most popular agents via MCP: **Claude Code · Cursor · OpenCode · Windsurf · Cline · Codex CLI · Gemini CLI · VS Code (Copilot) · OpenClaw · Hermes Agent**.
+Works with the most popular agents via MCP: **Claude Code · Cursor · OpenCode · Devin CLI · Cline · Codex CLI · Gemini CLI · VS Code (Copilot) · OpenClaw · Hermes Agent · Windsurf (legacy)**.
 
 ## Why?
 
@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.2.1
+1.3.0
 ```
 
 ## Getting started
@@ -252,7 +252,8 @@ ale agents cursor,gemini   # just these
 | Claude Code | `.mcp.json` / `claude mcp add` + hooks | ✓ |
 | Cursor | `~/.cursor/mcp.json` / `.cursor/mcp.json` | ✓ |
 | OpenCode | `opencode.json` | ✓ |
-| Windsurf | `~/.codeium/windsurf/mcp_config.json` | — |
+| Devin CLI (Cognition) | `.devin/mcp_config.local.json` | ✓ |
+| Windsurf (legacy) | `~/.codeium/windsurf/mcp_config.json` | — |
 | Cline | `cline_mcp_settings.json` (VS Code) | — |
 | Codex CLI | `~/.codex/config.toml` | — |
 | Gemini CLI | `~/.gemini/settings.json` / `.gemini/settings.json` | ✓ |

@@ -455,11 +455,32 @@ var AGENTS = [
   },
   {
     id: "windsurf",
-    name: "Windsurf",
+    name: "Windsurf (legacy \u2192 Devin)",
     supportsProject: false,
     detect: () => fs3.existsSync(home(".codeium", "windsurf")),
     register() {
       return mergeMcpServers(home(".codeium", "windsurf", "mcp_config.json"));
+    }
+  },
+  {
+    id: "devin",
+    name: "Devin CLI (Cognition)",
+    supportsProject: true,
+    // El CLI vive en ~/.local/bin/devin y guarda config MCP por proyecto en .devin/
+    detect: () => fs3.existsSync(home(".devin")) || fs3.existsSync(home(".local", "bin", "devin")),
+    register(scope, projectDir) {
+      const dir = scope === "project" ? projectDir : home();
+      const file = path3.join(dir, ".devin", "mcp_config.local.json");
+      try {
+        const cfg = readJsonSafe(file);
+        const servers = cfg["mcpServers"] ?? {};
+        servers["alexandria"] = { ...serverCmd(), transport: "stdio" };
+        cfg["mcpServers"] = servers;
+        writeJson(file, cfg);
+        return { ok: true, file };
+      } catch (e) {
+        return { ok: false, file, detail: e.message };
+      }
     }
   },
   {
@@ -684,7 +705,8 @@ var PERSONAL_CONFIG_FILES = [
   ".cursor/mcp.json",
   "opencode.json",
   ".vscode/mcp.json",
-  ".gemini/settings.json"
+  ".gemini/settings.json",
+  ".devin/mcp_config.local.json"
 ];
 function ensureGitignore(projectDir, vaultRoot) {
   if (!fs4.existsSync(path4.join(projectDir, ".git"))) return null;
