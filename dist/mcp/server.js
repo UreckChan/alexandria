@@ -29,6 +29,26 @@ import { execSync } from "child_process";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+
+// src/core/hints.ts
+var NOT_FOUND = /no such file|not found|cannot find|ENOENT|does not exist/i;
+var RELATIVE_PATH = /(?:^|\s)(?!-)(?!\/)[\w.-]*\.\w+|(?:^|\s)\.{1,2}\//;
+function pathHint(cmd, cwdArg, runDir, evidence) {
+  if (!cmd) return "";
+  if (!NOT_FOUND.test(evidence)) return "";
+  if (!RELATIVE_PATH.test(cmd)) return "";
+  const asked = cwdArg?.trim();
+  const suggested = asked || "<carpeta-del-proyecto>";
+  const clientDropped = Boolean(asked) && asked !== runDir;
+  return `
+
+\u{1F4A1} El comando se ejecut\xF3 en: ${runDir}` + (clientDropped ? ` \u2014 tu \`cwd\` NO lleg\xF3 (algunos clientes MCP descartan par\xE1metros nuevos hasta reiniciar la sesi\xF3n).` : ` \u2014 probablemente NO es la carpeta de tu proyecto.`) + `
+   Ruta relativa + directorio equivocado = "no such file". Dos salidas:
+   1) comando autocontenido (funciona en CUALQUIER cliente): \`cd ${suggested} && ${cmd}\`
+   2) rutas absolutas en el comando.`;
+}
+
+// src/mcp/server.ts
 var vault = resolveVault({ cwd: process.cwd() });
 var server = new McpServer({ name: "alexandria", version: pkgVersion() });
 var text = (t) => ({ content: [{ type: "text", text: t }] });
@@ -258,7 +278,7 @@ ${planNote ? `Plan: [[${planNote.title}]]` : ""}`
     if (!realPassed) {
       const lessons = await hybridSearch(vault, `${task} ${realEvidence.slice(0, 200)}`, 3);
       const useful = lessons.filter((l) => l.note.type === "lesson" || l.note.type === "solution");
-      const head = `Fallo ${verified ? "CONFIRMADO por el comando" : "registrado (auto-reportado)"} (${path.relative(vault.root, file)}).${discrepancy}`;
+      const head = `Fallo ${verified ? "CONFIRMADO por el comando" : "registrado (auto-reportado)"} (${path.relative(vault.root, file)}).${discrepancy}` + pathHint(verify_command, cwd, runDir, realEvidence);
       if (useful.length > 0) {
         return text(
           `${head}

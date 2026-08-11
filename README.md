@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.3.0
+1.3.1
 ```
 
 ## Getting started
