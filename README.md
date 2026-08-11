@@ -34,7 +34,7 @@ It lives in the MCP tools themselves — their names and descriptions carry the 
 | MCP tool | What the agent does with it | Token payoff |
 |---|---|---|
 | `plan_create(title, goal, dod, tasks, design?)` | Plans like an **architect**: clarifies vague goals first, optionally records the architecture (`design` → a `## Design` section), and the response surfaces **similar past plans + relevant lessons** plus quality hints (verifiable DoD, small tasks) — suggestions, never a gate | No wandering; open plans are re-injected next session so work is resumed, not repeated |
-| `task_verify(plan, task, passed, verify_command)` | **Runs** `verify_command` (e.g. `npm test`) and takes the verdict from the real exit code — not from the agent's word. Flags a **discrepancy** if the agent claimed otherwise; without a command the note is tagged `self-reported` and `ale audit` calls it out | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
+| `task_verify(plan, task, passed, verify_command, cwd?)` | **Runs** `verify_command` (e.g. `npm test`) and takes the verdict from the real exit code — not from the agent's word. Flags a **discrepancy** if the agent claimed otherwise; without a command the note is tagged `self-reported` and `ale audit` calls it out | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
 | `lesson_extract(title, lesson, links)` | Distills the root cause + fix after solving something non-obvious | ~200 tokens today replace ~20,000 tokens of re-debugging next month |
 
 Lessons and solutions get a ranking boost in search, so the most valuable knowledge always surfaces first. The protocol is **on by default**; toggle it anytime:
@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.2.0
+1.2.1
 ```
 
 ## Getting started
@@ -142,7 +142,7 @@ ale init --off architect.enrich,digest.map   # disable from the start
 ale config set tokens.solutionCache false    # scriptable, one by one
 ```
 
-The six toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens). All on by default; nothing changes unless you touch them.
+The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), and background index rebuild at session close (costs no tokens). All on by default; nothing changes unless you touch them.
 
 ### Deep project context (`ale scan`)
 

@@ -186,10 +186,11 @@ server.tool(
     task: z.string().describe("Qu\xE9 tarea se verific\xF3"),
     passed: z.boolean().describe("Lo que T\xDA crees que pas\xF3 (se compara contra el resultado real del comando)"),
     verify_command: z.string().optional().describe('Comando a EJECUTAR para verificar de verdad; exit 0 = pas\xF3. Ej. "npm test", "npm run build". Preferido sobre evidence.'),
+    cwd: z.string().optional().describe("Directorio donde correr verify_command. Por defecto se usa el del agente (a menudo la RA\xCDZ del workspace, no tu subproyecto): si tu comando usa rutas relativas, pasa aqu\xED la carpeta del proyecto."),
     evidence: z.string().optional().describe("Solo si NO hay comando: evidencia textual (queda marcada como auto-reportada, sin verificar)."),
     completes_plan: z.boolean().optional().describe("true si esta era la \xFAltima tarea y el plan queda completado")
   },
-  async ({ plan, task, passed, verify_command, evidence, completes_plan }) => {
+  async ({ plan, task, passed, verify_command, cwd, evidence, completes_plan }) => {
     ensureVaultStructure(vault);
     const idx = VaultIndex.load(vault);
     const planNote = findByTitle(idx, plan);
@@ -197,11 +198,12 @@ server.tool(
     let realEvidence;
     let verified = false;
     let discrepancy = "";
+    const runDir = cwd?.trim() && fs.existsSync(cwd.trim()) ? cwd.trim() : process.cwd();
     if (verify_command && verify_command.trim()) {
       verified = true;
       try {
         const out = execSync(verify_command, {
-          cwd: process.cwd(),
+          cwd: runDir,
           timeout: 18e4,
           encoding: "utf8",
           stdio: ["ignore", "pipe", "pipe"],
@@ -209,14 +211,14 @@ server.tool(
         });
         realPassed = true;
         realEvidence = `$ ${verify_command}
-(exit 0)
+(cwd: ${runDir}, exit 0)
 ${tail(out, 1500)}`;
       } catch (e) {
         const err = e;
         realPassed = false;
         const output = ((err.stdout ?? "") + "\n" + (err.stderr ?? "")).trim() || err.message;
         realEvidence = `$ ${verify_command}
-(exit ${err.status ?? "\u22600"})
+(cwd: ${runDir}, exit ${err.status ?? "\u22600"})
 ${tail(output, 1500)}`;
       }
       if (passed !== realPassed) {
