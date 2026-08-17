@@ -3,8 +3,64 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alexandria — Documentación / Docs</title>
-<meta name="description" content="Alexandria: bóveda de conocimiento local para agentes de IA. Documentación de comandos, uso y dudas técnicas. / Local knowledge vault for AI agents. Command docs, usage and technical FAQ.">
+<title>Alexandria — Memoria y bóveda de conocimiento local para agentes de IA</title>
+<meta name="description" content="Almacén de conocimiento local para agentes de IA: guarda decisiones y lecciones, las busca por significado en menos de 100 ms y ahorra tokens. 100% local.">
+<meta name="keywords" content="alexandria, almacén de conocimiento, bóveda de conocimiento, memoria para agentes de IA, manejo de IA, contexto para agentes, ahorro de tokens, búsqueda semántica local, grafo de conocimiento, vault de Obsidian, MCP, Model Context Protocol, protocolo de agentes, planear ejecutar verificar aprender, skills vivas, escaneo de proyecto, CLI, 100% local, sin telemetría, Claude Code, Cursor, Codex CLI, Gemini CLI, Cline, OpenCode, knowledge vault, AI agent memory, semantic search, knowledge graph, token savings, offline first, npm package">
+<link rel="canonical" href="https://alexandria.ureck.dev/">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+<meta name="author" content="Uriel Gómez Becerril">
+<link rel="alternate" hreflang="es" href="https://alexandria.ureck.dev/">
+<link rel="alternate" hreflang="en" href="https://alexandria.ureck.dev/">
+<link rel="alternate" hreflang="x-default" href="https://alexandria.ureck.dev/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Alexandria">
+<meta property="og:title" content="Alexandria — Memoria y bóveda de conocimiento local para agentes de IA">
+<meta property="og:description" content="Tus agentes dejan de empezar de cero: Alexandria guarda decisiones, arquitectura y lecciones, y se las devuelve cuando hacen falta. Búsqueda semántica local en menos de 100 ms, grafo estilo Obsidian y protocolo de planear, ejecutar, verificar y aprender. 100% local.">
+<meta property="og:url" content="https://alexandria.ureck.dev/">
+<meta property="og:locale" content="es_MX">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Alexandria — Memoria local para agentes de IA">
+<meta name="twitter:description" content="Almacén de conocimiento local para agentes de IA: ahorra tokens, recuerda entre sesiones y convierte cada modelo en un ingeniero disciplinado.">
+<meta name="theme-color" content="#b8860b">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Alexandria",
+  "alternateName": "@ureck/alexandria",
+  "applicationCategory": "DeveloperApplication",
+  "applicationSubCategory": "CLI / MCP server",
+  "operatingSystem": "macOS, Linux, Windows",
+  "url": "https://alexandria.ureck.dev/",
+  "downloadUrl": "https://www.npmjs.com/package/@ureck/alexandria",
+  "codeRepository": "https://github.com/UreckChan/alexandria",
+  "license": "https://opensource.org/licenses/MIT",
+  "inLanguage": ["es", "en"],
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": {
+    "@type": "Person",
+    "name": "Uriel Gómez Becerril",
+    "url": "https://www.ureck.dev"
+  },
+  "description": "Almacén de conocimiento local para agentes de IA. Guarda prompts, decisiones de arquitectura, soluciones y lecciones en notas enlazadas, las busca por significado en menos de 100 ms y se las devuelve al agente antes de gastar tokens redescubriendo lo que ya sabía. Todo vive en tu máquina: sin cuentas, sin API keys, sin base de datos y sin telemetría.",
+  "featureList": [
+    "Búsqueda semántica local en menos de 100 ms / Local semantic search in under 100 ms",
+    "Grafo de conocimiento enlazado, compatible con Obsidian / Linked knowledge graph, valid Obsidian vault",
+    "Memoria entre sesiones: el agente recuerda decisiones y soluciones previas / Cross-session memory",
+    "Ahorro de tokens: evita reanalizar el proyecto en cada sesión / Token savings, zero re-analysis",
+    "Protocolo planear, ejecutar, verificar y aprender / Plan, execute, verify and learn protocol",
+    "Escaneo del proyecto: rutas de API, variables de entorno, esquema de datos y convenciones / Project scan",
+    "Skills vivas que evolucionan con el proyecto / Living skills",
+    "Extracción automática de lecciones al resolver errores no obvios / Automatic lesson extraction",
+    "Integración por MCP con Claude Code, Cursor, Codex CLI, Gemini CLI, VS Code Copilot, OpenCode, Cline y Windsurf",
+    "100% local y multiplataforma: sin cuentas, sin API keys, sin telemetría / Fully local and cross-platform"
+  ]
+}
+</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b8860b' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 21 9.5 9h5L16 21Z'/%3E%3Cpath d='M6 21h12'/%3E%3Cpath d='M9.5 9V6h5v3'/%3E%3Cpath d='M9 6l3-3 3 3'/%3E%3Cpath d='M9.5 7.5 6 6'/%3E%3Cpath d='M14.5 7.5 18 6'/%3E%3Cpath d='M9.2 15h5.6'/%3E%3C/svg%3E">
 <style>
 :root{
