@@ -138,7 +138,9 @@ function registerMcpGlobal(portable = false) {
   try {
     execFileSync("claude", ["mcp", "add", "--scope", "user", "alexandria", "--", command, ...args], {
       stdio: "pipe",
-      timeout: 15e3
+      timeout: 15e3,
+      shell: process.platform === "win32"
+      // en Windows los binarios globales de npm son shims .cmd/.ps1
     });
     return true;
   } catch {

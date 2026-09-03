@@ -16,7 +16,7 @@ import {
   registerMcpProject,
   serverCommand,
   unregisterHooks
-} from "./chunk-ZIQYAQCF.js";
+} from "./chunk-5A6CC74D.js";
 import {
   hybridSearch,
   protocolChain
@@ -258,7 +258,7 @@ ${items}
   }
   let body = parts.join("\n");
   if (body.length > MAX_BODY_CHARS) body = body.slice(0, MAX_BODY_CHARS) + "\n\n\u2026(truncado)\n";
-  const skillName = `proyecto-${slug}`;
+  const skillName = slug.startsWith("proyecto-") ? slug : `proyecto-${slug}`;
   const desc = `Conocimiento vivo del proyecto ${projectName}: stack, convenciones, flujo de la aplicaci\xF3n y lecciones ya aprendidas. \xDAsala al trabajar en ${projectName} \u2014 antes de explorar el c\xF3digo o decidir arquitectura.`;
   const front = [
     "---",
@@ -566,7 +566,9 @@ args = [${tomlArgs}]
       try {
         execFileSync2("hermes", ["mcp", "add", "alexandria", "--command", serverCmd().command, "--args", serverCmd().args.join(" ")], {
           stdio: "pipe",
-          timeout: 15e3
+          timeout: 15e3,
+          shell: process.platform === "win32"
+          // en Windows los binarios globales de npm son shims .cmd/.ps1
         });
         return { ok: true, file, detail: "v\xEDa hermes mcp add" };
       } catch {
@@ -1582,7 +1584,7 @@ program.command("toggles").description("Activa/desactiva comportamientos que gas
   printList();
   console.log();
 });
-program.command("scan").description("Escanea el proyecto (API, env-nombres, datos, convenciones) \u2192 notas de contexto en la b\xF3veda. Re-ejecutable; solo-lectura del c\xF3digo; garantiza .gitignore").action(async () => {
+program.command("scan").description("Escanea el proyecto (API, env-nombres, datos, convenciones, flujo) \u2192 notas de contexto en la b\xF3veda. Re-ejecutable; solo-lectura del c\xF3digo; garantiza .gitignore").action(async () => {
   const vault = getVault();
   ensureVaultStructure(vault);
   const cwd = process.cwd();

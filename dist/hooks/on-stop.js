@@ -80,6 +80,8 @@ async function maybeRebuildInBackground(vault) {
     const child = spawn(process.execPath, [cli, "--vault", vault.root, "reindex", "--force"], {
       detached: true,
       stdio: "ignore",
+      windowsHide: true,
+      // Windows: sin esto puede parpadear una consola al cerrar sesión
       env: { ...process.env, ALEXANDRIA_HOOK: "" }
       // proceso CLI: sí puede reconstruir
     });
@@ -87,3 +89,6 @@ async function maybeRebuildInBackground(vault) {
   } catch {
   }
 }
+export {
+  maybeRebuildInBackground
+};
