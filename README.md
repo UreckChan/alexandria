@@ -317,6 +317,13 @@ AI agent session
 - **No API keys, no accounts, no cost.**
 - **`ale scan` never reads secrets**: it extracts environment variable **names** only (values are never copied), parses schema **files** (no live DB connection), and guarantees the vault is gitignored before writing — your notes never reach a shared repo.
 - Dependency scanners (Socket, etc.) flag *network/shell/env access* in the dependency tree: those come from the ML runtime (`onnxruntime`/`transformers.js`, which needs filesystem access and the one-time model download) and the official MCP SDK — not from Alexandria's code. The published package runs no install scripts of its own.
+- **`npm audit` may report `sharp <0.35.0` (libvips CVEs, [GHSA-f88m-g3jw-g9cj](https://github.com/advisories/GHSA-f88m-g3jw-g9cj))**, inherited from `@huggingface/transformers`. As of this writing no published version of `transformers.js` (including the newest, 4.x) uses a patched sharp, so there's no upstream fix yet — and it isn't reachable in Alexandria's own usage anyway: Alexandria only calls `pipeline('feature-extraction', ...)` for text embeddings and never touches images. If you want a clean `npm audit` in your own project, add this to its `package.json`:
+  ```json
+  "overrides": {
+    "sharp": "^0.35.4"
+  }
+  ```
+  (npm's `overrides` only applies at the root of an install, so this must go in *your* project — Alexandria declaring it in its own `package.json` doesn't propagate to consumers.)
 - Generated per-project configs (`.mcp.json`, `.vault.json`, etc.) point at your machine's install path, so `ale init --project` automatically gitignores them (and untracks any already committed) — they never leak to a shared repo. For a team that *wants* a shared MCP config, run `ale init --project --portable`, which writes an npx-based command that works on any machine.
 
 ## Support the project ☕
