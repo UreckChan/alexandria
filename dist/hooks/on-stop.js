@@ -9,7 +9,7 @@ import {
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-CIOCSIB5.js";
+} from "../chunk-7LWLBJAD.js";
 import {
   VaultIndex,
   appendToNote

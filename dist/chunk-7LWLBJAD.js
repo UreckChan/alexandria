@@ -99,6 +99,12 @@ function toggleEnabled(key) {
   const v = getConfigKey(key);
   return v !== false && v !== "false";
 }
+function initScopeWarning(opts) {
+  if (opts.project || opts.global) return null;
+  return `\u26A0 No se indic\xF3 --project ni --global: este vault se comparte con TODAS tus sesiones (~/Alexandria).
+  Si quer\xEDas un vault aislado SOLO para este proyecto: Ctrl+C y corre \`ale init --project\` en su lugar.
+`;
+}
 var TOKEN_TOGGLES = [
   {
     key: "protocol",
@@ -162,6 +168,7 @@ export {
   setConfigKey,
   protocolEnabled,
   toggleEnabled,
+  initScopeWarning,
   TOKEN_TOGGLES,
   writeProjectConfig
 };

@@ -27,6 +27,7 @@ import {
   ensureVaultStructure,
   getConfigKey,
   globalConfigPath,
+  initScopeWarning,
   protocolEnabled,
   resolveVault,
   setConfigKey,
@@ -34,7 +35,7 @@ import {
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-CIOCSIB5.js";
+} from "./chunk-7LWLBJAD.js";
 import {
   serveGraph
 } from "./chunk-FBGIFNIO.js";
@@ -1280,6 +1281,8 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   await showBanner();
   console.log(pc.bold(`Instalaci\xF3n ${isProject ? "por proyecto" : "global"}
 `));
+  const scopeWarning = initScopeWarning(opts);
+  if (scopeWarning) console.log(pc.yellow(scopeWarning));
   const vault = resolveVault({ flag: vaultPath });
   ensureVaultStructure(vault);
   console.log(pc.green(`\u2713 B\xF3veda en ${vault.root} (vault Obsidian v\xE1lido \u2014 \xE1brelo en Obsidian cuando quieras)`));
