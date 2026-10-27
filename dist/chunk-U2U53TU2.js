@@ -1,4 +1,10 @@
 #!/usr/bin/env node
+import {
+  currentHarness,
+  defaultOutput,
+  formatContext,
+  normalizeInput
+} from "./chunk-MDGFK6UC.js";
 
 // src/hooks/util.ts
 import fs from "fs";
@@ -16,6 +22,15 @@ async function readStdinJson() {
   }
 }
 var expired = false;
+var emitted = false;
+function emitContext(kind, text) {
+  if (expired) return 0;
+  const out = formatContext(currentHarness(), kind, text);
+  if (out === null) return 0;
+  process.stdout.write(out);
+  emitted = true;
+  return text.length;
+}
 function logHookError(kind, detail) {
   try {
     const dir = process.platform === "win32" && process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, "alexandria") : path.join(os.homedir(), ".cache", "alexandria");
@@ -30,7 +45,7 @@ function logHookError(kind, detail) {
   } catch {
   }
 }
-function runHook(budgetMs, body) {
+function runHook(budgetMs, body, kind = "stop") {
   process.env.ALEXANDRIA_HOOK = "1";
   const cleanup = async () => {
     try {
@@ -46,11 +61,13 @@ function runHook(budgetMs, body) {
   }, budgetMs);
   timer.unref();
   process.exitCode = 0;
-  readStdinJson().then((input) => body(input)).catch((e) => {
+  readStdinJson().then((raw) => body(normalizeInput(raw))).catch((e) => {
     logHookError("error", e instanceof Error ? `${e.message}
 ${e.stack ?? ""}` : String(e));
   }).finally(() => {
     clearTimeout(timer);
+    const fallback = emitted ? null : defaultOutput(currentHarness(), kind);
+    if (fallback) process.stdout.write(fallback);
     void cleanup();
   });
 }
@@ -63,6 +80,7 @@ function truncate(text, max) {
 }
 
 export {
+  emitContext,
   runHook,
   projectName,
   truncate

@@ -1,0 +1,73 @@
+{
+  "name": "alexandria",
+  "version": "1.4.0",
+  "description": "Local knowledge vault for AI agents: captures prompts/sessions, injects relevant context, semantic search offline, Alexandria Protocol (plan → verify → learn).",
+  "author": {
+    "name": "Ureck"
+  },
+  "homepage": "https://alexandria.ureck.dev",
+  "repository": "https://github.com/UreckChan/alexandria",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "knowledge-base",
+    "mcp",
+    "local-first"
+  ],
+  "mcpServers": "./.mcp.json",
+  "hooks": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook session-start --harness=codex || npx -y -p @ureck/alexandria alexandria hook session-start --harness=codex",
+              "timeout": 20
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook prompt --harness=codex || npx -y -p @ureck/alexandria alexandria hook prompt --harness=codex",
+              "timeout": 10
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook stop --harness=codex || npx -y -p @ureck/alexandria alexandria hook stop --harness=codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "PreCompact": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook stop --harness=codex || npx -y -p @ureck/alexandria alexandria hook stop --harness=codex",
+              "timeout": 30
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "interface": {
+    "displayName": "Alexandria",
+    "shortDescription": "Local knowledge vault + memory for Codex",
+    "developerName": "Ureck",
+    "category": "Productivity",
+    "websiteURL": "https://alexandria.ureck.dev"
+  }
+}

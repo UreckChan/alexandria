@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "alexandria": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "@ureck/alexandria",
+        "alexandria",
+        "serve-mcp"
+      ]
+    }
+  }
+}

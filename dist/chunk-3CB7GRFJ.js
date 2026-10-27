@@ -21,7 +21,8 @@ var NOTE_TYPES = [
   "task",
   "verification",
   "lesson",
-  "solution"
+  "solution",
+  "archive"
 ];
 var SKIP_DIRS = /* @__PURE__ */ new Set([".obsidian", ".vault", ".trash", ".git", "node_modules"]);
 function extractWikilinks(content) {
@@ -37,9 +38,16 @@ function extractWikilinks(content) {
 function slugify(text) {
   return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "nota";
 }
-function listMarkdownFiles(root) {
+function isoDate(v) {
+  if (v === void 0 || v === null || v === "") return void 0;
+  const d = v instanceof Date ? v : new Date(String(v));
+  return isNaN(d.getTime()) ? String(v) : d.toISOString();
+}
+function listMarkdownFiles(root, skip = []) {
   const out = [];
+  const skipSet = new Set(skip.map((d) => path.resolve(d)));
   const walk = (dir) => {
+    if (skipSet.has(path.resolve(dir))) return;
     let entries;
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -70,7 +78,7 @@ function parseNote(root, absPath) {
     type,
     status,
     tags,
-    created: data.created ? String(data.created) : void 0,
+    created: isoDate(data.created),
     hits: typeof data.hits === "number" ? data.hits : 1,
     content,
     links: extractWikilinks(content)
@@ -212,6 +220,7 @@ var VaultIndex = class _VaultIndex {
       const meta = JSON.parse(fs2.readFileSync(idx.metaPath, "utf8"));
       if (meta.version === 1 && meta.model === MODEL_ID) {
         idx.meta = meta;
+        for (const n of Object.values(meta.notes)) n.created = isoDate(n.created);
         try {
           const buf = fs2.readFileSync(idx.embPath);
           const arr = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
@@ -286,7 +295,7 @@ var VaultIndex = class _VaultIndex {
    * `withEmbeddings=false` → índice keyword-only (sin cargar modelo).
    */
   async refresh(withEmbeddings = modelPresent(), force = false) {
-    const files = listMarkdownFiles(this.vault.root);
+    const files = listMarkdownFiles(this.vault.root, [path2.join(this.vault.managed, "archive")]);
     const onDisk = /* @__PURE__ */ new Map();
     for (const abs of files) {
       const rel = path2.relative(this.vault.root, abs).split(path2.sep).join("/");
@@ -390,8 +399,8 @@ ${c.text}`),
     this.save();
     if (this.emb !== null) this.clearNeedsRebuild();
     else if (this.meta.chunks.length > 0 && modelPresent()) this.markNeedsRebuild();
-    try {
-      const { writeStaticGraph } = await import("./viewer-JQCSWJ3C.js");
+    if (!isHookProcess()) try {
+      const { writeStaticGraph } = await import("./viewer-OU4TB3X5.js");
       writeStaticGraph(this);
     } catch {
     }
@@ -456,7 +465,7 @@ ${c.text}`),
     if (!this._tagIndex) {
       const m = /* @__PURE__ */ new Map();
       for (const n of Object.values(this.meta.notes)) {
-        for (const k of [n.type, ...n.tags]) {
+        for (const k of /* @__PURE__ */ new Set([n.type, ...n.tags])) {
           const arr = m.get(k);
           if (arr) arr.push(n.rel);
           else m.set(k, [n.rel]);
@@ -481,6 +490,7 @@ ${c.text}`),
 
 export {
   slugify,
+  isoDate,
   createNote,
   setNoteStatus,
   touchNote,

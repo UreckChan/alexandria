@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 import {
-  logInjection
-} from "../chunk-XITAQVOZ.js";
-import {
+  emitContext,
   projectName,
   runHook,
   truncate
-} from "../chunk-53SIGH5A.js";
+} from "../chunk-U2U53TU2.js";
 import {
   hybridSearch
-} from "../chunk-UWB6RKVN.js";
+} from "../chunk-FPKJVQ2X.js";
 import {
+  isHarnessInjected,
+  logInjection,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-7LWLBJAD.js";
+} from "../chunk-MDGFK6UC.js";
 import {
   createNote,
   touchNote
-} from "../chunk-QB37UGO6.js";
+} from "../chunk-3CB7GRFJ.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-prompt.ts
@@ -33,7 +33,7 @@ var RELEVANT_MARGIN = 0.04;
 var KEYWORD_REL_FACTOR = 0.6;
 runHook(5e3, async (input) => {
   const prompt = (input.prompt ?? "").trim();
-  if (prompt.length < MIN_PROMPT_CHARS || prompt.startsWith("/")) return;
+  if (prompt.length < MIN_PROMPT_CHARS || prompt.startsWith("/") || isHarnessInjected(prompt)) return;
   const vault = resolveVault({ cwd: input.cwd });
   if (!vaultExists(vault)) return;
   const rawResults = await hybridSearch(vault, prompt, 5, { expand: true, refresh: false });
@@ -81,8 +81,8 @@ Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o r
 
 ` + truncate(lines.join("\n\n"), MAX_INJECT_CHARS) + `
 </alexandria-contexto>`;
-      process.stdout.write(injected);
-      logInjection(vault, {
+      const written = emitContext("prompt", injected);
+      if (written > 0) logInjection(vault, {
         kind: cached ? "solution-cache" : "inject",
         injectedChars: injected.length,
         promptChars: prompt.length
@@ -119,4 +119,4 @@ Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o r
 
 ${truncate(prompt, 4e3)}`
   });
-});
+}, "prompt");

@@ -147,6 +147,12 @@ var TOKEN_TOGGLES = [
     label: "Reparar el \xEDndice al cerrar sesi\xF3n",
     desc: "Si el \xEDndice qued\xF3 sin vectores, reconstruirlo en segundo plano al terminar la sesi\xF3n",
     impact: "no gasta tokens; sin esto la b\xFAsqueda puede quedarse en keyword-only (peor contexto por prompt)"
+  },
+  {
+    key: "clean.auto",
+    label: "Limpieza autom\xE1tica semanal",
+    desc: "Al cerrar sesi\xF3n (m\xE1x. 1 vez por semana, en segundo plano): compacta prompts viejos sin reuso y purga cach\xE9s \u2014 nunca toca lecciones, planes, mapas ni sesiones",
+    impact: "no gasta tokens; baja el \xEDndice y el ruido en la b\xFAsqueda (mejor contexto por prompt)"
   }
 ];
 function writeProjectConfig(projectDir, vaultPath) {
@@ -155,6 +161,121 @@ function writeProjectConfig(projectDir, vaultPath) {
   const stored = rel.startsWith("..") ? vaultPath : rel;
   fs.writeFileSync(file, JSON.stringify({ vaultPath: stored }, null, 2) + "\n");
   return file;
+}
+
+// src/core/stats.ts
+import fs2 from "fs";
+import path2 from "path";
+var charsToTokens = (chars) => Math.round(chars / 4);
+function logInjection(vault, line) {
+  try {
+    fs2.mkdirSync(vault.cache, { recursive: true });
+    fs2.appendFileSync(
+      path2.join(vault.cache, "stats.jsonl"),
+      JSON.stringify({ t: (/* @__PURE__ */ new Date()).toISOString(), ...line }) + "\n"
+    );
+  } catch {
+  }
+}
+var EST_LOW = 3;
+var EST_HIGH = 8;
+function readStats(vault) {
+  const file = path2.join(vault.cache, "stats.jsonl");
+  const summary = {
+    injections: 0,
+    solutionCacheHits: 0,
+    injectedTokens: 0,
+    cacheHitTokens: 0,
+    estSavedLow: 0,
+    estSavedHigh: 0
+  };
+  try {
+    for (const raw of fs2.readFileSync(file, "utf8").split("\n")) {
+      if (!raw.trim()) continue;
+      try {
+        const line = JSON.parse(raw);
+        const n = line.count ?? 1;
+        summary.injections += n;
+        const tk = line.tokens ?? charsToTokens(line.injectedChars);
+        summary.injectedTokens += tk;
+        if (line.kind === "solution-cache") {
+          summary.solutionCacheHits += n;
+          summary.cacheHitTokens += tk;
+        }
+      } catch {
+      }
+    }
+  } catch {
+  }
+  summary.estSavedLow = summary.injectedTokens * EST_LOW;
+  summary.estSavedHigh = summary.injectedTokens * EST_HIGH;
+  return summary;
+}
+
+// src/hooks/adapters.ts
+var HARNESSES = ["claude", "codex", "gemini", "cursor", "opencode"];
+function currentHarness(argv = process.argv) {
+  const arg = argv.find((a) => a.startsWith("--harness="))?.slice("--harness=".length);
+  return HARNESSES.includes(arg ?? "") ? arg : "claude";
+}
+function normalizeInput(raw) {
+  const event = raw.hook_event_name ?? "";
+  return {
+    session_id: raw.session_id ?? raw.conversation_id,
+    transcript_path: raw.transcript_path ?? void 0,
+    cwd: raw.cwd ?? raw.workspace_roots?.[0],
+    prompt: raw.prompt,
+    answer: raw.last_assistant_message ?? raw.prompt_response ?? raw.text,
+    compact: /^(PreCompact|PreCompress|preCompact)$/.test(event) || Boolean(raw.trigger)
+  };
+}
+function formatContext(harness, kind, text) {
+  switch (harness) {
+    case "claude":
+    case "opencode":
+      return text;
+    case "codex":
+      return JSON.stringify({
+        hookSpecificOutput: { hookEventName: kind === "session" ? "SessionStart" : "UserPromptSubmit", additionalContext: text }
+      });
+    case "gemini":
+      return JSON.stringify({
+        hookSpecificOutput: { hookEventName: kind === "session" ? "SessionStart" : "BeforeAgent", additionalContext: text }
+      });
+    case "cursor":
+      return kind === "session" ? JSON.stringify({ additional_context: text }) : null;
+  }
+}
+function defaultOutput(harness, kind) {
+  if (harness === "cursor" && kind === "prompt") return JSON.stringify({ continue: true });
+  return null;
+}
+var TEXT_PARTS = /* @__PURE__ */ new Set(["text", "input_text", "output_text"]);
+function textOf(content) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.filter((p) => TEXT_PARTS.has(p?.type) && typeof p?.text === "string").map((p) => p.text).join("\n");
+}
+function lastExchange(lines) {
+  let user = "";
+  let assistant = "";
+  for (const line of lines) {
+    let msg;
+    try {
+      msg = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const role = msg.message?.role ?? msg.payload?.role ?? msg.role ?? msg.type;
+    const text = textOf(msg.message?.content ?? msg.payload?.content ?? msg.content).trim();
+    if (!text) continue;
+    if (role === "user" && !text.startsWith("<")) user = text;
+    if (role === "assistant") assistant = text;
+  }
+  return { user, assistant };
+}
+function isHarnessInjected(prompt) {
+  return /^<(task-notification|system-reminder|command-|local-command|user-prompt-submit-hook|ide_)/i.test(prompt.trim());
 }
 
 export {
@@ -170,5 +291,14 @@ export {
   toggleEnabled,
   initScopeWarning,
   TOKEN_TOGGLES,
-  writeProjectConfig
+  writeProjectConfig,
+  charsToTokens,
+  logInjection,
+  readStats,
+  currentHarness,
+  normalizeInput,
+  formatContext,
+  defaultOutput,
+  lastExchange,
+  isHarnessInjected
 };

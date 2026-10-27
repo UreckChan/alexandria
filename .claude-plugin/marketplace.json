@@ -1,0 +1,16 @@
+{
+  "name": "alexandria",
+  "owner": {
+    "name": "Ureck",
+    "url": "https://github.com/UreckChan"
+  },
+  "plugins": [
+    {
+      "name": "alexandria",
+      "source": "./",
+      "description": "Local knowledge vault for AI agents: captures prompts/sessions, injects relevant context, semantic search offline, Alexandria Protocol (plan → verify → learn).",
+      "version": "1.4.0",
+      "homepage": "https://alexandria.ureck.dev"
+    }
+  ]
+}

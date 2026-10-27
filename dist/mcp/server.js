@@ -4,22 +4,25 @@ import {
   pkgVersion,
   planContext,
   planQualityHints
-} from "../chunk-5A6CC74D.js";
+} from "../chunk-JI2L66DF.js";
 import {
   hybridSearch
-} from "../chunk-UWB6RKVN.js";
+} from "../chunk-FPKJVQ2X.js";
+import {
+  searchArchive
+} from "../chunk-2ESJQAP4.js";
 import {
   ensureVaultStructure,
   resolveVault,
   toggleEnabled
-} from "../chunk-7LWLBJAD.js";
+} from "../chunk-MDGFK6UC.js";
 import {
   VaultIndex,
   createNote,
   setNoteStatus,
   slugify,
   upsertNote
-} from "../chunk-QB37UGO6.js";
+} from "../chunk-3CB7GRFJ.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/mcp/server.ts
@@ -54,21 +57,33 @@ var server = new McpServer({ name: "alexandria", version: pkgVersion() });
 var text = (t) => ({ content: [{ type: "text", text: t }] });
 var tail = (s, n) => s.length > n ? "\u2026\n" + s.slice(-n) : s;
 function findMap(idx) {
-  return Object.values(idx.meta.notes).find((n) => n.type === "map" || n.title.startsWith("Mapa - "));
+  const maps = Object.values(idx.meta.notes).filter((n) => n.type === "map" || n.title.startsWith("Mapa - "));
+  const own = `Mapa - ${path.basename(process.cwd())}`.toLowerCase();
+  return maps.find((n) => n.title.toLowerCase() === own) ?? maps[0];
 }
 function findByTitle(idx, t) {
   const lower = t.toLowerCase();
+  const alt = lower.startsWith("plan - ") ? lower : `plan - ${lower}`;
   return Object.values(idx.meta.notes).find(
-    (n) => n.title.toLowerCase() === lower || n.rel.toLowerCase() === lower
+    (n) => [lower, alt].includes(n.title.toLowerCase()) || n.rel.toLowerCase() === lower
   );
 }
-server.tool(
+server.registerTool(
   "vault_search",
-  "Busca conocimiento en la b\xF3veda local (b\xFAsqueda sem\xE1ntica + keyword). \xDAsala ANTES de explorar c\xF3digo o re-derivar contexto: si la b\xF3veda ya lo sabe, ahorras tokens.",
-  { query: z.string().describe("Qu\xE9 buscar, en lenguaje natural"), k: z.number().int().min(1).max(15).optional() },
+  {
+    description: "Busca conocimiento en la b\xF3veda local (b\xFAsqueda sem\xE1ntica + keyword). \xDAsala ANTES de explorar c\xF3digo o re-derivar contexto: si la b\xF3veda ya lo sabe, ahorras tokens.",
+    inputSchema: { query: z.string().describe("Qu\xE9 buscar, en lenguaje natural"), k: z.number().int().min(1).max(15).optional() }
+  },
   async ({ query, k }) => {
     const results = await hybridSearch(vault, query, k ?? 5, { expand: true });
-    if (results.length === 0) return text("Sin resultados en la b\xF3veda.");
+    if (results.length === 0) {
+      const arch = searchArchive(vault, query, 3);
+      if (arch.length === 0) return text("Sin resultados en la b\xF3veda.");
+      return text(
+        "Sin resultados en el \xEDndice; en el archivo de prompts compactados:\n\n" + arch.map((h, i) => `${i + 1}. \xAB${h.heading}\xBB (${h.file})
+   ${h.excerpt.replace(/\n/g, " ").slice(0, 400)}`).join("\n\n")
+      );
+    }
     const out = results.map(
       (r, i) => `${i + 1}. \xAB${r.note.title}\xBB (${r.note.rel}, tipo: ${r.note.type})
 ${r.excerpts.map((e) => "   " + e.replace(/\n/g, "\n   ").slice(0, 900)).join("\n")}`
@@ -76,21 +91,20 @@ ${r.excerpts.map((e) => "   " + e.replace(/\n/g, "\n   ").slice(0, 900)).join("\
     return text(out);
   }
 );
-server.tool(
+server.registerTool(
   "vault_save",
-  'Guarda conocimiento destilado en la b\xF3veda (decisiones, arquitectura, soluciones). Si title empieza con "Mapa - " actualiza/crea el mapa del proyecto (se inyecta al inicio de cada sesi\xF3n).',
   {
-    title: z.string(),
-    content: z.string().describe("Markdown; puede incluir [[wikilinks]] a otras notas"),
-    tags: z.array(z.string()).optional()
+    description: 'Guarda conocimiento destilado en la b\xF3veda (decisiones, arquitectura, soluciones). Si title empieza con "Mapa - " actualiza/crea el mapa del proyecto (se inyecta al inicio de cada sesi\xF3n).',
+    inputSchema: {
+      title: z.string(),
+      content: z.string().describe("Markdown; puede incluir [[wikilinks]] a otras notas"),
+      tags: z.array(z.string()).optional()
+    }
   },
   async ({ title, content, tags }) => {
     ensureVaultStructure(vault);
     if (!title.startsWith("Mapa - ") && !/\[\[/.test(content)) {
-      const idxPre = VaultIndex.load(vault);
-      const map = Object.values(idxPre.meta.notes).find(
-        (n) => n.type === "map" || n.title.startsWith("Mapa - ")
-      );
+      const map = findMap(VaultIndex.load(vault));
       if (map) content = `${content.trim()}
 
 Proyecto: [[${map.title}]]`;
@@ -113,10 +127,12 @@ Proyecto: [[${map.title}]]`;
     return text(`Guardado en ${path.relative(vault.root, file)}`);
   }
 );
-server.tool(
+server.registerTool(
   "vault_related",
-  "Vecinos de una nota en el grafo de conocimiento (wikilinks + conexiones sem\xE1nticas) \u2014 trae conocimiento conectado sin releer archivos.",
-  { title: z.string().describe("T\xEDtulo o ruta relativa de la nota") },
+  {
+    description: "Vecinos de una nota en el grafo de conocimiento (wikilinks + conexiones sem\xE1nticas) \u2014 trae conocimiento conectado sin releer archivos.",
+    inputSchema: { title: z.string().describe("T\xEDtulo o ruta relativa de la nota") }
+  },
   async ({ title }) => {
     const idx = VaultIndex.load(vault);
     const lower = title.toLowerCase();
@@ -131,10 +147,12 @@ server.tool(
     );
   }
 );
-server.tool(
+server.registerTool(
   "vault_link",
-  "Crea una conexi\xF3n expl\xEDcita [[wikilink]] entre dos notas de la b\xF3veda.",
-  { from: z.string(), to: z.string() },
+  {
+    description: "Crea una conexi\xF3n expl\xEDcita [[wikilink]] entre dos notas de la b\xF3veda.",
+    inputSchema: { from: z.string(), to: z.string() }
+  },
   async ({ from, to }) => {
     const idx = VaultIndex.load(vault);
     const find = (t) => Object.values(idx.meta.notes).find(
@@ -152,15 +170,17 @@ server.tool(
     return text(`Conectado: \xAB${a.title}\xBB \u2192 [[${b.title}]]`);
   }
 );
-server.tool(
+server.registerTool(
   "plan_create",
-  "PROTOCOLO paso 1 (solo tareas NO triviales \u2014 las simples resp\xF3ndelas directo, sin ceremonia): crea el plan como un ARQUITECTO. Si el objetivo es vago, haz 2-3 preguntas de aclaraci\xF3n al usuario ANTES de crear el plan (qu\xE9 es \xE9xito, restricciones, alcance). DoD = criterios verificables por comando; tareas chicas y en orden de construcci\xF3n. Para planes grandes pasa `design` (stack/decisiones de arquitectura). La respuesta trae planes similares previos y lecciones \u2014 \xFAsalos para planear mejor. Verifica cada tarea con task_verify.",
   {
-    title: z.string().describe('Nombre corto del objetivo, ej. "Login con Google"'),
-    goal: z.string().describe("Qu\xE9 se quiere lograr, en una o dos frases"),
-    dod: z.array(z.string()).describe("Definition of Done: criterios verificables de \xE9xito"),
-    tasks: z.array(z.string()).describe("Tareas numeradas, chicas y verificables, en orden de construcci\xF3n"),
-    design: z.string().optional().describe('Decisiones de arquitectura/stack del plan (el "blueprint"): qu\xE9 se eligi\xF3 y por qu\xE9. Recomendado en planes de >5 tareas.')
+    description: "PROTOCOLO paso 1 (solo tareas NO triviales \u2014 las simples resp\xF3ndelas directo, sin ceremonia): crea el plan como un ARQUITECTO. Si el objetivo es vago, haz 2-3 preguntas de aclaraci\xF3n al usuario ANTES de crear el plan (qu\xE9 es \xE9xito, restricciones, alcance). DoD = criterios verificables por comando; tareas chicas y en orden de construcci\xF3n. Para planes grandes pasa `design` (stack/decisiones de arquitectura). La respuesta trae planes similares previos y lecciones \u2014 \xFAsalos para planear mejor. Verifica cada tarea con task_verify.",
+    inputSchema: {
+      title: z.string().describe('Nombre corto del objetivo, ej. "Login con Google"'),
+      goal: z.string().describe("Qu\xE9 se quiere lograr, en una o dos frases"),
+      dod: z.array(z.string()).describe("Definition of Done: criterios verificables de \xE9xito"),
+      tasks: z.array(z.string()).describe("Tareas numeradas, chicas y verificables, en orden de construcci\xF3n"),
+      design: z.string().optional().describe('Decisiones de arquitectura/stack del plan (el "blueprint"): qu\xE9 se eligi\xF3 y por qu\xE9. Recomendado en planes de >5 tareas.')
+    }
   },
   async ({ title, goal, dod, tasks, design }) => {
     ensureVaultStructure(vault);
@@ -180,11 +200,13 @@ ${dod.map((d) => `- [ ] ${d}`).join("\n")}`,
 ${tasks.map((t, i) => `${i + 1}. ${t}`).join("\n")}`,
       map ? `Proyecto: [[${map.title}]]` : ""
     ].filter(Boolean).join("\n\n");
+    const cleanTitle = title.replace(/^\s*(plan\s*-\s*)+/i, "").trim() || title;
     const file = createNote(vault.managed, {
-      title: `Plan - ${title}`,
+      title: `Plan - ${cleanTitle}`,
       type: "plan",
       status: "active",
-      tags: ["plan"],
+      // tag del proyecto: el digest de inicio muestra solo los planes de este proyecto
+      tags: ["plan", path.basename(process.cwd())],
       dir: "notes",
       content
     });
@@ -198,17 +220,19 @@ ${extra}` : "")
     );
   }
 );
-server.tool(
+server.registerTool(
   "task_verify",
-  'PROTOCOLO paso 2: verifica una tarea con EVIDENCIA REAL, no con tu palabra. Pasa verify_command (ej. "npm test", "npm run build", "curl -sf localhost:3000") y Alexandria lo EJECUTA \u2014 el veredicto sale del exit code real. Si no puedes correr un comando, pasa evidence textual, pero se marca como auto-reportado (m\xE1s d\xE9bil). Si falla, busca lecciones previas antes de improvisar.',
   {
-    plan: z.string().describe('T\xEDtulo del plan al que pertenece (ej. "Plan - Login con Google")'),
-    task: z.string().describe("Qu\xE9 tarea se verific\xF3"),
-    passed: z.boolean().describe("Lo que T\xDA crees que pas\xF3 (se compara contra el resultado real del comando)"),
-    verify_command: z.string().optional().describe('Comando a EJECUTAR para verificar de verdad; exit 0 = pas\xF3. Ej. "npm test", "npm run build". Preferido sobre evidence.'),
-    cwd: z.string().optional().describe("Directorio donde correr verify_command. Por defecto se usa el del agente (a menudo la RA\xCDZ del workspace, no tu subproyecto): si tu comando usa rutas relativas, pasa aqu\xED la carpeta del proyecto."),
-    evidence: z.string().optional().describe("Solo si NO hay comando: evidencia textual (queda marcada como auto-reportada, sin verificar)."),
-    completes_plan: z.boolean().optional().describe("true si esta era la \xFAltima tarea y el plan queda completado")
+    description: 'PROTOCOLO paso 2: verifica una tarea con EVIDENCIA REAL, no con tu palabra. Pasa verify_command (ej. "npm test", "npm run build", "curl -sf localhost:3000") y Alexandria lo EJECUTA \u2014 el veredicto sale del exit code real. Si no puedes correr un comando, pasa evidence textual, pero se marca como auto-reportado (m\xE1s d\xE9bil). Si falla, busca lecciones previas antes de improvisar.',
+    inputSchema: {
+      plan: z.string().describe('T\xEDtulo del plan al que pertenece, tal como lo devolvi\xF3 plan_create (ej. "Plan - Login con Google")'),
+      task: z.string().describe("Qu\xE9 tarea se verific\xF3"),
+      passed: z.boolean().describe("Lo que T\xDA crees que pas\xF3 (se compara contra el resultado real del comando)"),
+      verify_command: z.string().optional().describe('Comando a EJECUTAR para verificar de verdad; exit 0 = pas\xF3. Ej. "npm test", "npm run build". Preferido sobre evidence.'),
+      cwd: z.string().optional().describe("Directorio donde correr verify_command. Por defecto se usa el del agente (a menudo la RA\xCDZ del workspace, no tu subproyecto): si tu comando usa rutas relativas, pasa aqu\xED la carpeta del proyecto."),
+      evidence: z.string().optional().describe("Solo si NO hay comando: evidencia textual (queda marcada como auto-reportada, sin verificar)."),
+      completes_plan: z.boolean().optional().describe("true si esta era la \xFAltima tarea y el plan queda completado")
+    }
   },
   async ({ plan, task, passed, verify_command, cwd, evidence, completes_plan }) => {
     ensureVaultStructure(vault);
@@ -295,13 +319,15 @@ Sin lecciones previas \u2014 cuando lo resuelvas, gu\xE1rdala con lesson_extract
     );
   }
 );
-server.tool(
+server.registerTool(
   "lesson_extract",
-  "PROTOCOLO paso 3: al resolver un error o terminar un plan, destila LA lecci\xF3n (qu\xE9 fall\xF3/funcion\xF3 y c\xF3mo evitarlo/repetirlo). 200 tokens hoy ahorran 20,000 de re-debug ma\xF1ana. Se inyecta autom\xE1ticamente cuando el problema reaparezca.",
   {
-    title: z.string().describe('Lecci\xF3n en una frase, ej. "GOOGLE_CLIENT_SECRET debe ir en .env"'),
-    lesson: z.string().describe("Qu\xE9 pas\xF3, causa ra\xEDz, y c\xF3mo aplicarla la pr\xF3xima vez"),
-    links: z.array(z.string()).optional().describe("T\xEDtulos de notas relacionadas (plan, feature, etc.)")
+    description: "PROTOCOLO paso 3: al resolver un error o terminar un plan, destila LA lecci\xF3n (qu\xE9 fall\xF3/funcion\xF3 y c\xF3mo evitarlo/repetirlo). 200 tokens hoy ahorran 20,000 de re-debug ma\xF1ana. Se inyecta autom\xE1ticamente cuando el problema reaparezca.",
+    inputSchema: {
+      title: z.string().describe('Lecci\xF3n en una frase, ej. "GOOGLE_CLIENT_SECRET debe ir en .env"'),
+      lesson: z.string().describe("Qu\xE9 pas\xF3, causa ra\xEDz, y c\xF3mo aplicarla la pr\xF3xima vez"),
+      links: z.array(z.string()).optional().describe("T\xEDtulos de notas relacionadas (plan, feature, etc.)")
+    }
   },
   async ({ title, lesson, links }) => {
     ensureVaultStructure(vault);

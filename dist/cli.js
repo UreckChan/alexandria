@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 import {
-  readStats
-} from "./chunk-XITAQVOZ.js";
-import {
   architectBlock,
+  distDir,
   globalSettingsPath,
   hooksRegistered,
   mcpRegisteredProject,
@@ -16,11 +14,19 @@ import {
   registerMcpProject,
   serverCommand,
   unregisterHooks
-} from "./chunk-5A6CC74D.js";
+} from "./chunk-JI2L66DF.js";
 import {
   hybridSearch,
   protocolChain
-} from "./chunk-UWB6RKVN.js";
+} from "./chunk-FPKJVQ2X.js";
+import {
+  ARCHIVE_DIR,
+  applyClean,
+  dirBytes,
+  markCleaned,
+  planClean,
+  searchArchive
+} from "./chunk-2ESJQAP4.js";
 import {
   TOKEN_TOGGLES,
   defaultVaultPath,
@@ -29,22 +35,23 @@ import {
   globalConfigPath,
   initScopeWarning,
   protocolEnabled,
+  readStats,
   resolveVault,
   setConfigKey,
   toggleEnabled,
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-7LWLBJAD.js";
+} from "./chunk-MDGFK6UC.js";
 import {
   serveGraph
-} from "./chunk-FBGIFNIO.js";
+} from "./chunk-4ZSTD3CU.js";
 import {
   VaultIndex,
   createNote,
   slugify,
   upsertNote
-} from "./chunk-QB37UGO6.js";
+} from "./chunk-3CB7GRFJ.js";
 import {
   MODEL_ID,
   dot,
@@ -54,9 +61,10 @@ import {
 } from "./chunk-EDYBSJSS.js";
 
 // src/cli.ts
-import fs6 from "fs";
-import path6 from "path";
+import fs7 from "fs";
+import path7 from "path";
 import readline from "readline/promises";
+import { execFileSync as execFileSync4 } from "child_process";
 import { Command } from "commander";
 import pc from "picocolors";
 
@@ -367,6 +375,18 @@ function mergeMcpServers(file, key = "mcpServers") {
     return { ok: false, file, detail: e.message };
   }
 }
+function removeMcpEntry(file, key = "mcpServers") {
+  try {
+    const cfg = JSON.parse(fs3.readFileSync(file, "utf8"));
+    if (!cfg[key]?.alexandria) return false;
+    delete cfg[key].alexandria;
+    if (Object.keys(cfg[key]).length === 0) delete cfg[key];
+    writeJson(file, cfg);
+    return true;
+  } catch {
+    return false;
+  }
+}
 function home(...p) {
   return path3.join(os3.homedir(), ...p);
 }
@@ -419,6 +439,8 @@ var AGENTS = [
     name: "Claude Code",
     supportsProject: true,
     detect: () => fs3.existsSync(home(".claude")),
+    hooks: "claude",
+    unregister: (scope, projectDir) => scope === "project" ? removeMcpEntry(path3.join(projectDir, ".mcp.json")) : removeMcpEntry(home(".claude.json")),
     register(scope, projectDir) {
       if (scope === "project") return mergeMcpServers(path3.join(projectDir, ".mcp.json"));
       return mergeMcpServers(home(".claude.json"));
@@ -429,6 +451,8 @@ var AGENTS = [
     name: "Cursor",
     supportsProject: true,
     detect: () => fs3.existsSync(home(".cursor")),
+    hooks: "cursor",
+    unregister: (scope, projectDir) => removeMcpEntry(scope === "project" ? path3.join(projectDir, ".cursor", "mcp.json") : home(".cursor", "mcp.json")),
     register(scope, projectDir) {
       const file = scope === "project" ? path3.join(projectDir, ".cursor", "mcp.json") : home(".cursor", "mcp.json");
       return mergeMcpServers(file);
@@ -439,6 +463,8 @@ var AGENTS = [
     name: "OpenCode",
     supportsProject: true,
     detect: () => fs3.existsSync(home(".config", "opencode")) || fs3.existsSync(home(".opencode")),
+    hooks: "opencode",
+    unregister: (scope, projectDir) => removeMcpEntry(scope === "project" ? path3.join(projectDir, "opencode.json") : home(".config", "opencode", "opencode.json"), "mcp"),
     register(scope, projectDir) {
       const file = scope === "project" ? path3.join(projectDir, "opencode.json") : home(".config", "opencode", "opencode.json");
       try {
@@ -459,6 +485,8 @@ var AGENTS = [
     name: "Windsurf (legacy \u2192 Devin)",
     supportsProject: false,
     detect: () => fs3.existsSync(home(".codeium", "windsurf")),
+    legacy: true,
+    unregister: () => removeMcpEntry(home(".codeium", "windsurf", "mcp_config.json")),
     register() {
       return mergeMcpServers(home(".codeium", "windsurf", "mcp_config.json"));
     }
@@ -469,6 +497,7 @@ var AGENTS = [
     supportsProject: true,
     // El CLI vive en ~/.local/bin/devin y guarda config MCP por proyecto en .devin/
     detect: () => fs3.existsSync(home(".devin")) || fs3.existsSync(home(".local", "bin", "devin")),
+    unregister: (scope, projectDir) => removeMcpEntry(path3.join(scope === "project" ? projectDir : home(), ".devin", "mcp_config.local.json")),
     register(scope, projectDir) {
       const dir = scope === "project" ? projectDir : home();
       const file = path3.join(dir, ".devin", "mcp_config.local.json");
@@ -489,6 +518,7 @@ var AGENTS = [
     name: "Cline (VS Code)",
     supportsProject: false,
     detect: () => fs3.existsSync(path3.join(vscodeUserDir(), "globalStorage", "saoudrizwan.claude-dev")),
+    unregister: () => removeMcpEntry(path3.join(vscodeUserDir(), "globalStorage", "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json")),
     register() {
       const file = path3.join(
         vscodeUserDir(),
@@ -503,14 +533,27 @@ var AGENTS = [
   {
     id: "codex",
     name: "Codex CLI (OpenAI)",
-    supportsProject: false,
+    // Codex lee también <repo>/.codex/config.toml cuando el proyecto es de confianza
+    supportsProject: true,
     detect: () => fs3.existsSync(home(".codex")),
-    register() {
-      const file = home(".codex", "config.toml");
-      const { command, args } = serverCmd();
+    hooks: "codex",
+    unregister: (scope, projectDir) => {
+      const file = scope === "project" ? path3.join(projectDir, ".codex", "config.toml") : home(".codex", "config.toml");
+      try {
+        const text = fs3.readFileSync(file, "utf8");
+        if (!/\[mcp_servers\.alexandria\]/.test(text)) return false;
+        fs3.writeFileSync(file, replaceTomlTable(text, "mcp_servers.alexandria", "").trimEnd() + "\n");
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    register(scope, projectDir) {
+      const file = scope === "project" ? path3.join(projectDir, ".codex", "config.toml") : home(".codex", "config.toml");
+      const { command: command2, args } = serverCmd();
       const tomlArgs = args.map((a) => `"${a.replace(/\\/g, "\\\\")}"`).join(", ");
       const block = `[mcp_servers.alexandria]
-command = "${command}"
+command = "${command2}"
 args = [${tomlArgs}]
 `;
       try {
@@ -533,6 +576,8 @@ args = [${tomlArgs}]
     name: "Gemini CLI",
     supportsProject: true,
     detect: () => fs3.existsSync(home(".gemini")),
+    hooks: "gemini",
+    unregister: (scope, projectDir) => removeMcpEntry(scope === "project" ? path3.join(projectDir, ".gemini", "settings.json") : home(".gemini", "settings.json")),
     register(scope, projectDir) {
       const file = scope === "project" ? path3.join(projectDir, ".gemini", "settings.json") : home(".gemini", "settings.json");
       return mergeMcpServers(file);
@@ -543,6 +588,7 @@ args = [${tomlArgs}]
     name: "OpenClaw",
     supportsProject: false,
     detect: () => fs3.existsSync(home(".openclaw")),
+    unregister: () => removeMcpEntry(home(".openclaw", "openclaw.json")),
     register() {
       const file = home(".openclaw", "openclaw.json");
       try {
@@ -612,6 +658,7 @@ ${entry.trimEnd()}`);
     // Chat instalada. Antes bastaba con que existiera el User dir, así que
     // cualquiera con VS Code aparecía como agente detectado aunque no use MCP.
     detect: () => fs3.existsSync(path3.join(vscodeUserDir(), "mcp.json")) || hasCopilotChatExtension(),
+    unregister: (scope, projectDir) => removeMcpEntry(scope === "project" ? path3.join(projectDir, ".vscode", "mcp.json") : path3.join(vscodeUserDir(), "mcp.json"), "servers"),
     register(scope, projectDir) {
       const file = scope === "project" ? path3.join(projectDir, ".vscode", "mcp.json") : path3.join(vscodeUserDir(), "mcp.json");
       try {
@@ -635,6 +682,210 @@ function resolveAgents(spec) {
   if (s === "all" || s === "todos") return AGENTS;
   if (s === "detected" || s === "detectados") return AGENTS.filter((a) => a.detect());
   return s.split(",").map((id) => agentById(id)).filter((a) => Boolean(a));
+}
+
+// src/core/harness-hooks.ts
+import fs4 from "fs";
+import os4 from "os";
+import path4 from "path";
+var HOOK_HARNESSES = ["codex", "gemini", "cursor", "opencode"];
+var EVENTS = {
+  // Codex: hooks GA desde 0.133; mismos nombres que Claude Code. Timeout en segundos.
+  codex: [
+    ["SessionStart", "on-session-start", 20],
+    ["UserPromptSubmit", "on-prompt", 10],
+    ["Stop", "on-stop", 30],
+    ["PreCompact", "on-stop", 30]
+  ],
+  // Gemini: BeforeAgent trae el prompt; AfterAgent trae prompt + prompt_response.
+  gemini: [
+    ["SessionStart", "on-session-start", 20],
+    ["BeforeAgent", "on-prompt", 10],
+    ["AfterAgent", "on-stop", 30],
+    ["PreCompress", "on-stop", 30]
+  ],
+  // Cursor: beforeSubmitPrompt no puede inyectar (solo continuar/bloquear) → ahí
+  // solo se captura; afterAgentResponse trae el texto de la respuesta.
+  cursor: [
+    ["sessionStart", "on-session-start", 20],
+    ["beforeSubmitPrompt", "on-prompt", 10],
+    ["afterAgentResponse", "on-stop", 30]
+  ]
+};
+function home2(...p) {
+  return path4.join(os4.homedir(), ...p);
+}
+function hookFile(h, scope, projectDir) {
+  const base = scope === "project" ? projectDir : os4.homedir();
+  switch (h) {
+    case "codex":
+      return path4.join(base, ".codex", "hooks.json");
+    case "gemini":
+      return path4.join(base, ".gemini", "settings.json");
+    case "cursor":
+      return path4.join(base, ".cursor", "hooks.json");
+    case "opencode":
+      return scope === "project" ? path4.join(projectDir, ".opencode", "plugins", "alexandria.js") : home2(".config", "opencode", "plugins", "alexandria.js");
+  }
+}
+function scriptPath(s) {
+  return path4.join(distDir(), "hooks", `${s}.js`);
+}
+function command(s, h) {
+  return `node "${scriptPath(s)}" --harness=${h}`;
+}
+var isOurs = (cmd) => typeof cmd === "string" && (cmd.includes("alexandria") || cmd.includes(distDir()));
+function readJson(file) {
+  try {
+    return JSON.parse(fs4.readFileSync(file, "utf8"));
+  } catch {
+    if (fs4.existsSync(file)) throw new Error(`no pude parsear ${file} \u2014 rev\xEDsalo manualmente`);
+    return {};
+  }
+}
+function writeJson2(file, data) {
+  fs4.mkdirSync(path4.dirname(file), { recursive: true });
+  fs4.writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
+}
+function stripOurs(hooks, flat) {
+  for (const ev of Object.keys(hooks)) {
+    const list = Array.isArray(hooks[ev]) ? hooks[ev] : [];
+    const kept = flat ? list.filter((c) => !isOurs(c.command)) : list.map((m) => ({ ...m, hooks: (m.hooks ?? []).filter((c) => !isOurs(c.command)) })).filter((m) => m.hooks.length > 0);
+    if (kept.length > 0) hooks[ev] = kept;
+    else delete hooks[ev];
+  }
+}
+function registerHarnessHooks(h, scope, projectDir) {
+  const file = hookFile(h, scope, projectDir);
+  try {
+    if (h === "opencode") {
+      fs4.mkdirSync(path4.dirname(file), { recursive: true });
+      fs4.writeFileSync(file, opencodePlugin());
+      return { ok: true, file };
+    }
+    const cfg = readJson(file);
+    const hooks = cfg.hooks ?? {};
+    const flat = h === "cursor";
+    stripOurs(hooks, flat);
+    for (const [ev, script, secs] of EVENTS[h]) {
+      const list = hooks[ev] ?? [];
+      if (flat) {
+        list.push({ command: command(script, h), timeout: secs });
+      } else if (h === "gemini") {
+        list.push({ hooks: [{ type: "command", name: `alexandria-${script}`, command: command(script, h), timeout: secs * 1e3 }] });
+      } else {
+        list.push({ hooks: [{ type: "command", command: command(script, h), timeout: secs }] });
+      }
+      hooks[ev] = list;
+    }
+    cfg.hooks = hooks;
+    if (flat) cfg.version ??= 1;
+    writeJson2(file, cfg);
+    return {
+      ok: true,
+      file,
+      detail: h === "codex" ? "abre Codex y aprueba los hooks con /hooks (Codex salta hooks no confiados)" : void 0
+    };
+  } catch (e) {
+    return { ok: false, file, detail: e.message };
+  }
+}
+function unregisterHarnessHooks(h, scope, projectDir) {
+  const file = hookFile(h, scope, projectDir);
+  try {
+    if (!fs4.existsSync(file)) return false;
+    if (h === "opencode") {
+      fs4.rmSync(file, { force: true });
+      return true;
+    }
+    const cfg = readJson(file);
+    const hooks = cfg.hooks;
+    if (!hooks) return false;
+    const before = JSON.stringify(hooks);
+    stripOurs(hooks, h === "cursor");
+    if (JSON.stringify(hooks) === before) return false;
+    if (Object.keys(hooks).length === 0) delete cfg.hooks;
+    writeJson2(file, cfg);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function opencodePlugin() {
+  const scripts = {
+    session: scriptPath("on-session-start"),
+    prompt: scriptPath("on-prompt"),
+    stop: scriptPath("on-stop")
+  };
+  return `// Alexandria \u2014 plugin de OpenCode (generado por \`ale agents opencode\`; se sobrescribe al re-registrar).
+// Captura prompts/sesiones en la b\xF3veda e inyecta contexto relevante en el system prompt.
+import { execFile } from 'node:child_process';
+
+const SCRIPTS = ${JSON.stringify(scripts, null, 2)};
+
+function run(script, payload, timeoutMs) {
+  return new Promise((resolve) => {
+    const child = execFile('node', [script, '--harness=opencode'], { timeout: timeoutMs, windowsHide: true }, (_e, stdout) =>
+      resolve(typeof stdout === 'string' ? stdout.trim() : '')
+    );
+    child.stdin?.end(JSON.stringify(payload));
+  });
+}
+
+// Solo export default: OpenCode registra CADA funci\xF3n exportada como plugin.
+const AlexandriaPlugin = async ({ directory }) => {
+  const digest = new Map(); // sessionID \u2192 contexto de inicio
+  const turn = new Map(); // sessionID \u2192 contexto del prompt actual
+  const lastPrompt = new Map();
+  const roles = new Map(); // messageID \u2192 role
+  const texts = new Map(); // messageID \u2192 texto acumulado
+  const lastAssistant = new Map(); // sessionID \u2192 messageID
+
+  return {
+    event: async ({ event }) => {
+      try {
+        const p = event?.properties ?? {};
+        if (event.type === 'session.created') {
+          const id = p.info?.id ?? p.sessionID;
+          if (id) digest.set(id, await run(SCRIPTS.session, { session_id: id, cwd: directory, source: 'startup' }, 15000));
+        } else if (event.type === 'message.updated' && p.info?.id) {
+          roles.set(p.info.id, p.info.role);
+          if (p.info.role === 'assistant' && p.info.sessionID) lastAssistant.set(p.info.sessionID, p.info.id);
+        } else if (event.type === 'message.part.updated' && p.part?.type === 'text' && !p.part.synthetic) {
+          texts.set(p.part.messageID, p.part.text ?? '');
+        } else if (event.type === 'session.idle' && p.sessionID) {
+          const mid = lastAssistant.get(p.sessionID);
+          const answer = mid ? texts.get(mid) : '';
+          if (answer) {
+            await run(SCRIPTS.stop, { session_id: p.sessionID, cwd: directory, prompt: lastPrompt.get(p.sessionID) ?? '', last_assistant_message: answer }, 25000);
+          }
+        }
+      } catch {
+        /* Alexandria jam\xE1s rompe la sesi\xF3n */
+      }
+    },
+    'chat.message': async (input, output) => {
+      try {
+        const prompt = (output?.parts ?? []).filter((x) => x?.type === 'text' && !x.synthetic).map((x) => x.text).join('\\n').trim();
+        if (!prompt) return;
+        lastPrompt.set(input.sessionID, prompt);
+        turn.set(input.sessionID, await run(SCRIPTS.prompt, { session_id: input.sessionID, cwd: directory, prompt }, 8000));
+      } catch {
+        /* sin contexto este turno */
+      }
+    },
+    'experimental.chat.system.transform': async (input, output) => {
+      if (!Array.isArray(output?.system) || !input?.sessionID) return;
+      const d = digest.get(input.sessionID);
+      const t = turn.get(input.sessionID);
+      if (d) output.system.push(d);
+      if (t) output.system.push(t);
+    }
+  };
+};
+
+export default AlexandriaPlugin;
+`;
 }
 
 // src/cli/banner.ts
@@ -698,9 +949,9 @@ async function showBanner(animate) {
 }
 
 // src/core/setup.ts
-import fs4 from "fs";
-import os4 from "os";
-import path4 from "path";
+import fs5 from "fs";
+import os5 from "os";
+import path5 from "path";
 import { execFileSync as execFileSync3 } from "child_process";
 var PERSONAL_CONFIG_FILES = [
   ".vault.json",
@@ -709,18 +960,23 @@ var PERSONAL_CONFIG_FILES = [
   "opencode.json",
   ".vscode/mcp.json",
   ".gemini/settings.json",
-  ".devin/mcp_config.local.json"
+  ".devin/mcp_config.local.json",
+  // hooks/MCP por proyecto de los demás arneses: llevan rutas de esta máquina
+  ".codex/hooks.json",
+  ".codex/config.toml",
+  ".cursor/hooks.json",
+  ".opencode/plugins/alexandria.js"
 ];
 function ensureGitignore(projectDir, vaultRoot) {
-  if (!fs4.existsSync(path4.join(projectDir, ".git"))) return null;
+  if (!fs5.existsSync(path5.join(projectDir, ".git"))) return null;
   const entries = [];
-  const rel = path4.relative(projectDir, vaultRoot);
-  if (!rel.startsWith("..")) entries.push(`${rel.split(path4.sep).join("/")}/`);
+  const rel = path5.relative(projectDir, vaultRoot);
+  if (!rel.startsWith("..")) entries.push(`${rel.split(path5.sep).join("/")}/`);
   entries.push(...PERSONAL_CONFIG_FILES);
-  const file = path4.join(projectDir, ".gitignore");
+  const file = path5.join(projectDir, ".gitignore");
   let text = "";
   try {
-    text = fs4.readFileSync(file, "utf8");
+    text = fs5.readFileSync(file, "utf8");
   } catch {
   }
   const has = (e) => text.split("\n").some((l) => l.trim() === e || l.trim() === e.replace(/\/$/, ""));
@@ -731,14 +987,14 @@ function ensureGitignore(projectDir, vaultRoot) {
 # Alexandria (conocimiento y config personal \u2014 no del repo)
 ${missing.join("\n")}
 `;
-  fs4.writeFileSync(file, text.trim() ? block : block.trimStart());
+  fs5.writeFileSync(file, text.trim() ? block : block.trimStart());
   return file;
 }
 function untrackPersonalConfigs(projectDir) {
-  if (!fs4.existsSync(path4.join(projectDir, ".git"))) return [];
+  if (!fs5.existsSync(path5.join(projectDir, ".git"))) return [];
   const untracked = [];
   for (const f of PERSONAL_CONFIG_FILES) {
-    if (!fs4.existsSync(path4.join(projectDir, f))) continue;
+    if (!fs5.existsSync(path5.join(projectDir, f))) continue;
     try {
       const tracked = execFileSync3("git", ["ls-files", "--error-unmatch", f], {
         cwd: projectDir,
@@ -755,60 +1011,80 @@ function untrackPersonalConfigs(projectDir) {
 }
 var CLAUDE_MD_START = "<!-- alexandria:start -->";
 var CLAUDE_MD_END = "<!-- alexandria:end -->";
-function configureClaudeMd(scope, projectDir) {
-  const file = scope === "project" ? path4.join(projectDir, "CLAUDE.md") : path4.join(os4.homedir(), ".claude", "CLAUDE.md");
-  const block = [
-    CLAUDE_MD_START,
-    "## Alexandria \u2014 b\xF3veda de conocimiento y Protocolo (uso por default)",
-    "- ANTES de explorar c\xF3digo o re-derivar contexto: busca con la tool MCP `vault_search`; si la b\xF3veda ya lo sabe, \xFAsalo.",
-    "- El Protocolo Alexandria es palanca, no l\xEDmite: tareas simples se responden directo, sin ceremonia. En tareas no triviales: `plan_create` (objetivo + Definition of Done) \u2192 ejecutar con toda tu capacidad \u2192 `task_verify` con evidencia real (la evidencia elimina errores, no frena) \u2192 si algo falla, `vault_search` por lecciones previas antes de re-debuggear \u2192 `lesson_extract` al resolver algo no obvio. Soluciones cacheadas se validan contra el c\xF3digo actual antes de reutilizarse.",
-    "- Al descubrir arquitectura o decisiones: `vault_save` (con `[[wikilinks]]`; el t\xEDtulo `Mapa - <proyecto>` actualiza el mapa que se inyecta al iniciar sesi\xF3n).",
-    "- Enriquece la b\xF3veda cuando el trabajo lo revele (no como tarea aparte): decisiones de arquitectura con su porqu\xE9 (por qu\xE9 X y no Y), qu\xE9 hace cada m\xF3dulo/feature al tocarlo, vocabulario propio del dominio, y errores no obvios con su fix (`lesson_extract`). Notas compactas: el objetivo es ahorrar tokens futuros, no escribir prosa.",
-    "- Las notas `API - <proyecto>` / `Env - <proyecto>` / `Datos - <proyecto>` / `Convenciones - <proyecto>` (de `ale scan`) ya traen rutas, variables (solo nombres) y esquema \u2014 cons\xFAltalas por b\xFAsqueda antes de releer esos archivos.",
-    "- `vault_related` trae conocimiento conectado sin releer archivos.",
-    CLAUDE_MD_END
-  ].join("\n");
-  fs4.mkdirSync(path4.dirname(file), { recursive: true });
+var BLOCK = [
+  CLAUDE_MD_START,
+  "## Alexandria \u2014 b\xF3veda de conocimiento y Protocolo (uso por default)",
+  "- ANTES de explorar c\xF3digo o re-derivar contexto: busca con la tool MCP `vault_search`; si la b\xF3veda ya lo sabe, \xFAsalo.",
+  "- El Protocolo Alexandria es palanca, no l\xEDmite: tareas simples se responden directo, sin ceremonia. En tareas no triviales: `plan_create` (objetivo + Definition of Done) \u2192 ejecutar con toda tu capacidad \u2192 `task_verify` con evidencia real (la evidencia elimina errores, no frena) \u2192 si algo falla, `vault_search` por lecciones previas antes de re-debuggear \u2192 `lesson_extract` al resolver algo no obvio. Soluciones cacheadas se validan contra el c\xF3digo actual antes de reutilizarse.",
+  "- Al descubrir arquitectura o decisiones: `vault_save` (con `[[wikilinks]]`; el t\xEDtulo `Mapa - <proyecto>` actualiza el mapa que se inyecta al iniciar sesi\xF3n).",
+  "- Enriquece la b\xF3veda cuando el trabajo lo revele (no como tarea aparte): decisiones de arquitectura con su porqu\xE9 (por qu\xE9 X y no Y), qu\xE9 hace cada m\xF3dulo/feature al tocarlo, vocabulario propio del dominio, y errores no obvios con su fix (`lesson_extract`). Notas compactas: el objetivo es ahorrar tokens futuros, no escribir prosa.",
+  "- Las notas `API - <proyecto>` / `Env - <proyecto>` / `Datos - <proyecto>` / `Convenciones - <proyecto>` / `Flujo - <proyecto>` (de `ale scan`) ya traen rutas, variables (solo nombres), esquema y flujo de peticiones \u2014 cons\xFAltalas por b\xFAsqueda antes de releer esos archivos.",
+  "- `vault_related` trae conocimiento conectado sin releer archivos.",
+  CLAUDE_MD_END
+].join("\n");
+function instructionFiles(scope, projectDir) {
+  if (scope === "project") {
+    const claude = path5.join(projectDir, "CLAUDE.md");
+    const agents = path5.join(projectDir, "AGENTS.md");
+    let claudeText = "";
+    try {
+      claudeText = fs5.readFileSync(claude, "utf8");
+    } catch {
+    }
+    return /^@AGENTS\.md\s*$/m.test(claudeText) ? [agents] : [claude, agents];
+  }
+  const files = [path5.join(os5.homedir(), ".claude", "CLAUDE.md")];
+  for (const dir of [path5.join(os5.homedir(), ".codex"), path5.join(os5.homedir(), ".config", "opencode")]) {
+    if (fs5.existsSync(dir)) files.push(path5.join(dir, "AGENTS.md"));
+  }
+  return files;
+}
+function writeBlock(file) {
+  fs5.mkdirSync(path5.dirname(file), { recursive: true });
   let text = "";
   try {
-    text = fs4.readFileSync(file, "utf8");
+    text = fs5.readFileSync(file, "utf8");
   } catch {
   }
   if (text.includes(CLAUDE_MD_START)) {
     const re = new RegExp(`${CLAUDE_MD_START}[\\s\\S]*?${CLAUDE_MD_END}`);
-    text = text.replace(re, block);
+    text = text.replace(re, BLOCK);
   } else {
-    text = (text.trimEnd() + "\n\n" + block + "\n").trimStart();
+    text = (text.trimEnd() + "\n\n" + BLOCK + "\n").trimStart();
   }
-  fs4.writeFileSync(file, text);
-  return file;
+  fs5.writeFileSync(file, text);
+}
+function configureClaudeMd(scope, projectDir) {
+  const files = instructionFiles(scope, projectDir);
+  for (const f of files) writeBlock(f);
+  return files;
 }
 function removeClaudeMd(scope, projectDir) {
-  const file = scope === "project" ? path4.join(projectDir, "CLAUDE.md") : path4.join(os4.homedir(), ".claude", "CLAUDE.md");
-  let text;
-  try {
-    text = fs4.readFileSync(file, "utf8");
-  } catch {
-    return null;
+  const removed = [];
+  for (const file of instructionFiles(scope, projectDir)) {
+    let text;
+    try {
+      text = fs5.readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    if (!text.includes(CLAUDE_MD_START)) continue;
+    const re = new RegExp(`\\n*${CLAUDE_MD_START}[\\s\\S]*?${CLAUDE_MD_END}\\n*`);
+    const cleaned = text.replace(re, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    if (cleaned === "") fs5.rmSync(file, { force: true });
+    else fs5.writeFileSync(file, cleaned + "\n");
+    removed.push(file);
   }
-  if (!text.includes(CLAUDE_MD_START)) return null;
-  const re = new RegExp(`\\n*${CLAUDE_MD_START}[\\s\\S]*?${CLAUDE_MD_END}\\n*`);
-  const cleaned = text.replace(re, "\n").replace(/\n{3,}/g, "\n\n").trim();
-  if (cleaned === "") {
-    fs4.rmSync(file, { force: true });
-  } else {
-    fs4.writeFileSync(file, cleaned + "\n");
-  }
-  return file;
+  return removed;
 }
 var SKIP_DIRS = /* @__PURE__ */ new Set(["node_modules", ".git", ".next", "dist", "build", ".vault", ".claude", "coverage", "Alexandria", "KnowledgeVault"]);
 function scanProject(vault, projectDir) {
-  const name = path4.basename(projectDir);
-  const mapFile = path4.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
-  if (fs4.existsSync(mapFile)) return null;
+  const name = path5.basename(projectDir);
+  const mapFile = path5.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
+  if (fs5.existsSync(mapFile)) return null;
   const parts = [`Mapa inicial generado por \`ale init\` (escaneo autom\xE1tico). Actual\xEDzalo con vault_save.`];
   try {
-    const pkg = JSON.parse(fs4.readFileSync(path4.join(projectDir, "package.json"), "utf8"));
+    const pkg = JSON.parse(fs5.readFileSync(path5.join(projectDir, "package.json"), "utf8"));
     const deps = Object.keys({ ...pkg.dependencies }).slice(0, 18);
     const dev = Object.keys({ ...pkg.devDependencies }).slice(0, 10);
     parts.push(`## Stack
@@ -827,13 +1103,13 @@ ${scripts.map(([k, v]) => `- \`npm run ${k}\` \u2014 ${v}`).join("\n")}`);
     if (depth > 2 || tree.length > 60) return;
     let entries = [];
     try {
-      entries = fs4.readdirSync(dir, { withFileTypes: true }).filter((e) => !e.name.startsWith(".") && !SKIP_DIRS.has(e.name));
+      entries = fs5.readdirSync(dir, { withFileTypes: true }).filter((e) => !e.name.startsWith(".") && !SKIP_DIRS.has(e.name));
     } catch {
       return;
     }
     for (const e of entries.filter((x) => x.isDirectory()).slice(0, 14)) {
       tree.push(`${prefix}${e.name}/`);
-      walk(path4.join(dir, e.name), depth + 1, prefix + "  ");
+      walk(path5.join(dir, e.name), depth + 1, prefix + "  ");
     }
   };
   walk(projectDir, 1, "");
@@ -842,7 +1118,7 @@ ${scripts.map(([k, v]) => `- \`npm run ${k}\` \u2014 ${v}`).join("\n")}`);
 ${tree.join("\n")}
 \`\`\``);
   try {
-    const readme = fs4.readFileSync(path4.join(projectDir, "README.md"), "utf8");
+    const readme = fs5.readFileSync(path5.join(projectDir, "README.md"), "utf8");
     parts.push(`## README (extracto)
 ${readme.split("\n").slice(0, 15).join("\n")}`);
   } catch {
@@ -858,8 +1134,8 @@ ${readme.split("\n").slice(0, 15).join("\n")}`);
 }
 
 // src/core/scan.ts
-import fs5 from "fs";
-import path5 from "path";
+import fs6 from "fs";
+import path6 from "path";
 var SKIP_DIRS2 = /* @__PURE__ */ new Set([
   "node_modules",
   ".git",
@@ -904,15 +1180,15 @@ function collectSourceFiles(projectDir) {
     for (const dir of level) {
       let entries = [];
       try {
-        entries = fs5.readdirSync(dir, { withFileTypes: true });
+        entries = fs6.readdirSync(dir, { withFileTypes: true });
       } catch {
         continue;
       }
       for (const e of entries) {
         if (e.name.startsWith(".") || SKIP_DIRS2.has(e.name)) continue;
-        const full = path5.join(dir, e.name);
+        const full = path6.join(dir, e.name);
         if (e.isDirectory()) next.push(full);
-        else if (e.isFile() && SOURCE_EXT.has(path5.extname(e.name))) {
+        else if (e.isFile() && SOURCE_EXT.has(path6.extname(e.name))) {
           candidates.push(full);
           if (candidates.length >= TRAVERSE_SAFETY) break;
         }
@@ -925,7 +1201,7 @@ function collectSourceFiles(projectDir) {
   if (candidates.length > MAX_FILES) {
     const groups = /* @__PURE__ */ new Map();
     for (const c of candidates) {
-      const key = path5.relative(projectDir, c).split(path5.sep)[0];
+      const key = path6.relative(projectDir, c).split(path6.sep)[0];
       const g = groups.get(key);
       if (g) g.push(c);
       else groups.set(key, [c]);
@@ -947,10 +1223,10 @@ function collectSourceFiles(projectDir) {
   const out = [];
   for (const full of chosen) {
     try {
-      if (fs5.statSync(full).size > MAX_FILE_BYTES) continue;
+      if (fs6.statSync(full).size > MAX_FILE_BYTES) continue;
       out.push({
-        rel: path5.relative(projectDir, full).split(path5.sep).join("/"),
-        content: fs5.readFileSync(full, "utf8")
+        rel: path6.relative(projectDir, full).split(path6.sep).join("/"),
+        content: fs6.readFileSync(full, "utf8")
       });
     } catch {
     }
@@ -1048,7 +1324,7 @@ function scanEnvNames(projectDir) {
   for (const file of [".env.example", ".env", ".env.local"]) {
     let text;
     try {
-      text = fs5.readFileSync(path5.join(projectDir, file), "utf8");
+      text = fs6.readFileSync(path6.join(projectDir, file), "utf8");
     } catch {
       continue;
     }
@@ -1062,7 +1338,7 @@ function scanEnvNames(projectDir) {
 function scanDataSchema(projectDir, files) {
   const lines = [];
   try {
-    const schema = fs5.readFileSync(path5.join(projectDir, "prisma", "schema.prisma"), "utf8");
+    const schema = fs6.readFileSync(path6.join(projectDir, "prisma", "schema.prisma"), "utf8");
     for (const m of schema.matchAll(/model\s+(\w+)\s*\{([^}]*)\}/g)) {
       const fields = m[2].split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("@@") && !l.startsWith("//")).map((l) => l.split(/\s+/)[0]);
       const shown = fields.slice(0, 8).join(", ");
@@ -1079,14 +1355,14 @@ function scanDataSchema(projectDir, files) {
   for (const dir of migDirs) {
     let sqlFiles = [];
     try {
-      sqlFiles = fs5.readdirSync(path5.join(projectDir, dir)).filter((f) => f.endsWith(".sql")).slice(0, 30);
+      sqlFiles = fs6.readdirSync(path6.join(projectDir, dir)).filter((f) => f.endsWith(".sql")).slice(0, 30);
     } catch {
       continue;
     }
     const tables = /* @__PURE__ */ new Set();
     for (const f of sqlFiles) {
       try {
-        const sql = fs5.readFileSync(path5.join(projectDir, dir, f), "utf8");
+        const sql = fs6.readFileSync(path6.join(projectDir, dir, f), "utf8");
         for (const m of sql.matchAll(/CREATE TABLE (?:IF NOT EXISTS )?["'`]?(\w+)/gi)) tables.add(m[1]);
       } catch {
       }
@@ -1097,17 +1373,17 @@ function scanDataSchema(projectDir, files) {
 }
 function scanConventions(projectDir) {
   const lines = [];
-  const has = (f) => fs5.existsSync(path5.join(projectDir, f));
+  const has = (f) => fs6.existsSync(path6.join(projectDir, f));
   const pm = has("bun.lockb") || has("bun.lock") ? "bun" : has("pnpm-lock.yaml") ? "pnpm" : has("yarn.lock") ? "yarn" : has("package-lock.json") ? "npm" : null;
   if (pm) lines.push(`- gestor de paquetes: ${pm}`);
   let pkg = {};
   try {
-    pkg = JSON.parse(fs5.readFileSync(path5.join(projectDir, "package.json"), "utf8"));
+    pkg = JSON.parse(fs6.readFileSync(path6.join(projectDir, "package.json"), "utf8"));
   } catch {
   }
   if (pkg.workspaces || has("pnpm-workspace.yaml") || has("turbo.json")) lines.push("- monorepo: s\xED (workspaces)");
   try {
-    const ts = JSON.parse(fs5.readFileSync(path5.join(projectDir, "tsconfig.json"), "utf8"));
+    const ts = JSON.parse(fs6.readFileSync(path6.join(projectDir, "tsconfig.json"), "utf8"));
     const co = ts.compilerOptions ?? {};
     lines.push(`- TypeScript${co.strict ? " strict" : ""}`);
     const paths = Object.keys(co.paths ?? {}).slice(0, 5);
@@ -1129,18 +1405,18 @@ function scanConventions(projectDir) {
 }
 function linkMapToScans(vault, name, titles) {
   if (titles.length === 0) return;
-  const mapFile = path5.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
+  const mapFile = path6.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
   try {
-    const text = fs5.readFileSync(mapFile, "utf8");
+    const text = fs6.readFileSync(mapFile, "utf8");
     if (text.includes("Contexto ampliado:")) return;
-    fs5.appendFileSync(mapFile, `
+    fs6.appendFileSync(mapFile, `
 Contexto ampliado: ${titles.map((t) => `[[${t}]]`).join(" \xB7 ")}
 `);
   } catch {
   }
 }
 function scanAll(vault, projectDir) {
-  const name = path5.basename(projectDir);
+  const name = path6.basename(projectDir);
   const gitignored = ensureGitignore(projectDir, vault.root) !== null;
   try {
     untrackPersonalConfigs(projectDir);
@@ -1215,7 +1491,16 @@ Proyecto: [[Mapa - ${name}]]`
 }
 
 // src/cli.ts
-function registerAgentsMcp(agents, scope, cwd, portable = false) {
+function registerAgentHooks(agent, scope, cwd) {
+  if (!agent.hooks || agent.hooks === "claude") return;
+  const res = registerHarnessHooks(agent.hooks, scope, cwd);
+  if (res.ok) {
+    console.log(pc.green(`\u2713 Hooks \u2192 ${agent.name} (${res.file})`) + (res.detail ? pc.dim(`  \u2014 ${res.detail}`) : ""));
+  } else {
+    console.log(pc.yellow(`\u26A0 Hooks \u2192 ${agent.name}: ${res.detail ?? "fall\xF3"}`));
+  }
+}
+function registerAgentsMcp(agents, scope, cwd, portable = false, hooks = true) {
   setPortableMode(portable);
   for (const agent of agents) {
     if (agent.id === "claude") {
@@ -1234,6 +1519,7 @@ function registerAgentsMcp(agents, scope, cwd, portable = false) {
     if (res.ok) {
       const note = effScope !== scope ? pc.dim(" [global: no soporta por-proyecto]") : "";
       console.log(pc.green(`\u2713 MCP \u2192 ${agent.name} (${res.file})`) + note);
+      if (hooks) registerAgentHooks(agent, effScope, cwd);
     } else {
       console.log(pc.yellow(`\u26A0 MCP \u2192 ${agent.name}: ${res.detail ?? "fall\xF3"}`));
     }
@@ -1277,7 +1563,7 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
 ).action(async (opts) => {
   const isProject = Boolean(opts.project) && !opts.global;
   const cwd = process.cwd();
-  const vaultPath = path6.resolve(opts.path ?? (isProject ? path6.join(cwd, "Alexandria") : defaultVaultPath()));
+  const vaultPath = path7.resolve(opts.path ?? (isProject ? path7.join(cwd, "Alexandria") : defaultVaultPath()));
   await showBanner();
   console.log(pc.bold(`Instalaci\xF3n ${isProject ? "por proyecto" : "global"}
 `));
@@ -1327,8 +1613,8 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
     }
   }
   if (auto) {
-    const file = configureClaudeMd(isProject ? "project" : "global", cwd);
-    console.log(pc.green(`\u2713 Uso autom\xE1tico configurado en ${file}`));
+    const files = configureClaudeMd(isProject ? "project" : "global", cwd);
+    console.log(pc.green(`\u2713 Uso autom\xE1tico configurado en ${files.join(", ")}`));
   } else {
     console.log(pc.dim("  Sin auto-configuraci\xF3n (act\xEDvala luego con: ale init --auto)"));
   }
@@ -1358,27 +1644,27 @@ program.command("init").description("Crea/conecta la b\xF3veda e instala TODO: m
   const res = await idx.refresh();
   console.log(pc.green(`\u2713 \xCDndice: ${Object.keys(idx.meta.notes).length} notas, ${idx.meta.links.length} conexiones${res.embedded ? "" : " (keyword-only)"}`));
   console.log(pc.bold(pc.green("\n\u2705 Listo. Abre una sesi\xF3n de tu agente y todo funciona solo \u2014 nada que reconectar nunca.")));
-  console.log(pc.dim("   Hooks (captura autom\xE1tica) solo en Claude Code; los dem\xE1s agentes usan las tools MCP."));
+  console.log(pc.dim("   Captura autom\xE1tica (hooks): Claude Code, Codex, Gemini CLI, Cursor y OpenCode. El resto usa las tools MCP."));
   console.log(pc.dim('   Prueba: ale search "algo" \xB7 ale graph \xB7 ale stats \xB7 ale agents'));
   console.log(pc.dim("   Controla qu\xE9 gasta tokens (antes o despu\xE9s de instalar): ale toggles\n"));
   if (opts.skills) await runSkills({ yes: false, project: isProject });
 });
 program.command("plan").description("Crear un plan del Protocolo desde un archivo .md/.txt (en vez de escribirlo en la terminal)").argument("<file>", 'archivo con el plan (los checkboxes "- [ ]" se toman como Definition of Done)').option("--title <t>", "t\xEDtulo del plan (default: nombre del archivo o primer heading)").action(async (file, opts) => {
   const { vault } = await ensureReady();
-  const abs = path6.resolve(file);
-  const raw = fs6.readFileSync(abs, "utf8");
+  const abs = path7.resolve(file);
+  const raw = fs7.readFileSync(abs, "utf8");
   const heading = raw.match(/^#\s+(.+)$/m)?.[1]?.trim();
-  const title = opts.title ?? heading ?? path6.basename(abs).replace(/\.(md|txt)$/i, "");
+  const title = opts.title ?? heading ?? path7.basename(abs).replace(/\.(md|txt)$/i, "");
   const dod = [...raw.matchAll(/^[-*]\s*\[[ x]\]\s*(.+)$/gim)].map((m) => m[1].trim());
   const noteFile = createNote(vault.managed, {
     title: title.startsWith("Plan - ") ? title : `Plan - ${title}`,
     type: "plan",
     status: "active",
-    tags: ["plan"],
+    tags: ["plan", path7.basename(process.cwd())],
     content: raw.trim()
   });
   await VaultIndex.load(vault).refresh();
-  console.log(pc.green(`\u2713 Plan creado: ${path6.relative(vault.root, noteFile)}`));
+  console.log(pc.green(`\u2713 Plan creado: ${path7.relative(vault.root, noteFile)}`));
   console.log(pc.dim(`  DoD detectada: ${dod.length} criterios${dod.length ? " \u2014 " + dod.slice(0, 3).join(" \xB7 ") + (dod.length > 3 ? " \u2026" : "") : ' (agrega checkboxes "- [ ]" para criterios verificables)'}`));
   console.log(pc.dim("  El agente lo ver\xE1 como plan abierto al iniciar sesi\xF3n y lo retomar\xE1 con task_verify."));
   const tasks = [...raw.matchAll(/^\s*\d+[.)]\s+(.+)$/gm)].map((m) => m[1].trim());
@@ -1440,44 +1726,67 @@ program.command("config").description("Configuraci\xF3n de Alexandria (ej. proto
   }
   console.log(pc.yellow("Acci\xF3n inv\xE1lida: usa get o set"));
 });
-program.command("consolidate").description("Archiva prompts viejos sin reuso: salen del grafo y de la inyecci\xF3n, pero NUNCA se pierden \u2014 siguen buscables (contexto infinito)").option("--days <n>", "antig\xFCedad m\xEDnima en d\xEDas", "45").option("--dry", "solo mostrar qu\xE9 se archivar\xEDa").action(async (opts) => {
+async function runClean(opts) {
   const { vault, idx } = await ensureReady();
-  const cutoff = Date.now() - (parseInt(opts.days, 10) || 45) * 864e5;
-  const stale = Object.values(idx.meta.notes).filter(
-    (n) => n.type === "prompt" && (n.hits ?? 1) <= 1 && !n.rel.split("/").includes("archive") && n.created !== void 0 && Date.parse(n.created) < cutoff
-  );
-  if (stale.length === 0) {
-    console.log(pc.dim("Nada que consolidar: sin prompts viejos sin uso."));
+  const log = (m) => {
+    if (!opts.quiet) console.log(m);
+  };
+  const plan = planClean(vault, Object.values(idx.meta.notes), {
+    days: parseInt(opts.days, 10) || 45,
+    keepNoise: opts.keepNoise
+  });
+  if (opts.promptsOnly) {
+    plan.tmpFiles = [];
+    plan.staleModels = [];
+  }
+  const nPrompts = [...plan.bundles.values()].reduce((s, l) => s + l.length, 0);
+  const valuable = Object.values(idx.meta.notes).filter((n) => n.type !== "prompt").length;
+  const before = { vault: dirBytes(vault.root, vault.cache), cache: dirBytes(vault.cache) };
+  const mb = (b) => `${(b / 1024 / 1024).toFixed(1)} MB`;
+  log(pc.bold("\n\u{1F9F9} Limpieza segura de la b\xF3veda") + pc.dim(` (${vault.root})`));
+  log(pc.dim(`   Intacto siempre: ${valuable} notas de conocimiento (lecciones, planes, mapas, sesiones, verificaciones, notas)`));
+  log(`   \u2022 ${nPrompts} prompts viejos sin reuso \u2192 ${plan.bundles.size} archivos compactados (texto \xEDntegro) en ${ARCHIVE_DIR}/`);
+  log(`   \u2022 ${plan.noise.length} prompts que inyect\xF3 el arn\xE9s (notificaciones/recordatorios) \u2192 ${opts.keepNoise ? "se compactan" : "se descartan"}`);
+  if (plan.tmpFiles.length) log(`   \u2022 ${plan.tmpFiles.length} temporales hu\xE9rfanos del \xEDndice`);
+  if (plan.staleModels.length) log(`   \u2022 ${plan.staleModels.length} modelos viejos en cach\xE9: ${plan.staleModels.map((m) => path7.basename(m)).join(", ")}`);
+  if (plan.statsLinesToRotate) log(`   \u2022 stats.jsonl: ${plan.statsLinesToRotate} l\xEDneas de >90 d\xEDas \u2192 resumen (los totales de \`ale stats\` no cambian)`);
+  const nothing = nPrompts + plan.noise.length + plan.tmpFiles.length + plan.staleModels.length + plan.statsLinesToRotate === 0;
+  if (nothing) {
+    log(pc.dim("\n   Nada que limpiar."));
+    markCleaned(vault);
     return;
   }
-  const archiveDir = path6.join(vault.managed, "archive");
-  if (!opts.dry) fs6.mkdirSync(archiveDir, { recursive: true });
-  for (const n of stale) {
-    console.log(
-      `${opts.dry ? pc.yellow("se archivar\xEDa") : pc.cyan("archivado")}  ${n.rel} ${pc.dim(`(${(n.created ?? "").slice(0, 10)}, hits ${n.hits})`)}`
-    );
-    if (!opts.dry) {
-      fs6.renameSync(path6.join(vault.root, n.rel), path6.join(archiveDir, path6.basename(n.rel)));
-    }
+  if (!opts.yes) {
+    log(pc.dim("\n   Vista previa (no se toc\xF3 nada). Aplica con: ale clean --yes   \xB7   respaldo antes: --backup <archivo.tar.gz>\n"));
+    return;
   }
-  if (!opts.dry) {
-    await VaultIndex.load(vault).refresh();
-    console.log(
-      pc.green(`
-\u2713 ${stale.length} prompts archivados en ${path6.relative(vault.root, archiveDir)}/ \u2014 fuera del grafo, siguen buscables. Nada se pierde.`)
-    );
-  } else {
-    console.log(pc.dim(`
-${stale.length} candidatos. Corre sin --dry para archivarlos.`));
+  if (opts.backup) {
+    const out = path7.resolve(opts.backup);
+    execFileSync4("tar", ["-czf", out, "-C", vault.root, path7.relative(vault.root, vault.managed) || "."], { stdio: "ignore" });
+    log(pc.green(`\u2713 Respaldo en ${out}`));
   }
-});
-program.command("agents").description("Lista los agentes de IA soportados y registra el MCP de Alexandria en los que elijas").argument("[ids]", `"all", "detected" o csv (${AGENTS.map((a) => a.id).join(",")})`).option("--project", "registrar a nivel proyecto (cwd) cuando el agente lo soporte").action((ids, opts) => {
+  const res = applyClean(vault, plan);
+  await VaultIndex.load(vault).refresh();
+  markCleaned(vault);
+  const after = { vault: dirBytes(vault.root, vault.cache), cache: dirBytes(vault.cache) };
+  log(
+    pc.green(
+      `
+\u2713 ${res.compacted} prompts compactados en ${res.bundlesWritten} archivos \xB7 ${res.dropped} de ruido descartados \xB7 ${res.removedDerived} derivados eliminados`
+    )
+  );
+  log(pc.dim(`   B\xF3veda ${mb(before.vault)} \u2192 ${mb(after.vault)} \xB7 \xEDndice ${mb(before.cache)} \u2192 ${mb(after.cache)}`));
+  log(pc.dim('   Lo compactado sigue buscable: ale search --archive "<texto>"\n'));
+}
+program.command("clean").description("Limpieza segura: compacta prompts viejos sin reuso (texto \xEDntegro, fuera del \xEDndice), descarta ruido del arn\xE9s y purga cach\xE9s regenerables. Nunca toca lecciones, planes, mapas ni sesiones").option("--days <n>", "antig\xFCedad m\xEDnima de un prompt para compactarlo", "45").option("-y, --yes", "aplicar (sin esto solo muestra la vista previa)").option("--keep-noise", "compactar tambi\xE9n los prompts inyectados por el arn\xE9s en vez de descartarlos").option("--prompts-only", "solo compactar prompts (sin tocar cach\xE9s)").option("--backup <file>", "respaldo .tar.gz de la b\xF3veda antes de aplicar").option("--quiet", "sin salida (lo usa la limpieza autom\xE1tica)").action(runClean);
+program.command("consolidate").description("(alias de `ale clean --prompts-only`) compacta prompts viejos sin reuso").option("--days <n>", "antig\xFCedad m\xEDnima en d\xEDas", "45").option("--dry", "solo mostrar qu\xE9 se har\xEDa").action((opts) => runClean({ days: opts.days, yes: !opts.dry, promptsOnly: true }));
+program.command("agents").description("Lista los agentes de IA soportados y registra el MCP de Alexandria en los que elijas").argument("[ids]", `"all", "detected" o csv (${AGENTS.map((a) => a.id).join(",")})`).option("--project", "registrar a nivel proyecto (cwd) cuando el agente lo soporte").option("--no-hooks", "solo MCP, sin hooks de captura autom\xE1tica").action((ids, opts) => {
   if (!ids) {
     console.log(pc.bold("\n\u{1F3DB}\uFE0F  Agentes de IA soportados:\n"));
     for (const a of AGENTS) {
       const det = a.detect();
       console.log(
-        `  ${det ? pc.green("\u25CF") : pc.dim("\u25CB")} ${a.id.padEnd(9)} ${a.name}${det ? pc.green("  detectado") : pc.dim("  no detectado")}${a.supportsProject ? "" : pc.dim("  (solo global)")}`
+        `  ${det ? pc.green("\u25CF") : pc.dim("\u25CB")} ${a.id.padEnd(9)} ${a.name.padEnd(26)}${a.hooks ? pc.cyan(" MCP+hooks") : pc.dim(" MCP      ")}${det ? pc.green("  detectado") : pc.dim("  no detectado")}${a.supportsProject ? "" : pc.dim("  (solo global)")}${a.legacy ? pc.dim("  [legado]") : ""}`
       );
     }
     console.log(pc.dim("\n  Registrar MCP: ale agents all \xB7 ale agents detected \xB7 ale agents cursor,opencode\n"));
@@ -1488,17 +1797,17 @@ program.command("agents").description("Lista los agentes de IA soportados y regi
     console.log(pc.yellow(`Ning\xFAn agente coincide con \xAB${ids}\xBB. Ids v\xE1lidos: ${AGENTS.map((a) => a.id).join(", ")}`));
     return;
   }
-  registerAgentsMcp(chosen, opts.project ? "project" : "global", process.cwd());
+  registerAgentsMcp(chosen, opts.project ? "project" : "global", process.cwd(), false, opts.hooks);
   console.log(pc.dim("\n  Reinicia el agente (o recarga sus MCP) para que tome el servidor.\n"));
 });
 program.command("add").description("Guardar una nota manualmente").argument("<title>", "t\xEDtulo").option("-c, --content <text>", "contenido markdown (o se lee de stdin)").option("-f, --file <path>", "leer el contenido desde un archivo .md/.txt del proyecto").option("-t, --tags <tags>", "tags separados por coma").action(async (title, opts) => {
   const { vault } = await ensureReady();
   let content = opts.content;
   if (!content && opts.file) {
-    content = fs6.readFileSync(path6.resolve(opts.file), "utf8");
+    content = fs7.readFileSync(path7.resolve(opts.file), "utf8");
   }
   if (!content && !process.stdin.isTTY) {
-    content = fs6.readFileSync(0, "utf8");
+    content = fs7.readFileSync(0, "utf8");
   }
   const file = createNote(vault.managed, {
     title,
@@ -1506,15 +1815,26 @@ program.command("add").description("Guardar una nota manualmente").argument("<ti
     tags: opts.tags ? opts.tags.split(",").map((t) => t.trim()) : []
   });
   await VaultIndex.load(vault).refresh();
-  console.log(pc.green(`\u2713 ${path6.relative(vault.root, file)}`));
+  console.log(pc.green(`\u2713 ${path7.relative(vault.root, file)}`));
 });
-program.command("search").description("B\xFAsqueda h\xEDbrida (sem\xE1ntica + keyword) en la b\xF3veda").argument("<query...>", "qu\xE9 buscar").option("-k <n>", "n\xFAmero de resultados", "6").option("--expand", "incluir vecinos del grafo").action(async (query, opts) => {
+program.command("search").description("B\xFAsqueda h\xEDbrida (sem\xE1ntica + keyword) en la b\xF3veda").argument("<query...>", "qu\xE9 buscar").option("-k <n>", "n\xFAmero de resultados", "6").option("--expand", "incluir vecinos del grafo").option("--archive", "buscar en los prompts compactados por `ale clean` (keyword)").action(async (query, opts) => {
   const vault = getVault();
   if (!vaultExists(vault)) {
     console.log(pc.yellow("No hay b\xF3veda aqu\xED. Corre `ale init` primero."));
     return;
   }
   const q = query.join(" ");
+  if (opts.archive) {
+    const hits = searchArchive(vault, q, parseInt(opts.k, 10) || 6);
+    if (hits.length === 0) console.log(pc.dim("Sin resultados en el archivo."));
+    for (const h of hits) {
+      console.log(`
+${pc.bold(pc.cyan(h.heading))} ${pc.dim(`(${h.file})`)}`);
+      console.log(pc.dim("  " + h.excerpt.replace(/\n+/g, " ").slice(0, 300)));
+    }
+    console.log();
+    return;
+  }
   const results = await hybridSearch(vault, q, parseInt(opts.k, 10) || 6, { expand: opts.expand });
   if (results.length === 0) {
     console.log(pc.dim("Sin resultados."));
@@ -1600,7 +1920,7 @@ program.command("scan").description("Escanea el proyecto (API, env-nombres, dato
     console.log(pc.yellow(`  \u26A0 Notas truncadas por el cap: ${s.truncated.join(", ")} \u2014 s\xFAbelo con: ale config set scan.maxEntries <n>`));
   }
   if (s.notes.length) {
-    for (const n of s.notes) console.log(pc.dim(`  ${path6.relative(vault.root, n)}`));
+    for (const n of s.notes) console.log(pc.dim(`  ${path7.relative(vault.root, n)}`));
   } else {
     console.log(pc.dim("  Nada detectado (\xBFproyecto sin package.json/api/env?)"));
   }
@@ -1661,7 +1981,7 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
 async function runSkills(opts) {
   const { vault } = await ensureReady();
   const cwd = process.cwd();
-  const targetDir = opts.project ? path6.join(cwd, ".claude", "skills") : path6.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
+  const targetDir = opts.project ? path7.join(cwd, ".claude", "skills") : path7.join(process.env.HOME ?? process.env.USERPROFILE ?? cwd, ".claude", "skills");
   const recs = await recommendSkills(vault, [targetDir]);
   if (recs.length === 0) {
     console.log(pc.dim("Sin recomendaciones nuevas: la b\xF3veda a\xFAn no tiene suficientes patrones (o ya est\xE1 todo instalado)."));
@@ -1703,7 +2023,7 @@ program.command("skills").description("Analiza la b\xF3veda y recomienda/instala
 program.command("skills:evolve").alias("evolve").description("Genera/actualiza una skill VIVA del proyecto con lo que la b\xF3veda sabe (flujo, convenciones, lecciones). Muestra el diff y pide aprobaci\xF3n").option("-y, --yes", "escribir sin preguntar (para scripts)").option("--global", "guardar en ~/.claude/skills en vez de .claude/skills del proyecto").action(async (opts) => {
   const { vault } = await ensureReady();
   const cwd = process.cwd();
-  const proj = path6.basename(cwd);
+  const proj = path7.basename(cwd);
   const targetDir = skillTargetDir(cwd, Boolean(opts.global));
   const result = evolveSkill(vault, proj, targetDir);
   if (!result) {
@@ -1790,10 +2110,10 @@ program.command("doctor").description("Verifica y repara la instalaci\xF3n (mode
     );
   }
   try {
-    const name = path6.basename(cwd);
-    const mapFile = path6.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
-    const pkgM = fs6.statSync(path6.join(cwd, "package.json")).mtimeMs;
-    const mapM = fs6.statSync(mapFile).mtimeMs;
+    const name = path7.basename(cwd);
+    const mapFile = path7.join(vault.managed, "notes", `mapa-${slugify(name)}.md`);
+    const pkgM = fs7.statSync(path7.join(cwd, "package.json")).mtimeMs;
+    const mapM = fs7.statSync(mapFile).mtimeMs;
     if (pkgM > mapM) {
       console.log(pc.yellow("\u26A0 package.json cambi\xF3 despu\xE9s del \xFAltimo escaneo \u2014 corre `ale scan` para refrescar el contexto"));
     } else {
@@ -1801,40 +2121,43 @@ program.command("doctor").description("Verifica y repara la instalaci\xF3n (mode
     }
   } catch {
   }
+  const all = Object.values(idx.meta.notes);
+  const prompts = all.filter((n) => n.type === "prompt").length;
+  if (prompts > 5 * Math.max(1, all.length - prompts)) {
+    console.log(pc.yellow(`\u26A0 ${prompts} prompts vs ${all.length - prompts} notas de conocimiento \u2014 corre \`ale clean\` (vista previa, no borra nada sin --yes)`));
+  }
   const skillsRepoCfg = localSkillsRepo();
-  if (skillsRepoCfg && !fs6.existsSync(skillsRepoCfg)) {
+  if (skillsRepoCfg && !fs7.existsSync(skillsRepoCfg)) {
     console.log(pc.yellow(`\u26A0 skills.repo apunta a ${skillsRepoCfg} y no existe \u2014 corr\xEDgelo: ale config set skills.repo <ruta>`));
   }
   console.log();
 });
-program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloque de CLAUDE.md y MCP del proyecto (no borra la b\xF3veda ni las notas)").option("--project", "quitar del proyecto (cwd)").action((opts) => {
+program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloques de CLAUDE.md/AGENTS.md y MCP de todos los agentes (no borra la b\xF3veda ni las notas)").option("--project", "quitar del proyecto (cwd)").action((opts) => {
   const cwd = process.cwd();
   const scope = opts.project ? "project" : "global";
   const settings = opts.project ? projectSettingsPath(cwd) : globalSettingsPath();
   unregisterHooks(settings);
   console.log(pc.green(`\u2713 Hooks de alexandria eliminados de ${settings}`));
-  const claudeMd = removeClaudeMd(scope, cwd);
-  if (claudeMd) console.log(pc.green(`\u2713 Bloque de Alexandria removido de ${claudeMd}`));
-  if (opts.project) {
-    const mcpFile = path6.join(cwd, ".mcp.json");
-    try {
-      const cfg = JSON.parse(fs6.readFileSync(mcpFile, "utf8"));
-      if (cfg.mcpServers?.alexandria) {
-        delete cfg.mcpServers.alexandria;
-        if (Object.keys(cfg.mcpServers).length === 0) delete cfg.mcpServers;
-        if (Object.keys(cfg).length === 0) fs6.rmSync(mcpFile, { force: true });
-        else fs6.writeFileSync(mcpFile, JSON.stringify(cfg, null, 2) + "\n");
-        console.log(pc.green("\u2713 MCP removido de .mcp.json"));
-      }
-    } catch {
-    }
-    console.log(pc.dim('  Otros agentes (Cursor/OpenCode/\u2026): quita "alexandria" de su config si lo registraste.'));
-  } else {
-    console.log(pc.dim("  MCP global: qu\xEDtalo con `claude mcp remove alexandria`. Tus notas quedan intactas."));
+  for (const f of removeClaudeMd(scope, cwd)) console.log(pc.green(`\u2713 Bloque de Alexandria removido de ${f}`));
+  for (const agent of AGENTS) {
+    if (agent.unregister?.(scope, cwd)) console.log(pc.green(`\u2713 MCP removido de ${agent.name}`));
+  }
+  for (const h of HOOK_HARNESSES) {
+    if (unregisterHarnessHooks(h, scope, cwd)) console.log(pc.green(`\u2713 Hooks removidos de ${h}`));
+  }
+  if (!opts.project) {
+    console.log(pc.dim("  Hermes: qu\xEDtalo con `hermes mcp remove alexandria` si lo registraste. Tus notas quedan intactas."));
   }
 });
 program.command("serve-mcp").description("Correr el servidor MCP por stdio (lo usa Claude Code internamente)").action(async () => {
   await import("./mcp/server.js");
+});
+program.command("hook").description("Corre un hook (lo usan los plugins de Claude Code/Codex): session-start | prompt | stop").argument("<event>", "session-start | prompt | stop").option("--harness <id>", "claude | codex | gemini | cursor | opencode", "claude").action(async (event) => {
+  const i = process.argv.indexOf("--harness");
+  if (i > -1 && process.argv[i + 1]) process.argv.push(`--harness=${process.argv[i + 1]}`);
+  if (event === "session-start") await import("./hooks/on-session-start.js");
+  else if (event === "prompt") await import("./hooks/on-prompt.js");
+  else if (event === "stop") await import("./hooks/on-stop.js");
 });
 if (process.argv.length <= 2) {
   await showBanner();

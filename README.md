@@ -6,11 +6,11 @@
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-ureck-yellow)](https://buymeacoffee.com/ureck)
 
-[![docs](https://img.shields.io/badge/docs-ES%20%C2%B7%20EN-b8860b)](https://ureckchan.github.io/alexandria/) **[Documentation / Documentación](https://ureckchan.github.io/alexandria/)**
+[![docs](https://img.shields.io/badge/docs-ES%20%C2%B7%20EN-b8860b)](https://alexandria.ureck.dev/) **[Documentation / Documentación](https://alexandria.ureck.dev/)**
 
 Alexandria automatically captures your AI prompts and sessions, searches that knowledge **before** spending tokens, and connects everything in an Obsidian-style graph. **100% local**: no database, no API keys, no telemetry, no cost.
 
-Works with the most popular agents via MCP: **Claude Code · Cursor · OpenCode · Devin CLI · Cline · Codex CLI · Gemini CLI · VS Code (Copilot) · OpenClaw · Hermes Agent · Windsurf (legacy)**.
+Works with the most popular agents via MCP: **Claude Code · Codex CLI · Gemini CLI · Cursor · OpenCode · Devin CLI · Cline · VS Code (Copilot) · OpenClaw · Hermes Agent · Windsurf (legacy)** — and since 1.4, **automatic capture + context injection via hooks in Claude Code, Codex, Gemini CLI, Cursor and OpenCode**.
 
 ## Why?
 
@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.3.1
+1.4.0
 ```
 
 ## Getting started
@@ -130,7 +130,7 @@ cat DECISIONS.md | ale add "Q3 architecture decisions"
 ale add "Vercel deploy" -c "Region cdg1, see [[Prisma setup]]" -t deploy
 ```
 
-(Automatic capture via hooks already does this in every Claude Code session — `add` is for extra knowledge.)
+(Automatic capture via hooks already does this in every Claude Code, Codex, Gemini CLI, Cursor and OpenCode session — `add` is for extra knowledge.)
 
 ### Control what spends tokens (`ale toggles`)
 
@@ -142,7 +142,7 @@ ale init --off architect.enrich,digest.map   # disable from the start
 ale config set tokens.solutionCache false    # scriptable, one by one
 ```
 
-The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), and background index rebuild at session close (costs no tokens). All on by default; nothing changes unless you touch them.
+The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), background index rebuild at session close, and weekly background cleanup `clean.auto` (neither costs tokens). All on by default; nothing changes unless you touch them.
 
 ### Deep project context (`ale scan`)
 
@@ -232,9 +232,11 @@ Flags plans without a Definition of Done, failures without lessons, and orphan n
 ```bash
 ale doctor                    # checks & repairs: model, hooks, MCP, index
 ale reindex [--force]         # incremental by default
-ale consolidate [--days 45]   # ARCHIVES old unused prompts to Alexandria/archive/
-                              # — out of the graph and injection, still searchable: nothing is ever lost
-ale uninstall                 # removes hooks; your notes stay untouched
+ale clean                     # PREVIEW of a safe cleanup (touches nothing)
+ale clean --yes [--backup f]  # apply: old unused prompts → compacted monthly files (full text),
+                              # harness noise dropped, stale caches purged. Lessons, plans, maps,
+                              # sessions are NEVER touched. Still searchable: ale search --archive "…"
+ale uninstall                 # removes hooks + MCP from every agent; your notes stay untouched
 ```
 
 Every command self-repairs before running: missing model → downloads it; stale index → updates it.
@@ -247,35 +249,49 @@ ale agents all             # register the MCP server in all of them
 ale agents cursor,gemini   # just these
 ```
 
-| Agent | Config written | Per-project |
-|---|---|---|
-| Claude Code | `.mcp.json` / `claude mcp add` + hooks | ✓ |
-| Cursor | `~/.cursor/mcp.json` / `.cursor/mcp.json` | ✓ |
-| OpenCode | `opencode.json` | ✓ |
-| Devin CLI (Cognition) | `.devin/mcp_config.local.json` | ✓ |
-| Windsurf (legacy) | `~/.codeium/windsurf/mcp_config.json` | — |
-| Cline | `cline_mcp_settings.json` (VS Code) | — |
-| Codex CLI | `~/.codex/config.toml` | — |
-| Gemini CLI | `~/.gemini/settings.json` / `.gemini/settings.json` | ✓ |
-| VS Code (Copilot) | `mcp.json` (profile) / `.vscode/mcp.json` | ✓ |
-| OpenClaw | `~/.openclaw/openclaw.json` | — |
-| Hermes Agent (Nous) | `hermes mcp add` / `~/.hermes/config.yaml` | — |
+| Agent | MCP config written | Hooks (auto capture + injection) | Per-project |
+|---|---|---|---|
+| Claude Code | `.mcp.json` / `claude mcp add` | `.claude/settings.json` — SessionStart · UserPromptSubmit · Stop · PreCompact | ✓ |
+| Codex CLI | `~/.codex/config.toml` / `.codex/config.toml` | `.codex/hooks.json` — SessionStart · UserPromptSubmit · Stop · PreCompact ¹ | ✓ |
+| Gemini CLI | `~/.gemini/settings.json` / `.gemini/settings.json` | same file — SessionStart · BeforeAgent · AfterAgent · PreCompress | ✓ |
+| Cursor | `~/.cursor/mcp.json` / `.cursor/mcp.json` | `.cursor/hooks.json` — sessionStart · beforeSubmitPrompt ² · afterAgentResponse | ✓ |
+| OpenCode | `opencode.json` | plugin `.opencode/plugins/alexandria.js` — injects into the system prompt | ✓ |
+| Devin CLI (Cognition) | `.devin/mcp_config.local.json` | — | ✓ |
+| Cline | `cline_mcp_settings.json` (VS Code) | — | — |
+| VS Code (Copilot) | `mcp.json` (profile) / `.vscode/mcp.json` | — | ✓ |
+| OpenClaw | `~/.openclaw/openclaw.json` | — | — |
+| Hermes Agent (Nous) | `hermes mcp add` / `~/.hermes/config.yaml` | — | — |
+| Windsurf (legacy → Devin) | `~/.codeium/windsurf/mcp_config.json` | — | — |
 
-Registrations are **idempotent merges** — your other MCP servers are never touched.
+¹ Codex skips untrusted hooks: open Codex once and approve them with `/hooks`.
+² Cursor's `beforeSubmitPrompt` can't inject context — there Alexandria captures the prompt; context arrives via `sessionStart` and the MCP tools.
 
-**Note**: automatic capture via hooks (session digest, per-prompt injection, session save on close) is Claude Code-only — other agents don't have a hook system. There, knowledge flows through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).
+`ale agents <ids>` registers MCP **and** hooks (`--no-hooks` for MCP only). Registrations are **idempotent merges** — your other MCP servers and hooks are never touched, and a config file that doesn't parse is never overwritten. `ale init` also writes the usage block to `AGENTS.md` (read by Codex, OpenCode, Cursor, Devin…) besides `CLAUDE.md`.
+
+Agents without hooks still get everything through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).
+
+### As a plugin
+
+The public repo is also a **Claude Code plugin marketplace** (and ships a Codex plugin manifest). The plugin runs the globally installed `alexandria` (falls back to `npx`):
+
+```bash
+npm i -g @ureck/alexandria
+claude plugin marketplace add UreckChan/alexandria
+claude plugin install alexandria@alexandria
+```
 
 ## How it works
 
 ```
 AI agent session
   │
-  ├─ SessionStart ──► injects digest: protocol manifest + project map + open plans   (hooks, Claude Code)
-  ├─ Every prompt ──► local hybrid search → injects only what's relevant             (hooks, Claude Code)
+  ├─ SessionStart ──► injects digest: protocol manifest + project map + open plans   (hooks)
+  ├─ Every prompt ──► local hybrid search → injects only what's relevant             (hooks)
   │                   └─ near-identical prompt already solved → injects the solution (cache)
   ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link         (all agents)
   │                   plan_create · task_verify · lesson_extract                     (the Protocol)
-  └─ Stop/PreCompact► saves the session outcome into the vault                       (hooks, Claude Code)
+  └─ Stop/PreCompact► saves the session outcome into the vault                       (hooks)
+     hooks: Claude Code · Codex · Gemini CLI · Cursor · OpenCode (one set of scripts, --harness=<id>)
                                 │
                         <Obsidian vault>/Alexandria/*.md   ← markdown, [[wikilinks]]
                         <vault>/.vault/                    ← index (regenerable)
@@ -294,8 +310,8 @@ AI agent session
 | `ale scan` | Deep project context: API routes, env var **names**, data schema (file parse), conventions → compact notes (adaptive cap ≤200 entries, fair sampling in monorepos). Read-only; ensures .gitignore |
 | `ale toggles` | Interactive menu to enable/disable every token-spending behavior, each with its real approximate cost. Works before or after install; scriptable via `ale init --off <keys>` |
 | `ale skills:evolve` | Generates/updates a **living skill for the project** from what the vault knows (stack, conventions, app flow, lessons). Always shows a diff and asks before writing |
-| `ale agents [ids] [--project]` | List agents / register the MCP server |
-| `ale search <query> [-k n] [--expand]` | Hybrid search; `--expand` pulls graph neighbors. With the Protocol on, appends the **chain** (plan + verification + lesson) connected to the top hit |
+| `ale agents [ids] [--project] [--no-hooks]` | List agents / register the MCP server + hooks where supported |
+| `ale search <query> [-k n] [--expand] [--archive]` | Hybrid search; `--archive` searches prompts compacted by `ale clean`; `--expand` pulls graph neighbors. With the Protocol on, appends the **chain** (plan + verification + lesson) connected to the top hit |
 | `ale add <title> [-c text] [--file <path>] [-t tags]` | Save a note (inline, from file, or stdin) |
 | `ale plan <file> [--title t]` | Create a Protocol plan from a .md/.txt file (checkboxes → Definition of Done); surfaces similar past plans + quality hints |
 | `ale graph [--out file.html] [--no-open]` | Live local graph viewer |
@@ -304,9 +320,11 @@ AI agent session
 | `ale config <get\|set> <key> [value]` | Configuration (e.g. `protocol` true/false) |
 | `ale skills [-y] [--project]` | Recommends & installs Claude skills — semantic (e5) + keyword detection over your vault. Local source configurable with `ale config set skills.repo <path>`; otherwise installs from skills.sh |
 | `ale reindex [--force]` | Reindex (incremental by default) |
-| `ale consolidate [--days n] [--dry]` | Archive old unused prompts — never deletes |
+| `ale clean [--yes] [--days n] [--backup f] [--keep-noise]` | Safe cleanup: compacts old unused prompts (full text kept, out of the vector index), drops harness noise, purges regenerable caches, rotates stats. Preview by default. Runs weekly in the background (toggle `clean.auto`) |
+| `ale consolidate [--days n] [--dry]` | Alias of `ale clean --prompts-only` |
 | `ale doctor [--project]` | Check & repair: model, hooks, MCP, index |
-| `ale uninstall [--project]` | Remove hooks (notes stay untouched) |
+| `ale uninstall [--project]` | Remove hooks, MCP and instruction blocks from every agent (notes stay untouched) |
+| `ale hook <session-start\|prompt\|stop> [--harness id]` | Run a hook (used by the plugins) |
 | `ale --vault <path> <cmd>` | Run any command against another vault |
 
 `alexandria` works as an alias of `ale`.

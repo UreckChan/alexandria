@@ -3,17 +3,22 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-53SIGH5A.js";
+} from "../chunk-U2U53TU2.js";
+import {
+  autoCleanDue,
+  markCleaned
+} from "../chunk-2ESJQAP4.js";
 import {
   ensureVaultStructure,
+  lastExchange,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-7LWLBJAD.js";
+} from "../chunk-MDGFK6UC.js";
 import {
   VaultIndex,
   appendToNote
-} from "../chunk-QB37UGO6.js";
+} from "../chunk-3CB7GRFJ.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-stop.ts
@@ -21,39 +26,24 @@ import fs from "fs";
 import path from "path";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
-function textOf(msg) {
-  const c = msg.message?.content;
-  if (typeof c === "string") return c;
-  if (Array.isArray(c)) {
-    return c.filter((p) => p.type === "text" && typeof p.text === "string").map((p) => p.text).join("\n");
-  }
-  return "";
-}
 runHook(25e3, async (input) => {
-  if (!input.transcript_path || !fs.existsSync(input.transcript_path)) return;
   const vault = resolveVault({ cwd: input.cwd });
   if (!vaultExists(vault)) return;
-  ensureVaultStructure(vault);
-  const raw = fs.readFileSync(input.transcript_path, "utf8");
-  const lines = raw.split("\n").filter(Boolean);
-  let lastUser = "";
-  let lastAssistant = "";
-  for (const line of lines.slice(-200)) {
-    try {
-      const msg = JSON.parse(line);
-      const text = textOf(msg).trim();
-      if (!text) continue;
-      if (msg.type === "user" && !text.startsWith("<")) lastUser = text;
-      if (msg.type === "assistant") lastAssistant = text;
-    } catch {
-    }
+  let lastUser = input.prompt?.trim() ?? "";
+  let lastAssistant = input.answer?.trim() ?? "";
+  if (!lastAssistant && input.transcript_path && fs.existsSync(input.transcript_path)) {
+    const lines = fs.readFileSync(input.transcript_path, "utf8").split("\n").filter(Boolean);
+    const ex = lastExchange(lines.slice(-200));
+    lastAssistant = ex.assistant;
+    lastUser ||= ex.user;
   }
   if (!lastAssistant) return;
+  ensureVaultStructure(vault);
   const proj = projectName(input.cwd);
   const date = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const sid = (input.session_id ?? "sesion").slice(0, 8);
   const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(11, 16);
-  const isCompact = input.hook_event_name === "PreCompact" || Boolean(input.trigger);
+  const isCompact = input.compact;
   appendToNote(vault.managed, {
     fixedName: `${date}-${proj}-${sid}`,
     title: `Sesi\xF3n ${date} \u2014 ${proj}`,
@@ -69,7 +59,24 @@ runHook(25e3, async (input) => {
 Proyecto: [[Mapa - ${proj}]]`
   });
   await maybeRebuildInBackground(vault);
+  maybeCleanInBackground(vault);
 });
+function maybeCleanInBackground(vault) {
+  try {
+    if (!toggleEnabled("clean.auto") || !autoCleanDue(vault)) return;
+    markCleaned(vault);
+    const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "cli.js");
+    if (!fs.existsSync(cli)) return;
+    const child = spawn(process.execPath, [cli, "--vault", vault.root, "clean", "--yes", "--quiet"], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+      env: { ...process.env, ALEXANDRIA_HOOK: "" }
+    });
+    child.unref();
+  } catch {
+  }
+}
 async function maybeRebuildInBackground(vault) {
   try {
     if (!toggleEnabled("index.autoRebuild")) return;

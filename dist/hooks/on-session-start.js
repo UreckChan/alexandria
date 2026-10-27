@@ -1,21 +1,20 @@
 #!/usr/bin/env node
 import {
-  logInjection
-} from "../chunk-XITAQVOZ.js";
-import {
+  emitContext,
   projectName,
   runHook,
   truncate
-} from "../chunk-53SIGH5A.js";
+} from "../chunk-U2U53TU2.js";
 import {
+  logInjection,
   protocolEnabled,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-7LWLBJAD.js";
+} from "../chunk-MDGFK6UC.js";
 import {
   VaultIndex
-} from "../chunk-QB37UGO6.js";
+} from "../chunk-3CB7GRFJ.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-session-start.ts
@@ -33,7 +32,11 @@ runHook(15e3, async (input) => {
   const proj = projectName(input.cwd);
   const parts = [];
   if (protocolEnabled()) {
-    const openPlans = idx.notesByTag("plan").filter((n) => n.status === "active");
+    const recent = Date.now() - 30 * 864e5;
+    const seen = /* @__PURE__ */ new Set();
+    const openPlans = idx.notesByTag("plan").filter((n) => n.status === "active" && !n.rel.split("/").includes("archive")).filter(
+      (n) => n.tags.some((t) => t.toLowerCase() === proj.toLowerCase()) || n.tags.every((t) => t === "plan") && Date.parse(n.created ?? "") > recent
+    ).filter((n) => !seen.has(n.title) && Boolean(seen.add(n.title))).slice(0, 8);
     parts.push(
       `## Protocolo Alexandria (activo)
 El protocolo es PALANCA, no l\xEDmite: \xFAsalo para rendir m\xE1s con menos tokens, nunca como burocracia. Tareas simples \u2192 responde directo, sin ceremonia. Tareas no triviales \u2192 ciclo con las tools MCP: 1) plan_create (objetivo + Definition of Done) \u2192 2) ejecuta con toda tu capacidad \u2192 3) task_verify con evidencia real (tests/build \u2014 la evidencia elimina errores, no te frena) \u2192 si algo falla, vault_search por lecciones ANTES de re-debuggear (conocimiento previo = tokens gratis) \u2192 4) lesson_extract si resolviste algo no obvio. Reutiliza lo cacheado con criterio: valida que siga aplicando si el c\xF3digo cambi\xF3.` + (openPlans.length > 0 ? `
@@ -52,7 +55,7 @@ ${truncate(body.trim(), 4e3)}`);
     } catch {
     }
   }
-  const sessions = idx.notesByTag("session").sort((a, b) => (b.created ?? "").localeCompare(a.created ?? "")).slice(0, 3);
+  const sessions = idx.notesByTag("session").filter((s) => s.tags.some((t) => t.toLowerCase() === proj.toLowerCase())).sort((a, b) => (b.created ?? "").localeCompare(a.created ?? "")).slice(0, 3);
   if (sessions.length > 0) {
     const lines = sessions.map((s) => `- ${s.title} (${(s.created ?? "").slice(0, 10)})`);
     parts.push(`## Sesiones recientes en la b\xF3veda
@@ -75,6 +78,5 @@ B\xF3veda de conocimiento local activa (${notes.length} notas). ANTES de explora
 
 ` + truncate(parts.join("\n\n"), MAX_CHARS) + `
 </alexandria-digest>`;
-  process.stdout.write(digest);
-  logInjection(vault, { kind: "session-start", injectedChars: digest.length });
-});
+  if (emitContext("session", digest) > 0) logInjection(vault, { kind: "session-start", injectedChars: digest.length });
+}, "session");

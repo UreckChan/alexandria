@@ -1,0 +1,79 @@
+{
+  "name": "alexandria",
+  "version": "1.4.0",
+  "description": "Local knowledge vault for AI agents: captures prompts/sessions, injects relevant context, semantic search offline, Alexandria Protocol (plan → verify → learn).",
+  "author": {
+    "name": "Ureck",
+    "url": "https://github.com/UreckChan"
+  },
+  "homepage": "https://alexandria.ureck.dev",
+  "repository": "https://github.com/UreckChan/alexandria",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "knowledge-base",
+    "mcp",
+    "local-first",
+    "semantic-search"
+  ],
+  "mcpServers": {
+    "alexandria": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "@ureck/alexandria",
+        "alexandria",
+        "serve-mcp"
+      ]
+    }
+  },
+  "hooks": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook session-start --harness=claude || npx -y -p @ureck/alexandria alexandria hook session-start --harness=claude",
+              "timeout": 20
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook prompt --harness=claude || npx -y -p @ureck/alexandria alexandria hook prompt --harness=claude",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "Stop": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook stop --harness=claude || npx -y -p @ureck/alexandria alexandria hook stop --harness=claude",
+              "timeout": 30
+            }
+          ]
+        }
+      ],
+      "PreCompact": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook stop --harness=claude || npx -y -p @ureck/alexandria alexandria hook stop --harness=claude",
+              "timeout": 30
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
