@@ -4,17 +4,19 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-U2U53TU2.js";
+} from "../chunk-ZDS6VULX.js";
 import {
-  logInjection,
+  logInjection
+} from "../chunk-POA77JSS.js";
+import {
   protocolEnabled,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-MDGFK6UC.js";
+} from "../chunk-CEHNXDUE.js";
 import {
   VaultIndex
-} from "../chunk-3CB7GRFJ.js";
+} from "../chunk-BV2KJV5W.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-session-start.ts

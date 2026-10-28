@@ -4,21 +4,24 @@ import {
   distDir,
   globalSettingsPath,
   hooksRegistered,
+  ingestAndOutline,
+  listDocs,
   mcpRegisteredProject,
   pkgVersion,
   planContext,
   planQualityHints,
   projectSettingsPath,
+  readDoc,
   registerHooks,
   registerMcpGlobal,
   registerMcpProject,
   serverCommand,
   unregisterHooks
-} from "./chunk-JI2L66DF.js";
+} from "./chunk-SAKIVZMP.js";
 import {
   hybridSearch,
   protocolChain
-} from "./chunk-FPKJVQ2X.js";
+} from "./chunk-Y6S6SKH4.js";
 import {
   ARCHIVE_DIR,
   applyClean,
@@ -26,7 +29,13 @@ import {
   markCleaned,
   planClean,
   searchArchive
-} from "./chunk-2ESJQAP4.js";
+} from "./chunk-B7HCWKPJ.js";
+import {
+  readStats
+} from "./chunk-POA77JSS.js";
+import {
+  formatOf
+} from "./chunk-UU4MGB2C.js";
 import {
   TOKEN_TOGGLES,
   defaultVaultPath,
@@ -35,23 +44,22 @@ import {
   globalConfigPath,
   initScopeWarning,
   protocolEnabled,
-  readStats,
   resolveVault,
   setConfigKey,
   toggleEnabled,
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-MDGFK6UC.js";
+} from "./chunk-CEHNXDUE.js";
 import {
   serveGraph
-} from "./chunk-4ZSTD3CU.js";
+} from "./chunk-GP5A2GWI.js";
 import {
   VaultIndex,
   createNote,
   slugify,
   upsertNote
-} from "./chunk-3CB7GRFJ.js";
+} from "./chunk-BV2KJV5W.js";
 import {
   MODEL_ID,
   dot,
@@ -1020,6 +1028,7 @@ var BLOCK = [
   "- Enriquece la b\xF3veda cuando el trabajo lo revele (no como tarea aparte): decisiones de arquitectura con su porqu\xE9 (por qu\xE9 X y no Y), qu\xE9 hace cada m\xF3dulo/feature al tocarlo, vocabulario propio del dominio, y errores no obvios con su fix (`lesson_extract`). Notas compactas: el objetivo es ahorrar tokens futuros, no escribir prosa.",
   "- Las notas `API - <proyecto>` / `Env - <proyecto>` / `Datos - <proyecto>` / `Convenciones - <proyecto>` / `Flujo - <proyecto>` (de `ale scan`) ya traen rutas, variables (solo nombres), esquema y flujo de peticiones \u2014 cons\xFAltalas por b\xFAsqueda antes de releer esos archivos.",
   "- `vault_related` trae conocimiento conectado sin releer archivos.",
+  "- PDF/DOCX/XLSX/CSV/HTML: nunca leas el archivo completo \u2014 `doc_ingest` (\xEDndice de secciones, ~200 tokens) y luego `doc_read` con las secciones o una pregunta.",
   CLAUDE_MD_END
 ].join("\n");
 function instructionFiles(scope, projectDir) {
@@ -1971,6 +1980,13 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
   console.log(`  Inyecciones de contexto: ${s.injections}`);
   console.log(`  Aciertos de cach\xE9 de soluci\xF3n: ${s.solutionCacheHits} (${s.cacheHitTokens.toLocaleString()} tokens \u2014 el ahorro m\xE1s claro: soluciones no re-derivadas)`);
   console.log(`  Tokens inyectados (costo): ~${s.injectedTokens.toLocaleString()}`);
+  if (s.docIngests + s.docReads > 0) {
+    const saved = Math.max(0, s.docTokensOriginal - s.docTokensServed);
+    const pct = s.docTokensOriginal ? Math.round(saved / s.docTokensOriginal * 100) : 0;
+    console.log(
+      `  Documentos: ${s.docIngests} ingestas \xB7 ${s.docReads} lecturas \xB7 ~${s.docTokensServed.toLocaleString()} tokens entregados vs ~${s.docTokensOriginal.toLocaleString()} de leer los originales \u2192 ${pc.green(`~${saved.toLocaleString()} ahorrados (${pct}%)`)}`
+    );
+  }
   if (s.injectedTokens > 0) {
     console.log(pc.bold("\n\u{1F4B0} Ahorro estimado ") + pc.dim("(banda, NO auditado)"));
     console.log(`  ~${pc.green(s.estSavedLow.toLocaleString())} \u2013 ${pc.green(s.estSavedHigh.toLocaleString())} tokens`);
@@ -2152,12 +2168,72 @@ program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloq
 program.command("serve-mcp").description("Correr el servidor MCP por stdio (lo usa Claude Code internamente)").action(async () => {
   await import("./mcp/server.js");
 });
-program.command("hook").description("Corre un hook (lo usan los plugins de Claude Code/Codex): session-start | prompt | stop").argument("<event>", "session-start | prompt | stop").option("--harness <id>", "claude | codex | gemini | cursor | opencode", "claude").action(async (event) => {
+program.command("ingest").description("Convierte documentos (PDF, DOCX, XLSX, CSV, HTML, MD) a markdown por secciones y los indexa: el agente lee solo lo que necesita").argument("<paths...>", "archivos o carpetas").option("--force", "reconvertir aunque el archivo no haya cambiado").action(async (paths, opts) => {
+  const vault = getVault();
+  ensureVaultStructure(vault);
+  const files = [];
+  for (const p of paths) {
+    const abs = path7.resolve(p);
+    if (!fs7.existsSync(abs)) {
+      console.log(pc.yellow(`\u26A0 No existe: ${abs}`));
+      continue;
+    }
+    if (fs7.statSync(abs).isDirectory()) {
+      for (const f of fs7.readdirSync(abs, { recursive: true })) {
+        const full = path7.join(abs, f);
+        if (formatOf(full) && !f.split(path7.sep).some((x) => x.startsWith(".") || x === "node_modules") && fs7.statSync(full).isFile()) files.push(full);
+      }
+    } else files.push(abs);
+  }
+  let original = 0;
+  let served = 0;
+  for (const f of files) {
+    try {
+      const { text, doc, reused } = await ingestAndOutline(vault, f, { force: opts.force });
+      original += doc.tokensOriginal;
+      served += Math.ceil(text.length / 4);
+      console.log(`
+${pc.green(reused ? "= " : "\u2713 ")}${pc.bold(doc.title)} ${pc.dim(`\u2192 ${doc.rel}`)}`);
+      if (files.length === 1) console.log(pc.dim(text.split("\n").map((l) => "  " + l).join("\n")));
+      else console.log(pc.dim(`  ${doc.sections.length} secciones \xB7 original \u2248 ${doc.tokensOriginal.toLocaleString()} tokens`));
+    } catch (e) {
+      console.log(pc.yellow(`\u26A0 ${path7.basename(f)}: ${e.message}`));
+    }
+  }
+  if (files.length > 1) console.log(pc.dim(`
+${files.length} documentos \xB7 original \u2248 ${original.toLocaleString()} tokens \xB7 \xEDndices \u2248 ${served.toLocaleString()}`));
+  console.log(pc.dim('\nEl agente los consulta con doc_read (o: ale docs read <doc> --query "\u2026").\n'));
+});
+var docsCmd = program.command("docs").description("Documentos ingeridos: lista, o lectura por secciones con presupuesto de tokens");
+docsCmd.action(() => {
+  const docs = listDocs(getVault());
+  if (docs.length === 0) {
+    console.log(pc.dim("Sin documentos. Ingiere con: ale ingest <archivo|carpeta>"));
+    return;
+  }
+  console.log(pc.bold(`
+\u{1F4C4} ${docs.length} documentos
+`));
+  for (const d of docs) {
+    console.log(`  ${pc.cyan(d.title.padEnd(40))} ${d.format.padEnd(8)} ${String(d.sections.length).padStart(4)} secc \xB7 original \u2248 ${d.tokensOriginal.toLocaleString()} tok`);
+  }
+  console.log();
+});
+docsCmd.command("read").description("Lee secciones de un documento (por id o por pregunta) sin pasar de --max-tokens").argument("<doc>", "ruta del original, t\xEDtulo o parte del nombre").option("-s, --section <ids>", "ids separados por coma (s1,s3)").option("-q, --query <text>", "pregunta: devuelve las secciones m\xE1s relevantes").option("--max-tokens <n>", "presupuesto", "1500").action(async (doc, opts) => {
+  const text = await readDoc(getVault(), doc, {
+    sections: opts.section?.split(",").filter(Boolean),
+    query: opts.query,
+    maxTokens: parseInt(opts.maxTokens, 10) || 1500
+  });
+  console.log("\n" + text + "\n");
+});
+program.command("hook").description("Corre un hook (lo usan los plugins de Claude Code/Codex): session-start | prompt | stop | read").argument("<event>", "session-start | prompt | stop | read").option("--harness <id>", "claude | codex | gemini | cursor | opencode", "claude").action(async (event) => {
   const i = process.argv.indexOf("--harness");
   if (i > -1 && process.argv[i + 1]) process.argv.push(`--harness=${process.argv[i + 1]}`);
   if (event === "session-start") await import("./hooks/on-session-start.js");
   else if (event === "prompt") await import("./hooks/on-prompt.js");
   else if (event === "stop") await import("./hooks/on-stop.js");
+  else if (event === "read") await import("./hooks/on-read.js");
 });
 if (process.argv.length <= 2) {
   await showBanner();

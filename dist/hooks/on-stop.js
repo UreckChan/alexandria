@@ -3,22 +3,23 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-U2U53TU2.js";
+} from "../chunk-ZDS6VULX.js";
 import {
   autoCleanDue,
   markCleaned
-} from "../chunk-2ESJQAP4.js";
+} from "../chunk-B7HCWKPJ.js";
+import "../chunk-POA77JSS.js";
 import {
   ensureVaultStructure,
   lastExchange,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-MDGFK6UC.js";
+} from "../chunk-CEHNXDUE.js";
 import {
   VaultIndex,
   appendToNote
-} from "../chunk-3CB7GRFJ.js";
+} from "../chunk-BV2KJV5W.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-stop.ts

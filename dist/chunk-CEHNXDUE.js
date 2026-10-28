@@ -149,6 +149,12 @@ var TOKEN_TOGGLES = [
     impact: "no gasta tokens; sin esto la b\xFAsqueda puede quedarse en keyword-only (peor contexto por prompt)"
   },
   {
+    key: "docs.interceptRead",
+    label: "Redirigir lectura de PDF/DOCX/XLSX",
+    desc: "En Claude Code, la primera lectura directa de un PDF/DOCX/XLSX/CSV grande se redirige a doc_ingest/doc_read (el segundo intento pasa)",
+    impact: "ahorra ~2,000 tokens por p\xE1gina de PDF; desact\xEDvalo si sueles necesitar ver im\xE1genes/gr\xE1ficas"
+  },
+  {
     key: "clean.auto",
     label: "Limpieza autom\xE1tica semanal",
     desc: "Al cerrar sesi\xF3n (m\xE1x. 1 vez por semana, en segundo plano): compacta prompts viejos sin reuso y purga cach\xE9s \u2014 nunca toca lecciones, planes, mapas ni sesiones",
@@ -161,55 +167,6 @@ function writeProjectConfig(projectDir, vaultPath) {
   const stored = rel.startsWith("..") ? vaultPath : rel;
   fs.writeFileSync(file, JSON.stringify({ vaultPath: stored }, null, 2) + "\n");
   return file;
-}
-
-// src/core/stats.ts
-import fs2 from "fs";
-import path2 from "path";
-var charsToTokens = (chars) => Math.round(chars / 4);
-function logInjection(vault, line) {
-  try {
-    fs2.mkdirSync(vault.cache, { recursive: true });
-    fs2.appendFileSync(
-      path2.join(vault.cache, "stats.jsonl"),
-      JSON.stringify({ t: (/* @__PURE__ */ new Date()).toISOString(), ...line }) + "\n"
-    );
-  } catch {
-  }
-}
-var EST_LOW = 3;
-var EST_HIGH = 8;
-function readStats(vault) {
-  const file = path2.join(vault.cache, "stats.jsonl");
-  const summary = {
-    injections: 0,
-    solutionCacheHits: 0,
-    injectedTokens: 0,
-    cacheHitTokens: 0,
-    estSavedLow: 0,
-    estSavedHigh: 0
-  };
-  try {
-    for (const raw of fs2.readFileSync(file, "utf8").split("\n")) {
-      if (!raw.trim()) continue;
-      try {
-        const line = JSON.parse(raw);
-        const n = line.count ?? 1;
-        summary.injections += n;
-        const tk = line.tokens ?? charsToTokens(line.injectedChars);
-        summary.injectedTokens += tk;
-        if (line.kind === "solution-cache") {
-          summary.solutionCacheHits += n;
-          summary.cacheHitTokens += tk;
-        }
-      } catch {
-      }
-    }
-  } catch {
-  }
-  summary.estSavedLow = summary.injectedTokens * EST_LOW;
-  summary.estSavedHigh = summary.injectedTokens * EST_HIGH;
-  return summary;
 }
 
 // src/hooks/adapters.ts
@@ -226,7 +183,9 @@ function normalizeInput(raw) {
     cwd: raw.cwd ?? raw.workspace_roots?.[0],
     prompt: raw.prompt,
     answer: raw.last_assistant_message ?? raw.prompt_response ?? raw.text,
-    compact: /^(PreCompact|PreCompress|preCompact)$/.test(event) || Boolean(raw.trigger)
+    compact: /^(PreCompact|PreCompress|preCompact)$/.test(event) || Boolean(raw.trigger),
+    toolName: raw.tool_name,
+    filePath: raw.tool_input?.file_path
   };
 }
 function formatContext(harness, kind, text) {
@@ -292,9 +251,6 @@ export {
   initScopeWarning,
   TOKEN_TOGGLES,
   writeProjectConfig,
-  charsToTokens,
-  logInjection,
-  readStats,
   currentHarness,
   normalizeInput,
   formatContext,

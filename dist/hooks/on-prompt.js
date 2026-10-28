@@ -4,21 +4,23 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-U2U53TU2.js";
+} from "../chunk-ZDS6VULX.js";
 import {
   hybridSearch
-} from "../chunk-FPKJVQ2X.js";
+} from "../chunk-Y6S6SKH4.js";
+import {
+  logInjection
+} from "../chunk-POA77JSS.js";
 import {
   isHarnessInjected,
-  logInjection,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-MDGFK6UC.js";
+} from "../chunk-CEHNXDUE.js";
 import {
   createNote,
   touchNote
-} from "../chunk-3CB7GRFJ.js";
+} from "../chunk-BV2KJV5W.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-prompt.ts

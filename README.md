@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.4.0
+1.5.0
 ```
 
 ## Getting started
@@ -132,6 +132,30 @@ ale add "Vercel deploy" -c "Region cdg1, see [[Prisma setup]]" -t deploy
 
 (Automatic capture via hooks already does this in every Claude Code, Codex, Gemini CLI, Cursor and OpenCode session — `add` is for extra knowledge.)
 
+### Read documents without paying for the whole thing (PDF, DOCX, XLSX, CSV, HTML)
+
+Reading a PDF directly costs an agent ~1,500–3,000 tokens **per page** (Claude sends each page as image + text). Alexandria converts documents locally to markdown sections and the agent asks only for what it needs:
+
+```bash
+ale ingest "Manual Tecnico.pdf" reports/       # file or folder (pdf, docx, xlsx, csv, tsv, html, md, txt)
+ale docs                                        # list ingested documents
+ale docs read "Manual Tecnico" -q "which env vars does the deploy need?"
+ale docs read pagos.xlsx -q "F-137 pagado"      # spreadsheets: returns the MATCHING ROWS
+```
+
+From any agent, the MCP tools `doc_ingest` (returns a ~200-token section outline) and `doc_read` (sections by id or by question, never over `max_tokens`, always telling what was left out) do the same. Measured on real documents:
+
+| Document | Read directly | Outline | Answer to one question |
+|---|---|---|---|
+| 10-page technical manual (PDF) | ~20,000 tokens | ~248 | ~179 |
+| 2,016-row spreadsheet (XLSX) | ~1,241,000 tokens | ~526 | ~579 (matching rows) |
+
+- **PDF**: headings detected by font size (multi-line titles merged), source page kept for citations; scanned PDFs (no text layer) are flagged — Alexandria doesn't do OCR.
+- **Spreadsheets**: never sent whole — a per-column summary (type, distinct values, samples) plus 50-row blocks; huge cells (geometries, JSON) are trimmed.
+- **Claude Code**: the first direct `Read` of a large PDF/DOCX/XLSX/CSV in a session is redirected to `doc_ingest`/`doc_read`; a second attempt goes through (for when the agent really needs to see images). Toggle: `docs.interceptRead`.
+- Unchanged files are never reconverted (sha256). Documents live in `Alexandria/docs/`, outside the vector index (a big spreadsheet would be thousands of chunks); section vectors are computed once per document version and cached.
+- `ale stats` shows the **measured** document savings: tokens of the originals vs tokens actually served.
+
 ### Control what spends tokens (`ale toggles`)
 
 Every token-spending behavior is opt-out — before or after installing (the config is global, independent of the vault):
@@ -142,7 +166,7 @@ ale init --off architect.enrich,digest.map   # disable from the start
 ale config set tokens.solutionCache false    # scriptable, one by one
 ```
 
-The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), background index rebuild at session close, and weekly background cleanup `clean.auto` (neither costs tokens). All on by default; nothing changes unless you touch them.
+The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), redirecting direct reads of large PDFs/spreadsheets to `doc_read` (`docs.interceptRead`), background index rebuild at session close, and weekly background cleanup `clean.auto` (neither costs tokens). All on by default; nothing changes unless you touch them.
 
 ### Deep project context (`ale scan`)
 
@@ -289,6 +313,7 @@ AI agent session
   ├─ Every prompt ──► local hybrid search → injects only what's relevant             (hooks)
   │                   └─ near-identical prompt already solved → injects the solution (cache)
   ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link         (all agents)
+  │                   doc_ingest · doc_read  (documents by section, token budget)
   │                   plan_create · task_verify · lesson_extract                     (the Protocol)
   └─ Stop/PreCompact► saves the session outcome into the vault                       (hooks)
      hooks: Claude Code · Codex · Gemini CLI · Cursor · OpenCode (one set of scripts, --harness=<id>)
@@ -324,7 +349,9 @@ AI agent session
 | `ale consolidate [--days n] [--dry]` | Alias of `ale clean --prompts-only` |
 | `ale doctor [--project]` | Check & repair: model, hooks, MCP, index |
 | `ale uninstall [--project]` | Remove hooks, MCP and instruction blocks from every agent (notes stay untouched) |
-| `ale hook <session-start\|prompt\|stop> [--harness id]` | Run a hook (used by the plugins) |
+| `ale ingest <paths...> [--force]` | Convert PDF/DOCX/XLSX/CSV/HTML/MD to markdown sections and store them in the vault |
+| `ale docs` / `ale docs read <doc> [-s ids] [-q question] [--max-tokens n]` | List ingested documents / read only the sections (or spreadsheet rows) you need |
+| `ale hook <session-start\|prompt\|stop\|read> [--harness id]` | Run a hook (used by the plugins) |
 | `ale --vault <path> <cmd>` | Run any command against another vault |
 
 `alexandria` works as an alias of `ale`.

@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 import {
-  charsToTokens,
+  charsToTokens
+} from "./chunk-POA77JSS.js";
+import {
   isHarnessInjected
-} from "./chunk-MDGFK6UC.js";
+} from "./chunk-CEHNXDUE.js";
 import {
   isoDate
-} from "./chunk-3CB7GRFJ.js";
+} from "./chunk-BV2KJV5W.js";
 import {
   MODEL_ID,
   modelCacheDir
@@ -106,7 +108,7 @@ function oldStatsLines(vault) {
     return fs.readFileSync(path.join(vault.cache, "stats.jsonl"), "utf8").split("\n").filter((l) => {
       try {
         const o = JSON.parse(l);
-        return o.t !== "summary" && Date.parse(o.t ?? "") < cutoff;
+        return o.t !== "summary" && o.kind !== "doc" && Date.parse(o.t ?? "") < cutoff;
       } catch {
         return false;
       }

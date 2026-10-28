@@ -22,7 +22,8 @@ var NOTE_TYPES = [
   "verification",
   "lesson",
   "solution",
-  "archive"
+  "archive",
+  "document"
 ];
 var SKIP_DIRS = /* @__PURE__ */ new Set([".obsidian", ".vault", ".trash", ".git", "node_modules"]);
 function extractWikilinks(content) {
@@ -295,7 +296,10 @@ var VaultIndex = class _VaultIndex {
    * `withEmbeddings=false` → índice keyword-only (sin cargar modelo).
    */
   async refresh(withEmbeddings = modelPresent(), force = false) {
-    const files = listMarkdownFiles(this.vault.root, [path2.join(this.vault.managed, "archive")]);
+    const files = listMarkdownFiles(this.vault.root, [
+      path2.join(this.vault.managed, "archive"),
+      path2.join(this.vault.managed, "docs")
+    ]);
     const onDisk = /* @__PURE__ */ new Map();
     for (const abs of files) {
       const rel = path2.relative(this.vault.root, abs).split(path2.sep).join("/");
@@ -400,7 +404,7 @@ ${c.text}`),
     if (this.emb !== null) this.clearNeedsRebuild();
     else if (this.meta.chunks.length > 0 && modelPresent()) this.markNeedsRebuild();
     if (!isHookProcess()) try {
-      const { writeStaticGraph } = await import("./viewer-OU4TB3X5.js");
+      const { writeStaticGraph } = await import("./viewer-WQQSQETT.js");
       writeStaticGraph(this);
     } catch {
     }

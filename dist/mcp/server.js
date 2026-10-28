@@ -1,28 +1,32 @@
 #!/usr/bin/env node
 import {
   architectBlock,
+  ingestAndOutline,
   pkgVersion,
   planContext,
-  planQualityHints
-} from "../chunk-JI2L66DF.js";
+  planQualityHints,
+  readDoc
+} from "../chunk-SAKIVZMP.js";
 import {
   hybridSearch
-} from "../chunk-FPKJVQ2X.js";
+} from "../chunk-Y6S6SKH4.js";
 import {
   searchArchive
-} from "../chunk-2ESJQAP4.js";
+} from "../chunk-B7HCWKPJ.js";
+import "../chunk-POA77JSS.js";
+import "../chunk-UU4MGB2C.js";
 import {
   ensureVaultStructure,
   resolveVault,
   toggleEnabled
-} from "../chunk-MDGFK6UC.js";
+} from "../chunk-CEHNXDUE.js";
 import {
   VaultIndex,
   createNote,
   setNoteStatus,
   slugify,
   upsertNote
-} from "../chunk-3CB7GRFJ.js";
+} from "../chunk-BV2KJV5W.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/mcp/server.ts
@@ -169,6 +173,38 @@ server.registerTool(
     });
     return text(`Conectado: \xAB${a.title}\xBB \u2192 [[${b.title}]]`);
   }
+);
+server.registerTool(
+  "doc_ingest",
+  {
+    description: "\xDAsala EN VEZ de leer directamente un PDF, DOCX, XLSX, CSV o HTML (leer un PDF cuesta ~2,000 tokens por p\xE1gina). La convierte localmente a markdown por secciones, la indexa y devuelve SOLO el \xEDndice de secciones (~200 tokens). Si el archivo no cambi\xF3, reutiliza la conversi\xF3n. Despu\xE9s pide lo que necesites con doc_read.",
+    inputSchema: {
+      path: z.string().describe("Ruta del archivo (absoluta o relativa al proyecto)"),
+      force: z.boolean().optional().describe("Reconvertir aunque no haya cambiado")
+    }
+  },
+  async ({ path: p, force }) => {
+    try {
+      const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
+      const res = await ingestAndOutline(vault, abs, { force });
+      return text(res.text);
+    } catch (e) {
+      return text(`No pude ingerir \xAB${p}\xBB: ${e.message}`);
+    }
+  }
+);
+server.registerTool(
+  "doc_read",
+  {
+    description: "Lee un documento ya ingerido SIN cargarlo completo: por ids de secci\xF3n (del \xEDndice de doc_ingest) o por pregunta (devuelve las secciones m\xE1s relevantes). Nunca pasa de max_tokens y dice qu\xE9 secciones quedaron fuera para que pidas m\xE1s solo si hace falta.",
+    inputSchema: {
+      doc: z.string().describe("Ruta del archivo original, t\xEDtulo o parte del nombre"),
+      sections: z.array(z.string()).optional().describe('Ids de secci\xF3n, ej. ["s2","s5"]'),
+      query: z.string().optional().describe("Pregunta: devuelve las secciones que la responden"),
+      max_tokens: z.number().int().min(200).max(2e4).optional().describe("Presupuesto de tokens (default 1500)")
+    }
+  },
+  async ({ doc, sections, query, max_tokens }) => text(await readDoc(vault, doc, { sections, query, maxTokens: max_tokens }))
 );
 server.registerTool(
   "plan_create",
