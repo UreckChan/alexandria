@@ -1,20 +1,88 @@
+<div align="center">
+
 # 🏛️ Alexandria
 
-> A local knowledge vault for your AI agents — saves tokens, remembers across sessions, and turns every model into a disciplined engineer.
+**Persistent memory and a token diet for your AI coding agents.**
+100% local · no API keys · no telemetry · free
 
 [![npm](https://img.shields.io/npm/v/%40ureck%2Falexandria)](https://www.npmjs.com/package/@ureck/alexandria)
 [![license](https://img.shields.io/badge/license-MIT-green)](./LICENSE)
+[![docs](https://img.shields.io/badge/docs-ES%20%C2%B7%20EN-b8860b)](https://alexandria.ureck.dev/)
 [![Buy Me a Coffee](https://img.shields.io/badge/☕_Buy_me_a_coffee-ureck-yellow)](https://buymeacoffee.com/ureck)
 
-[![docs](https://img.shields.io/badge/docs-ES%20%C2%B7%20EN-b8860b)](https://alexandria.ureck.dev/) **[Documentation / Documentación](https://alexandria.ureck.dev/)**
+**[📖 Documentation / Documentación](https://alexandria.ureck.dev/)**
 
-Alexandria automatically captures your AI prompts and sessions, searches that knowledge **before** spending tokens, and connects everything in an Obsidian-style graph. **100% local**: no database, no API keys, no telemetry, no cost.
+</div>
 
-Works with the most popular agents via MCP: **Claude Code · Codex CLI · Gemini CLI · Cursor · OpenCode · Devin CLI · Cline · VS Code (Copilot) · OpenClaw · Hermes Agent · Windsurf (legacy)** — and since 1.4, **automatic capture + context injection via hooks in Claude Code, Codex, Gemini CLI, Cursor and OpenCode**.
+Every new AI session starts from zero: it re-reads your code, re-derives decisions and re-spends the same tokens. **Alexandria remembers for it** — and sends the model only what it needs.
 
-## Why?
+## 📉 Measured savings
 
-Every new AI session starts from zero: it re-explores your code, re-derives decisions you already made, re-spends the same tokens. Alexandria breaks that cycle:
+| What the agent needed | Read directly | With Alexandria |
+|---|---:|---:|
+| Test suite output (121 tests) | 3,443 tokens | **~330** |
+| A failing run (keeps the failing test + `file:line`) | 3,148 | **140** |
+| Answer from a 10-page PDF manual | ~20,000 | **~300** |
+| Matching rows of a 2,016-row spreadsheet | ~1,240,000 | **~411** |
+| Structure of `src/cli.ts` (code map) | 14,978 | **377** |
+
+Real numbers from real files — see [how they were measured](#-full-documentation).
+
+## ⚡ Install
+
+```bash
+npm install -g @ureck/alexandria
+ale init            # vault + hooks + MCP in every agent it finds
+```
+
+Open a **new** agent session — that's it. Nothing to reconnect, ever.
+
+## ✨ What it does
+
+- 🧠 **Remembers across sessions** — captures prompts and outcomes; each session starts with your project map, open plans and lessons.
+- ⚡ **Sends only what's relevant** — local semantic search (<100 ms) injects the right fragments; never re-sends what's already in context.
+- 📄 **Reads documents by section** — PDF, Word, Excel, CSV, HTML or a docs URL: the agent asks for the part it needs, not the whole file.
+- ✂️ **Folds noisy output** — tests, builds and logs arrive as errors + summary; the full output stays on disk.
+- 🗺️ **Maps your code** — function signatures first, then only the body you ask for.
+- 🏗️ **Disciplined engineer protocol** — plan → verify with a real command → learn; lessons resurface when the problem does.
+- 🧹 **Cleans itself** — compacts old noise without ever deleting knowledge.
+
+Works as a valid **Obsidian** vault (markdown + `[[wikilinks]]`). Windows · macOS · Linux · Node, Bun or Deno.
+
+## 🤖 Agents
+
+| Agent | MCP | Automatic hooks |
+|---|:---:|:---:|
+| Claude Code | ✅ | ✅ |
+| Codex CLI | ✅ | ✅ |
+| Gemini CLI | ✅ | ✅ |
+| Cursor | ✅ | ✅ |
+| OpenCode | ✅ | ✅ (plugin) |
+| Devin CLI · Cline · VS Code (Copilot) · OpenClaw · Hermes · Windsurf | ✅ | — |
+
+## 🧰 Top commands
+
+```bash
+ale search "cors error in the api"     # search your knowledge by meaning
+ale ingest manual.pdf                  # documents → sections the agent can query
+ale run -- npm test                    # run with folded output (same exit code)
+ale code outline src/                  # code map: signatures, no bodies
+ale stats                              # what it saved you (measured)
+ale context                            # what was injected per session
+ale toggles                            # turn any token-spending feature on/off
+ale clean                              # preview a safe cleanup
+ale doctor                             # check & repair the install
+ale agents                             # register in more agents
+```
+
+---
+
+## 📚 Full documentation
+
+Everything below is collapsed — open what you need. The same content, with diagrams, lives at **[alexandria.ureck.dev](https://alexandria.ureck.dev/)**.
+
+<details>
+<summary><b>💡 Why Alexandria</b></summary>
 
 - **Saves tokens**: every prompt triggers a local semantic search (<100ms) that injects only the relevant fragments — instead of re-reading whole files.
 - **Zero re-analysis between sessions**: on session start, the agent receives the project map and all accumulated knowledge.
@@ -23,29 +91,10 @@ Every new AI session starts from zero: it re-explores your code, re-derives deci
 - **It's a valid Obsidian vault**: plain markdown with `[[wikilinks]]`. Open it in Obsidian anytime.
 - **Cross-platform**: Windows, macOS, Linux · Node, Bun or Deno. Pure JS — no native dependencies to break your install.
 
-## The Alexandria Protocol
+</details>
 
-Beyond memory, Alexandria ships a lightweight engineering protocol that turns **any** MCP-capable model into a senior agent that plans, verifies with evidence, and learns:
-
-> **Plan → Execute one task → Verify with evidence → (on failure: reuse past lessons) → Extract the lesson**
-
-It lives in the MCP tools themselves — their names and descriptions carry the instructions — so it works identically across every agent, with or without hooks:
-
-| MCP tool | What the agent does with it | Token payoff |
-|---|---|---|
-| `plan_create(title, goal, dod, tasks, design?)` | Plans like an **architect**: clarifies vague goals first, optionally records the architecture (`design` → a `## Design` section), and the response surfaces **similar past plans + relevant lessons** plus quality hints (verifiable DoD, small tasks) — suggestions, never a gate | No wandering; open plans are re-injected next session so work is resumed, not repeated |
-| `task_verify(plan, task, passed, verify_command, cwd?)` | **Runs** `verify_command` (e.g. `npm test`) and takes the verdict from the real exit code — not from the agent's word. Flags a **discrepancy** if the agent claimed otherwise; without a command the note is tagged `self-reported` and `ale audit` calls it out | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
-| `lesson_extract(title, lesson, links)` | Distills the root cause + fix after solving something non-obvious | ~200 tokens today replace ~20,000 tokens of re-debugging next month |
-
-Lessons and solutions get a ranking boost in search, so the most valuable knowledge always surfaces first. The protocol is **on by default**; toggle it anytime:
-
-```bash
-ale config set protocol false   # classic vault only
-ale config set protocol true    # back on
-ale init --no-protocol          # install without it
-```
-
-## Install
+<details>
+<summary><b>📦 Install options & first steps</b></summary>
 
 ```bash
 # npm (Node ≥ 20)
@@ -65,8 +114,6 @@ Verify:
 $ ale --version
 1.6.1
 ```
-
-## Getting started
 
 One command installs everything (embedding model ~130MB downloaded once, hooks, MCP registration, index):
 
@@ -94,9 +141,45 @@ ale init --agents claude,cursor,opencode   # just these
 
 After `init` there is nothing to reconnect, ever. Important: hooks load **when a session starts** — open a *new* agent session in that folder (an already-open one won't see them).
 
-## Daily usage — examples
+</details>
 
-### Search by meaning, not keywords
+<details>
+<summary><b>🏗️ The Alexandria Protocol (plan → verify → learn)</b></summary>
+
+A lightweight engineering protocol that turns **any** MCP-capable model into a senior agent that plans, verifies with evidence, and learns:
+
+> **Plan → Execute one task → Verify with evidence → (on failure: reuse past lessons) → Extract the lesson**
+
+It lives in the MCP tools themselves — their names and descriptions carry the instructions — so it works identically across every agent, with or without hooks:
+
+| MCP tool | What the agent does with it | Token payoff |
+|---|---|---|
+| `plan_create(title, goal, dod, tasks, design?)` | Plans like an **architect**: clarifies vague goals first, optionally records the architecture (`design` → a `## Design` section), and the response surfaces **similar past plans + relevant lessons** plus quality hints (verifiable DoD, small tasks) — suggestions, never a gate | No wandering; open plans are re-injected next session so work is resumed, not repeated |
+| `task_verify(plan, task, passed, verify_command, cwd?)` | **Runs** `verify_command` (e.g. `npm test`) and takes the verdict from the real exit code — not from the agent's word. Flags a **discrepancy** if the agent claimed otherwise; without a command the note is tagged `self-reported` and `ale audit` calls it out | "✅ 12/12 passed" (5 tokens) instead of a 500-line log; on failure it automatically surfaces **past lessons** that match |
+| `lesson_extract(title, lesson, links)` | Distills the root cause + fix after solving something non-obvious | ~200 tokens today replace ~20,000 tokens of re-debugging next month |
+
+Lessons and solutions get a ranking boost in search, so the most valuable knowledge always surfaces first. The protocol is **on by default**; toggle it anytime:
+
+```bash
+ale config set protocol false   # classic vault only
+ale config set protocol true    # back on
+ale init --no-protocol          # install without it
+```
+
+Create a plan from a markdown file instead of typing it:
+
+```bash
+$ ale plan PLAN-migration.md
+✓ Plan created: notes/2026-07-11-plan-migrate-to-postgres-17.md
+  DoD detected: 3 criteria — backup verified · migrations run clean · app responds on staging
+```
+
+Checkbox lines (`- [ ] ...`) become the Definition of Done. The agent sees it as an **open plan** at the start of the next session and resumes it with `task_verify`.
+
+</details>
+
+<details>
+<summary><b>🔎 Search & save knowledge</b></summary>
 
 ```bash
 $ ale search how do I publish my app to the google store
@@ -116,7 +199,7 @@ ale search auth --expand                # also pulls notes CONNECTED to the resu
 
 The `● high/medium/low relevance` label is relative to the best hit — trust it over the raw number.
 
-### Save notes manually
+Save notes manually (automatic capture via hooks already does this in every Claude Code, Codex, Gemini CLI, Cursor and OpenCode session — `add` is for extra knowledge):
 
 ```bash
 # Quick note
@@ -130,14 +213,16 @@ cat DECISIONS.md | ale add "Q3 architecture decisions"
 ale add "Vercel deploy" -c "Region cdg1, see [[Prisma setup]]" -t deploy
 ```
 
-(Automatic capture via hooks already does this in every Claude Code, Codex, Gemini CLI, Cursor and OpenCode session — `add` is for extra knowledge.)
+</details>
 
-### Read documents without paying for the whole thing (PDF, DOCX, XLSX, CSV, HTML)
+<details>
+<summary><b>📄 Documents: PDF, Word, Excel, CSV, HTML, URLs</b></summary>
 
 Reading a PDF directly costs an agent ~1,500–3,000 tokens **per page** (Claude sends each page as image + text). Alexandria converts documents locally to markdown sections and the agent asks only for what it needs:
 
 ```bash
 ale ingest "Manual Tecnico.pdf" reports/       # file or folder (pdf, docx, xlsx, csv, tsv, html, md, txt)
+ale ingest https://example.com/docs/api        # one docs page, fetched once, reused 7 days
 ale docs                                        # list ingested documents
 ale docs read "Manual Tecnico" -q "which env vars does the deploy need?"
 ale docs read pagos.xlsx -q "F-137 pagado"      # spreadsheets: returns the MATCHING ROWS
@@ -147,16 +232,20 @@ From any agent, the MCP tools `doc_ingest` (returns a ~200-token section outline
 
 | Document | Read directly | Outline | Answer to one question |
 |---|---|---|---|
-| 10-page technical manual (PDF) | ~20,000 tokens | ~248 | ~179 |
-| 2,016-row spreadsheet (XLSX) | ~1,241,000 tokens | ~526 | ~579 (matching rows) |
+| 10-page technical manual (PDF) | ~20,000 tokens | ~248 | ~179–300 |
+| 2,016-row spreadsheet (XLSX) | ~1,241,000 tokens | ~526 | ~411–579 (matching rows) |
 
 - **PDF**: headings detected by font size (multi-line titles merged), source page kept for citations; scanned PDFs (no text layer) are flagged — Alexandria doesn't do OCR.
-- **Spreadsheets**: never sent whole — a per-column summary (type, distinct values, samples) plus 50-row blocks; huge cells (geometries, JSON) are trimmed.
+- **Spreadsheets**: never sent whole — a per-column summary (type, distinct values, samples) plus 50-row blocks; huge cells (geometries, JSON) are trimmed. Own XLSX reader (merged cells, styled dates, formula results) — no heavy dependencies.
 - **Claude Code**: the first direct `Read` of a large PDF/DOCX/XLSX/CSV in a session is redirected to `doc_ingest`/`doc_read`; a second attempt goes through (for when the agent really needs to see images). Toggle: `docs.interceptRead`.
 - Unchanged files are never reconverted (sha256). Documents live in `Alexandria/docs/`, outside the vector index (a big spreadsheet would be thousands of chunks); section vectors are computed once per document version and cached.
+- **Docs by URL**: `doc_ingest`/`ale ingest` accept `https://…`: one page, fetched once, reused 7 days — the only network access, and only when asked.
 - `ale stats` shows the **measured** document savings: tokens of the originals vs tokens actually served.
 
-### Manage the context window (1.6)
+</details>
+
+<details>
+<summary><b>✂️ Context window management (folded output, code map, capsule)</b></summary>
 
 Most tokens don't go into your prompt — they go into **tool output** and **re-reading**. Alexandria trims both, locally, without a proxy and without rewriting history (which would break the provider's prompt cache):
 
@@ -172,15 +261,17 @@ ale supersede "Decision - MySQL" "Decision - Postgres"
 | Feature | What it does | Measured |
 |---|---|---|
 | **Folded command output** | Large outputs of tests/builds/installs/logs → errors (with stack location) + test summary + tail; full output in `~/.cache/alexandria/runs`. Automatic in Claude Code (`PostToolUse` on Bash, successful commands) and OpenCode (plugin, also failures); `ale run -- <cmd>` everywhere else. Commands that *read* (`cat`, `git diff`, `grep`…) are never folded | test suite 12.1 KB → 1.4 KB; failing run 12.6 KB → 561 B keeping the failing test, assertion and `file:line` |
-| **Code map** | `code_outline` (signatures + line ranges, classes → methods, top-level constants) and `code_symbol` (one body). JS/TS, Python, PHP, Go, Java, C#, Kotlin, Rust — heuristic, no native deps | `src/cli.ts` ~13,600 tokens → outline ~253 |
+| **Code map** | `code_outline` (signatures + line ranges, classes → methods, top-level constants) and `code_symbol` (one body). JS/TS, Python, PHP, Go, Java, C#, Kotlin, Rust — heuristic, no native deps | `src/cli.ts` ~13,600 tokens → outline ~253 (in 1.6.1: 14,978 → 377) |
 | **No re-injection** | A note already injected in this session is referenced in one line instead of re-sent (toggle `context.dedupe`) | shown in `ale context` / `ale stats` |
 | **Anti-compaction capsule** | Before compacting, a capsule (goal, last request, files edited/read, recent commands, what was saved, open plans) is built **without an LLM** and re-injected right after | real 8.4 MB transcript → ~576 tokens |
 | **Facts that expire** | `vault_save(..., supersedes: [...])` / `ale supersede`: the old note is marked, linked and no longer injected — never deleted | |
 | **Duplicate suggestions** | `ale clean` lists near-identical lessons/notes (cosine ≥ 0.96); applied only with `--dedupe` | |
 | **Context meter** | `ale context [--session id]`: injections, tokens, notes, folded runs, savings per session | |
-| **Docs by URL** | `doc_ingest`/`ale ingest` accept `https://…`: one page, fetched once, reused 7 days — the only network access, and only when asked | |
 
-### Control what spends tokens (`ale toggles`)
+</details>
+
+<details>
+<summary><b>🎛️ Control what spends tokens (<code>ale toggles</code>)</b></summary>
 
 Every token-spending behavior is opt-out — before or after installing (the config is global, independent of the vault):
 
@@ -190,9 +281,26 @@ ale init --off architect.enrich,digest.map   # disable from the start
 ale config set tokens.solutionCache false    # scriptable, one by one
 ```
 
-The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), redirecting direct reads of large PDFs/spreadsheets to `doc_read` (`docs.interceptRead`), folding large command output (`run.fold`), not re-injecting notes already in context (`context.dedupe`), background index rebuild at session close, and weekly background cleanup `clean.auto` (neither costs tokens). All on by default; nothing changes unless you touch them.
+| Toggle | What it controls | Cost |
+|---|---|---|
+| `protocol` | Protocol manifest in the session digest | ~6% of the digest |
+| `architect.enrich` | Similar plans + lessons in `plan_create` | ~+90 tokens/plan |
+| `tokens.solutionCache` | Inject a previous solution to a near-identical prompt | up to ~500 tokens/prompt |
+| `tokens.promptSearch` | Per-prompt semantic search — the **main saving mechanism** | up to ~1500 tokens/prompt (disabling it defeats the point) |
+| `digest.map` | Project map in the digest | up to ~1000 tokens |
+| `digest.titleIndex` | Title index in the digest | ~200 tokens |
+| `docs.interceptRead` | Redirect direct reads of large PDFs/spreadsheets to `doc_read` | saves ~2,000 tokens/PDF page |
+| `run.fold` | Fold large command output | saves most of a build/test run |
+| `context.dedupe` | Don't re-inject notes already in context | saves up to ~1500 tokens/prompt |
+| `index.autoRebuild` | Background index rebuild at session close | no tokens |
+| `clean.auto` | Weekly background cleanup | no tokens |
 
-### Deep project context (`ale scan`)
+All on by default; nothing changes unless you touch them.
+
+</details>
+
+<details>
+<summary><b>🗂️ Deep project context (<code>ale scan</code>)</b></summary>
 
 `ale init --project` already runs it; re-run anytime the project changes:
 
@@ -201,7 +309,7 @@ $ ale scan
 ✓ API: 12 rutas · Env: 8 vars (solo nombres) · Datos: 5 · Convenciones: 4 · .gitignore ✓
 ```
 
-Four read-only scanners write compact notes (one line per entry) that the agent receives **only when relevant** (per-prompt semantic search — the session digest doesn't grow):
+Read-only scanners write compact notes (one line per entry) that the agent receives **only when relevant** (per-prompt semantic search — the session digest doesn't grow):
 
 - **`API - <project>`** — App Router routes with HTTP methods, Pages Router handlers, `"use server"` actions, Express/Hono routes.
 - **`Env - <project>`** — environment variable **NAMES only, never values** (from `.env.example` / `.env` / `.env.local`).
@@ -211,19 +319,12 @@ Four read-only scanners write compact notes (one line per entry) that the agent 
 
 It never touches your source code, and it guarantees the vault (and personal configs) are gitignored before writing — your notes never reach a shared repo, even if you never ran `ale init`.
 
-### Create a plan from a file
+`ale skills:evolve` turns what the vault knows (stack, conventions, app flow, lessons) into a **living project skill** — always shows a diff and asks before writing.
 
-Instead of typing a whole plan into the terminal, keep it as markdown in your repo:
+</details>
 
-```bash
-$ ale plan PLAN-migration.md
-✓ Plan created: notes/2026-07-11-plan-migrate-to-postgres-17.md
-  DoD detected: 3 criteria — backup verified · migrations run clean · app responds on staging
-```
-
-Checkbox lines (`- [ ] ...`) become the Definition of Done. The agent sees it as an **open plan** at the start of the next session and resumes it with `task_verify`.
-
-### View the knowledge graph
+<details>
+<summary><b>🕸️ Knowledge graph, stats & audit</b></summary>
 
 **The graph maintains itself** — every vault change (automatic capture, `ale add`, reindex) regenerates `<vault>/grafo.html`. Double-click it anytime.
 
@@ -236,7 +337,7 @@ Nodes = notes (size = connections, color = type: 🟪 plans, 🟦 verifications,
 
 **In Obsidian**: open the vault folder as a vault and use the native graph view — notes carry `aliases` in their frontmatter so Obsidian resolves the `[[wikilinks]]`. Old notes are migrated automatically on the next reindex. Note: `grafo.html` is for your browser; Obsidian doesn't render HTML.
 
-### Measure what it saves you
+**Measure what it saves you:**
 
 ```bash
 $ ale stats
@@ -254,6 +355,7 @@ $ ale stats
   Context injections: 57
   Solution cache hits: 12 (~9,400 tokens — clearest win: solutions not re-derived)
   Injected tokens (cost): ~21,300
+  Folded command output, documents and no-re-injection savings (when used)
 
 💰 Estimated savings (band, NOT audited)
   ~63,900 – 170,400 tokens
@@ -261,7 +363,7 @@ $ ale stats
   measurement — the real number depends on what you'd have re-read without the vault.
 ```
 
-### Audit your vault's health
+**Audit your vault's health:**
 
 ```bash
 $ ale audit
@@ -275,7 +377,10 @@ $ ale audit
 
 Flags plans without a Definition of Done, failures without lessons, and orphan notes.
 
-### Maintenance (you rarely need it)
+</details>
+
+<details>
+<summary><b>🧹 Maintenance & cleanup</b></summary>
 
 ```bash
 ale doctor                    # checks & repairs: model, hooks, MCP, index
@@ -284,12 +389,16 @@ ale clean                     # PREVIEW of a safe cleanup (touches nothing)
 ale clean --yes [--backup f]  # apply: old unused prompts → compacted monthly files (full text),
                               # harness noise dropped, stale caches purged. Lessons, plans, maps,
                               # sessions are NEVER touched. Still searchable: ale search --archive "…"
+ale clean --yes --dedupe      # also mark suggested near-duplicates as superseded
 ale uninstall                 # removes hooks + MCP from every agent; your notes stay untouched
 ```
 
 Every command self-repairs before running: missing model → downloads it; stale index → updates it.
 
-## Supported agents
+</details>
+
+<details>
+<summary><b>🤖 Agents in detail & plugins</b></summary>
 
 ```bash
 ale agents                 # list with auto-detection (● = found on your machine)
@@ -299,11 +408,11 @@ ale agents cursor,gemini   # just these
 
 | Agent | MCP config written | Hooks (auto capture + injection) | Per-project |
 |---|---|---|---|
-| Claude Code | `.mcp.json` / `claude mcp add` | `.claude/settings.json` — SessionStart · UserPromptSubmit · Stop · PreCompact | ✓ |
+| Claude Code | `.mcp.json` / `claude mcp add` | `.claude/settings.json` — SessionStart · UserPromptSubmit · Stop · PreCompact · PreToolUse(Read) · PostToolUse(Bash) | ✓ |
 | Codex CLI | `~/.codex/config.toml` / `.codex/config.toml` | `.codex/hooks.json` — SessionStart · UserPromptSubmit · Stop · PreCompact ¹ | ✓ |
 | Gemini CLI | `~/.gemini/settings.json` / `.gemini/settings.json` | same file — SessionStart · BeforeAgent · AfterAgent · PreCompress | ✓ |
 | Cursor | `~/.cursor/mcp.json` / `.cursor/mcp.json` | `.cursor/hooks.json` — sessionStart · beforeSubmitPrompt ² · afterAgentResponse | ✓ |
-| OpenCode | `opencode.json` | plugin `.opencode/plugins/alexandria.js` — injects into the system prompt | ✓ |
+| OpenCode | `opencode.json` | plugin `.opencode/plugins/alexandria.js` — injects into the system prompt, folds bash output | ✓ |
 | Devin CLI (Cognition) | `.devin/mcp_config.local.json` | — | ✓ |
 | Cline | `cline_mcp_settings.json` (VS Code) | — | — |
 | VS Code (Copilot) | `mcp.json` (profile) / `.vscode/mcp.json` | — | ✓ |
@@ -318,9 +427,7 @@ ale agents cursor,gemini   # just these
 
 Agents without hooks still get everything through the MCP tools, which the agent uses on its own (the protocol instructions travel inside the tool descriptions).
 
-### As a plugin
-
-The public repo is also a **Claude Code plugin marketplace** (and ships a Codex plugin manifest). The plugin runs the globally installed `alexandria` (falls back to `npx`):
+**As a plugin** — the public repo is also a **Claude Code plugin marketplace** (and ships a Codex plugin manifest). The plugin runs the globally installed `alexandria` (falls back to `npx`):
 
 ```bash
 npm i -g @ureck/alexandria
@@ -328,7 +435,10 @@ claude plugin marketplace add UreckChan/alexandria
 claude plugin install alexandria@alexandria
 ```
 
-## How it works
+</details>
+
+<details>
+<summary><b>⚙️ How it works</b></summary>
 
 ```
 AI agent session
@@ -352,7 +462,10 @@ AI agent session
 - **Deduplication**: near-identical prompts don't create new notes — they add `hits` (and climb the ranking).
 - **About scores**: the e5 model compresses cosines (~0.76–0.86 even for unrelated topics); the *ranking* is what's reliable, hence the relevance label.
 
-## Command reference
+</details>
+
+<details>
+<summary><b>📋 Command reference</b></summary>
 
 | Command | What it does |
 |---|---|
@@ -366,7 +479,7 @@ AI agent session
 | `ale plan <file> [--title t]` | Create a Protocol plan from a .md/.txt file (checkboxes → Definition of Done); surfaces similar past plans + quality hints |
 | `ale graph [--out file.html] [--no-open]` | Live local graph viewer |
 | `ale audit` | Protocol health: plans without DoD, failures without lessons, orphan notes |
-| `ale stats` | Notes, connections, protocol metrics, estimated tokens saved |
+| `ale stats` | Notes, connections, protocol metrics, measured savings (documents, folded output, no re-injection), estimated tokens saved |
 | `ale config <get\|set> <key> [value]` | Configuration (e.g. `protocol` true/false) |
 | `ale skills [-y] [--project]` | Recommends & installs Claude skills — semantic (e5) + keyword detection over your vault. Local source configurable with `ale config set skills.repo <path>`; otherwise installs from skills.sh |
 | `ale reindex [--force]` | Reindex (incremental by default) |
@@ -374,7 +487,7 @@ AI agent session
 | `ale consolidate [--days n] [--dry]` | Alias of `ale clean --prompts-only` |
 | `ale doctor [--project]` | Check & repair: model, hooks, MCP, index |
 | `ale uninstall [--project]` | Remove hooks, MCP and instruction blocks from every agent (notes stay untouched) |
-| `ale ingest <paths...> [--force]` | Convert PDF/DOCX/XLSX/CSV/HTML/MD to markdown sections and store them in the vault |
+| `ale ingest <paths...> [--force]` | Convert PDF/DOCX/XLSX/CSV/HTML/MD (or a docs URL) to markdown sections and store them in the vault |
 | `ale docs` / `ale docs read <doc> [-s ids] [-q question] [--max-tokens n]` | List ingested documents / read only the sections (or spreadsheet rows) you need |
 | `ale run -- <cmd>` / `ale run show <id\|last> [--grep re] [--lines a-b]` / `ale run list` | Run a command with folded output (same exit code) / read the full output |
 | `ale code outline <file\|dir>` / `ale code symbol <file> <name>` | Code map: signatures without bodies / one symbol's body (`Class.method` works) |
@@ -385,25 +498,34 @@ AI agent session
 
 `alexandria` works as an alias of `ale`.
 
-## Privacy & security
+**MCP tools** (every agent): `vault_search` · `vault_save` (with `supersedes`) · `vault_related` · `vault_link` · `doc_ingest` · `doc_read` · `code_outline` · `code_symbol` · `run_output` · `plan_create` · `task_verify` · `lesson_extract`.
+
+</details>
+
+<details>
+<summary><b>🔒 Privacy & security</b></summary>
 
 - **Everything runs on your machine**: the embedding model is downloaded once (Hugging Face) and then works offline. Your notes never leave your disk. No telemetry.
-- **No API keys, no accounts, no cost.**
+- **No API keys, no accounts, no cost.** The only other network access is `ale ingest <url>` / `doc_ingest` with a URL — one page, only when you ask.
 - **`ale scan` never reads secrets**: it extracts environment variable **names** only (values are never copied), parses schema **files** (no live DB connection), and guarantees the vault is gitignored before writing — your notes never reach a shared repo.
 - Dependency scanners (Socket, etc.) flag *network/shell/env access* in the dependency tree: those come from the ML runtime (`onnxruntime`/`transformers.js`, which needs filesystem access and the one-time model download) and the official MCP SDK — not from Alexandria's code. The published package runs no install scripts of its own.
-- **`npm audit` may report `sharp <0.35.0` (libvips CVEs, [GHSA-f88m-g3jw-g9cj](https://github.com/advisories/GHSA-f88m-g3jw-g9cj))**, inherited from `@huggingface/transformers`. As of this writing no published version of `transformers.js` (including the newest, 4.x) uses a patched sharp, so there's no upstream fix yet — and it isn't reachable in Alexandria's own usage anyway: Alexandria only calls `pipeline('feature-extraction', ...)` for text embeddings and never touches images. If you want a clean `npm audit` in your own project, add this to its `package.json`:
+- **`npm audit` may report `sharp` (libvips CVEs, e.g. [GHSA-f88m-g3jw-g9cj](https://github.com/advisories/GHSA-f88m-g3jw-g9cj))**, inherited from `@huggingface/transformers`. It isn't reachable in Alexandria's own usage: Alexandria only calls `pipeline('feature-extraction', ...)` for text embeddings and never touches images. If you want a clean `npm audit` in your own project, add this to its `package.json`:
   ```json
   "overrides": {
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   }
   ```
   (npm's `overrides` only applies at the root of an install, so this must go in *your* project — Alexandria declaring it in its own `package.json` doesn't propagate to consumers.)
 - Generated per-project configs (`.mcp.json`, `.vault.json`, etc.) point at your machine's install path, so `ale init --project` automatically gitignores them (and untracks any already committed) — they never leak to a shared repo. For a team that *wants* a shared MCP config, run `ale init --project --portable`, which writes an npx-based command that works on any machine.
 
-## Support the project ☕
+</details>
 
-Alexandria is free and open source. If it saves you tokens (and money), you can buy me a coffee:
+---
 
-**[☕ buymeacoffee.com/ureck](https://buymeacoffee.com/ureck)**
+<div align="center">
 
-Built with 🏛 by **[Ureck](https://buymeacoffee.com/ureck)** — MIT License.
+**Free and open source.** If it saves you tokens (and money): **[☕ buymeacoffee.com/ureck](https://buymeacoffee.com/ureck)**
+
+Built with 🏛 by **[Ureck](https://buymeacoffee.com/ureck)** — MIT License · [Changelog](https://github.com/UreckChan/alexandria/releases)
+
+</div>
