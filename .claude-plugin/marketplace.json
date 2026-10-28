@@ -9,7 +9,7 @@
       "name": "alexandria",
       "source": "./",
       "description": "Local knowledge vault for AI agents: captures prompts/sessions, injects relevant context, semantic search offline, Alexandria Protocol (plan → verify → learn).",
-      "version": "1.6.0",
+      "version": "1.6.1",
       "homepage": "https://alexandria.ureck.dev"
     }
   ]

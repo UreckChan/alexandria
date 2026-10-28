@@ -10,7 +10,7 @@ import {
   planQualityHints,
   readDoc,
   symbolSource
-} from "../chunk-BXVNQVLX.js";
+} from "../chunk-YNCL5JSF.js";
 import {
   hybridSearch
 } from "../chunk-47S5I3D3.js";
@@ -25,7 +25,7 @@ import {
   supersedeNote,
   upsertNote
 } from "../chunk-44QPE5IM.js";
-import "../chunk-I5H4BN3F.js";
+import "../chunk-NUG7HLOU.js";
 import {
   showRun
 } from "../chunk-OGVWOBYH.js";

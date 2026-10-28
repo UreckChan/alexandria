@@ -163,7 +163,7 @@ function inferType(values) {
 function sheetsToMarkdown(sheets) {
   const out = [];
   for (const { name, rows } of sheets) {
-    const clean = rows.filter((r) => r.some((c) => c !== ""));
+    const clean = rows.map((r) => Array.from(r ?? [], (c) => c ?? "")).filter((r) => r.some((c) => c !== ""));
     if (clean.length === 0) continue;
     const [header, ...data] = clean;
     const cols = header.map((h, i) => h || `col${i + 1}`);
@@ -188,35 +188,15 @@ function sheetsToMarkdown(sheets) {
   return out.join("\n\n");
 }
 async function xlsxToMarkdown(buf) {
-  const ExcelJS = (await import("exceljs")).default;
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buf);
-  const sheets = [];
+  const { readXlsx } = await import("./xlsx-THZM4FNX.js");
+  const sheets = await readXlsx(buf);
   let totalRows = 0;
   let rawChars = 0;
-  wb.eachSheet((ws) => {
-    const rows = [];
-    ws.eachRow({ includeEmpty: false }, (row) => {
-      const vals = row.values.slice(1).map(cellText);
-      rows.push(vals);
-      rawChars += vals.join(",").length + 1;
-    });
-    totalRows += Math.max(0, rows.length - 1);
-    sheets.push({ name: ws.name, rows });
-  });
-  return { format: "xlsx", markdown: sheetsToMarkdown(sheets), rows: totalRows, tokensOriginal: Math.ceil(rawChars / 4) };
-}
-function cellText(v) {
-  if (v === null || v === void 0) return "";
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
-  if (typeof v === "object") {
-    const o = v;
-    if (o.richText) return o.richText.map((t) => t.text).join("");
-    if (o.text !== void 0) return String(o.text);
-    if (o.result !== void 0) return cellText(o.result);
-    return "";
+  for (const sh of sheets) {
+    totalRows += Math.max(0, sh.rows.length - 1);
+    for (const r of sh.rows) rawChars += r.join(",").length + 1;
   }
-  return String(v);
+  return { format: "xlsx", markdown: sheetsToMarkdown(sheets), rows: totalRows, tokensOriginal: Math.ceil(rawChars / 4) };
 }
 function sniffDelimiter(text) {
   const first = text.split(/\r?\n/, 1)[0] ?? "";

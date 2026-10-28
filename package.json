@@ -1,6 +1,6 @@
 {
   "name": "@ureck/alexandria",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Alexandria — bóveda de conocimiento local para agentes de IA (Claude Code, Codex, Gemini CLI, Cursor, OpenCode y más): captura automática por hooks, búsqueda semántica offline y grafo estilo Obsidian. Ahorra tokens inyectando solo el contexto relevante.",
   "type": "module",
   "license": "MIT",
@@ -48,8 +48,8 @@
     "@huggingface/transformers": "^4.3.2",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "commander": "^15.0.0",
-    "exceljs": "^4.4.0",
     "gray-matter": "^4.0.3",
+    "jszip": "^3.10.2",
     "mammoth": "^1.13.0",
     "minisearch": "^7.1.2",
     "picocolors": "^1.1.1",
@@ -64,7 +64,7 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@types/turndown": "^5.0.6",
-    "jszip": "^3.10.2",
+    "exceljs": "^4.4.0",
     "tsup": "^9.0.0",
     "typescript": "^5.7.3",
     "vitest": "^5.0.5"
