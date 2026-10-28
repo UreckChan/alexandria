@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-BV2KJV5W.js";
+} from "./chunk-44QPE5IM.js";
 import {
   dot,
   embed,
@@ -48,7 +48,7 @@ var TYPE_BOOST = {
 };
 function recencyBoost(note) {
   if (!note) return 1;
-  const typeBoost = TYPE_BOOST[note.type] ?? 1;
+  const typeBoost = (TYPE_BOOST[note.type] ?? 1) * (note.status === "superseded" ? 0.3 : 1);
   if (!note.created) return typeBoost;
   const age = (Date.now() - Date.parse(note.created)) / 864e5;
   if (Number.isNaN(age)) return typeBoost;

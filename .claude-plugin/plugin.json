@@ -1,6 +1,6 @@
 {
   "name": "alexandria",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Local knowledge vault for AI agents: captures prompts/sessions, injects relevant context, semantic search offline, Alexandria Protocol (plan → verify → learn).",
   "author": {
     "name": "Ureck",
@@ -81,6 +81,18 @@
             {
               "type": "command",
               "command": "alexandria hook read --harness=claude || npx -y -p @ureck/alexandria alexandria hook read --harness=claude",
+              "timeout": 5
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "alexandria hook bash --harness=claude || npx -y -p @ureck/alexandria alexandria hook bash --harness=claude",
               "timeout": 5
             }
           ]

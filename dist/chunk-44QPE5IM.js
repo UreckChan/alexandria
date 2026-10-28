@@ -71,7 +71,7 @@ function parseNote(root, absPath) {
   const rel = path.relative(root, absPath).split(path.sep).join("/");
   const title = typeof data.title === "string" && data.title || path.basename(absPath, ".md");
   const type = NOTE_TYPES.includes(data.type) ? data.type : "note";
-  const status = ["active", "completed", "failed"].includes(data.status) ? data.status : void 0;
+  const status = ["active", "completed", "failed", "superseded"].includes(data.status) ? data.status : void 0;
   const tags = Array.isArray(data.tags) ? data.tags.map(String) : [];
   return {
     rel,
@@ -81,6 +81,7 @@ function parseNote(root, absPath) {
     tags,
     created: isoDate(data.created),
     hits: typeof data.hits === "number" ? data.hits : 1,
+    supersededBy: typeof data.superseded_by === "string" ? data.superseded_by : void 0,
     content,
     links: extractWikilinks(content)
   };
@@ -134,6 +135,18 @@ function setNoteStatus(absPath, status) {
   data.status = status;
   data.updated = (/* @__PURE__ */ new Date()).toISOString();
   fs.writeFileSync(absPath, matter.stringify(content, data));
+}
+function supersedeNote(absPath, newTitle) {
+  const raw = fs.readFileSync(absPath, "utf8");
+  const { data, content } = matter(raw);
+  data.status = "superseded";
+  data.superseded_by = newTitle;
+  data.updated = (/* @__PURE__ */ new Date()).toISOString();
+  const marker = `> \u26A0 Reemplazada por [[${newTitle}]]`;
+  const body = content.includes(marker) ? content : `${marker}
+
+${content.trimStart()}`;
+  fs.writeFileSync(absPath, matter.stringify(body, data));
 }
 function touchNote(absPath) {
   const raw = fs.readFileSync(absPath, "utf8");
@@ -350,6 +363,7 @@ var VaultIndex = class _VaultIndex {
           title: note.title,
           type: note.type,
           status: note.status,
+          supersededBy: note.supersededBy,
           tags: note.tags,
           created: note.created,
           hits: note.hits,
@@ -404,7 +418,7 @@ ${c.text}`),
     if (this.emb !== null) this.clearNeedsRebuild();
     else if (this.meta.chunks.length > 0 && modelPresent()) this.markNeedsRebuild();
     if (!isHookProcess()) try {
-      const { writeStaticGraph } = await import("./viewer-WQQSQETT.js");
+      const { writeStaticGraph } = await import("./viewer-T2SEBP6Z.js");
       writeStaticGraph(this);
     } catch {
     }
@@ -479,6 +493,35 @@ ${c.text}`),
     }
     return (this._tagIndex.get(key) ?? []).map((rel) => this.meta.notes[rel]).filter(Boolean);
   }
+  /**
+   * Vector por nota = media normalizada de sus chunks (mismo cálculo que el
+   * grafo semántico). Para detectar notas casi duplicadas en `ale clean`.
+   */
+  noteVectors(types) {
+    const out = /* @__PURE__ */ new Map();
+    if (!this.emb) return out;
+    const byNote = /* @__PURE__ */ new Map();
+    this.meta.chunks.forEach((c, i) => {
+      const n = this.meta.notes[c.note];
+      if (!n || !types.includes(n.type) || n.status === "superseded") return;
+      const arr = byNote.get(c.note) ?? [];
+      arr.push(i);
+      byNote.set(c.note, arr);
+    });
+    for (const [rel, idxs] of byNote) {
+      const v = new Float32Array(this.meta.dim);
+      for (const i of idxs) {
+        const r = this.row(i);
+        for (let d = 0; d < this.meta.dim; d++) v[d] += r[d];
+      }
+      let norm = 0;
+      for (let d = 0; d < this.meta.dim; d++) norm += v[d] * v[d];
+      norm = Math.sqrt(norm) || 1;
+      for (let d = 0; d < this.meta.dim; d++) v[d] /= norm;
+      out.set(rel, v);
+    }
+    return out;
+  }
   /** Vecinos directos de una nota en el grafo (sin releer archivos). */
   neighbors(rel) {
     const out = [];
@@ -497,6 +540,7 @@ export {
   isoDate,
   createNote,
   setNoteStatus,
+  supersedeNote,
   touchNote,
   upsertNote,
   appendToNote,

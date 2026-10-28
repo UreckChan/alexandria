@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 import {
+  serveGraph
+} from "./chunk-SSTG2NOO.js";
+import {
   architectBlock,
   distDir,
   globalSettingsPath,
   hooksRegistered,
   ingestAndOutline,
+  isUrl,
   listDocs,
   mcpRegisteredProject,
+  outlineDir,
+  outlineFile,
   pkgVersion,
   planContext,
   planQualityHints,
@@ -16,12 +22,13 @@ import {
   registerMcpGlobal,
   registerMcpProject,
   serverCommand,
+  symbolSource,
   unregisterHooks
-} from "./chunk-SAKIVZMP.js";
+} from "./chunk-BXVNQVLX.js";
 import {
   hybridSearch,
   protocolChain
-} from "./chunk-Y6S6SKH4.js";
+} from "./chunk-47S5I3D3.js";
 import {
   ARCHIVE_DIR,
   applyClean,
@@ -29,13 +36,29 @@ import {
   markCleaned,
   planClean,
   searchArchive
-} from "./chunk-B7HCWKPJ.js";
+} from "./chunk-WSVNMMNN.js";
 import {
-  readStats
-} from "./chunk-POA77JSS.js";
+  VaultIndex,
+  createNote,
+  slugify,
+  supersedeNote,
+  upsertNote
+} from "./chunk-44QPE5IM.js";
 import {
   formatOf
-} from "./chunk-UU4MGB2C.js";
+} from "./chunk-I5H4BN3F.js";
+import {
+  listRuns,
+  runCommand,
+  saveRun,
+  shouldFoldOutput,
+  showRun
+} from "./chunk-OGVWOBYH.js";
+import {
+  logFold,
+  readSessionUsage,
+  readStats
+} from "./chunk-X4V6SYYA.js";
 import {
   TOKEN_TOGGLES,
   defaultVaultPath,
@@ -50,16 +73,7 @@ import {
   vaultExists,
   writeGlobalConfig,
   writeProjectConfig
-} from "./chunk-CEHNXDUE.js";
-import {
-  serveGraph
-} from "./chunk-GP5A2GWI.js";
-import {
-  VaultIndex,
-  createNote,
-  slugify,
-  upsertNote
-} from "./chunk-BV2KJV5W.js";
+} from "./chunk-YICWI3U3.js";
 import {
   MODEL_ID,
   dot,
@@ -830,6 +844,7 @@ function opencodePlugin() {
 import { execFile } from 'node:child_process';
 
 const SCRIPTS = ${JSON.stringify(scripts, null, 2)};
+const CLI = ${JSON.stringify(path4.join(distDir(), "cli.js"))};
 
 function run(script, payload, timeoutMs) {
   return new Promise((resolve) => {
@@ -880,6 +895,24 @@ const AlexandriaPlugin = async ({ directory }) => {
         turn.set(input.sessionID, await run(SCRIPTS.prompt, { session_id: input.sessionID, cwd: directory, prompt }, 8000));
       } catch {
         /* sin contexto este turno */
+      }
+    },
+    // Salida grande de bash \u2192 plegada (errores + resumen + final; completa en disco).
+    // Aqu\xED s\xED cubre comandos que fallan: OpenCode deja reescribir output.output.
+    'tool.execute.after': async (input, output) => {
+      try {
+        if (input?.tool !== 'bash' || typeof output?.output !== 'string' || output.output.length <= 2048) return;
+        const command = String(input.args?.command ?? '');
+        const exit = Number(output.metadata?.exit ?? output.metadata?.exitCode ?? 0) || 0;
+        const folded = await new Promise((resolve) => {
+          const child = execFile('node', [CLI, 'run', '--stdin', '--command', command, '--exit', String(exit)], { cwd: directory, timeout: 8000, windowsHide: true, maxBuffer: 1 << 20 }, (_e, stdout) =>
+            resolve(typeof stdout === 'string' ? stdout.trim() : '')
+          );
+          child.stdin?.end(output.output);
+        });
+        if (folded && folded.length < output.output.length) output.output = folded;
+      } catch {
+        /* sin plegado: la salida original sigue intacta */
       }
     },
     'experimental.chat.system.transform': async (input, output) => {
@@ -1028,6 +1061,7 @@ var BLOCK = [
   "- Enriquece la b\xF3veda cuando el trabajo lo revele (no como tarea aparte): decisiones de arquitectura con su porqu\xE9 (por qu\xE9 X y no Y), qu\xE9 hace cada m\xF3dulo/feature al tocarlo, vocabulario propio del dominio, y errores no obvios con su fix (`lesson_extract`). Notas compactas: el objetivo es ahorrar tokens futuros, no escribir prosa.",
   "- Las notas `API - <proyecto>` / `Env - <proyecto>` / `Datos - <proyecto>` / `Convenciones - <proyecto>` / `Flujo - <proyecto>` (de `ale scan`) ya traen rutas, variables (solo nombres), esquema y flujo de peticiones \u2014 cons\xFAltalas por b\xFAsqueda antes de releer esos archivos.",
   "- `vault_related` trae conocimiento conectado sin releer archivos.",
+  "- Tests/builds/installs con salida larga: `ale run -- <comando>` (devuelve errores + resumen + final y el mismo c\xF3digo de salida; lo completo con `ale run show <id> --grep \u2026`). Para explorar c\xF3digo: `code_outline` / `code_symbol` antes de leer archivos enteros.",
   "- PDF/DOCX/XLSX/CSV/HTML: nunca leas el archivo completo \u2014 `doc_ingest` (\xEDndice de secciones, ~200 tokens) y luego `doc_read` con las secciones o una pregunta.",
   CLAUDE_MD_END
 ].join("\n");
@@ -1742,7 +1776,10 @@ async function runClean(opts) {
   };
   const plan = planClean(vault, Object.values(idx.meta.notes), {
     days: parseInt(opts.days, 10) || 45,
-    keepNoise: opts.keepNoise
+    keepNoise: opts.keepNoise,
+    dedupe: !opts.promptsOnly && !opts.quiet,
+    // la limpieza automática ni siquiera los busca
+    idx
   });
   if (opts.promptsOnly) {
     plan.tmpFiles = [];
@@ -1758,8 +1795,14 @@ async function runClean(opts) {
   log(`   \u2022 ${plan.noise.length} prompts que inyect\xF3 el arn\xE9s (notificaciones/recordatorios) \u2192 ${opts.keepNoise ? "se compactan" : "se descartan"}`);
   if (plan.tmpFiles.length) log(`   \u2022 ${plan.tmpFiles.length} temporales hu\xE9rfanos del \xEDndice`);
   if (plan.staleModels.length) log(`   \u2022 ${plan.staleModels.length} modelos viejos en cach\xE9: ${plan.staleModels.map((m) => path7.basename(m)).join(", ")}`);
+  if (plan.duplicates.length) {
+    log(
+      `   \u2022 ${plan.duplicates.length} posibles duplicados ${opts.dedupe ? "\u2192 la m\xE1s vieja se marca como reemplazada por la m\xE1s nueva (no se borra)" : pc.dim("(sugerencia: rev\xEDsalos; se aplican solo con --dedupe, o uno por uno con ale supersede)")}:`
+    );
+    for (const d of plan.duplicates.slice(0, 10)) log(pc.dim(`       \xAB${d.older.title}\xBB \u2192 \xAB${d.newer.title}\xBB (coseno ${d.cos})`));
+  }
   if (plan.statsLinesToRotate) log(`   \u2022 stats.jsonl: ${plan.statsLinesToRotate} l\xEDneas de >90 d\xEDas \u2192 resumen (los totales de \`ale stats\` no cambian)`);
-  const nothing = nPrompts + plan.noise.length + plan.tmpFiles.length + plan.staleModels.length + plan.statsLinesToRotate === 0;
+  const nothing = nPrompts + plan.noise.length + plan.tmpFiles.length + plan.staleModels.length + plan.statsLinesToRotate + (opts.dedupe ? plan.duplicates.length : 0) === 0;
   if (nothing) {
     log(pc.dim("\n   Nada que limpiar."));
     markCleaned(vault);
@@ -1774,20 +1817,20 @@ async function runClean(opts) {
     execFileSync4("tar", ["-czf", out, "-C", vault.root, path7.relative(vault.root, vault.managed) || "."], { stdio: "ignore" });
     log(pc.green(`\u2713 Respaldo en ${out}`));
   }
-  const res = applyClean(vault, plan);
+  const res = applyClean(vault, plan, { applyDuplicates: opts.dedupe });
   await VaultIndex.load(vault).refresh();
   markCleaned(vault);
   const after = { vault: dirBytes(vault.root, vault.cache), cache: dirBytes(vault.cache) };
   log(
     pc.green(
       `
-\u2713 ${res.compacted} prompts compactados en ${res.bundlesWritten} archivos \xB7 ${res.dropped} de ruido descartados \xB7 ${res.removedDerived} derivados eliminados`
+\u2713 ${res.compacted} prompts compactados en ${res.bundlesWritten} archivos \xB7 ${res.dropped} de ruido descartados \xB7 ${res.removedDerived} derivados eliminados \xB7 ${res.superseded} duplicados marcados`
     )
   );
   log(pc.dim(`   B\xF3veda ${mb(before.vault)} \u2192 ${mb(after.vault)} \xB7 \xEDndice ${mb(before.cache)} \u2192 ${mb(after.cache)}`));
   log(pc.dim('   Lo compactado sigue buscable: ale search --archive "<texto>"\n'));
 }
-program.command("clean").description("Limpieza segura: compacta prompts viejos sin reuso (texto \xEDntegro, fuera del \xEDndice), descarta ruido del arn\xE9s y purga cach\xE9s regenerables. Nunca toca lecciones, planes, mapas ni sesiones").option("--days <n>", "antig\xFCedad m\xEDnima de un prompt para compactarlo", "45").option("-y, --yes", "aplicar (sin esto solo muestra la vista previa)").option("--keep-noise", "compactar tambi\xE9n los prompts inyectados por el arn\xE9s en vez de descartarlos").option("--prompts-only", "solo compactar prompts (sin tocar cach\xE9s)").option("--backup <file>", "respaldo .tar.gz de la b\xF3veda antes de aplicar").option("--quiet", "sin salida (lo usa la limpieza autom\xE1tica)").action(runClean);
+program.command("clean").description("Limpieza segura: compacta prompts viejos sin reuso (texto \xEDntegro, fuera del \xEDndice), descarta ruido del arn\xE9s y purga cach\xE9s regenerables. Nunca toca lecciones, planes, mapas ni sesiones").option("--days <n>", "antig\xFCedad m\xEDnima de un prompt para compactarlo", "45").option("-y, --yes", "aplicar (sin esto solo muestra la vista previa)").option("--keep-noise", "compactar tambi\xE9n los prompts inyectados por el arn\xE9s en vez de descartarlos").option("--prompts-only", "solo compactar prompts (sin tocar cach\xE9s)").option("--dedupe", "aplicar tambi\xE9n los duplicados sugeridos (la m\xE1s vieja queda reemplazada por la m\xE1s nueva)").option("--backup <file>", "respaldo .tar.gz de la b\xF3veda antes de aplicar").option("--quiet", "sin salida (lo usa la limpieza autom\xE1tica)").action(runClean);
 program.command("consolidate").description("(alias de `ale clean --prompts-only`) compacta prompts viejos sin reuso").option("--days <n>", "antig\xFCedad m\xEDnima en d\xEDas", "45").option("--dry", "solo mostrar qu\xE9 se har\xEDa").action((opts) => runClean({ days: opts.days, yes: !opts.dry, promptsOnly: true }));
 program.command("agents").description("Lista los agentes de IA soportados y registra el MCP de Alexandria en los que elijas").argument("[ids]", `"all", "detected" o csv (${AGENTS.map((a) => a.id).join(",")})`).option("--project", "registrar a nivel proyecto (cwd) cuando el agente lo soporte").option("--no-hooks", "solo MCP, sin hooks de captura autom\xE1tica").action((ids, opts) => {
   if (!ids) {
@@ -1980,6 +2023,13 @@ program.command("stats").description("Estado de la b\xF3veda y tokens ahorrados"
   console.log(`  Inyecciones de contexto: ${s.injections}`);
   console.log(`  Aciertos de cach\xE9 de soluci\xF3n: ${s.solutionCacheHits} (${s.cacheHitTokens.toLocaleString()} tokens \u2014 el ahorro m\xE1s claro: soluciones no re-derivadas)`);
   console.log(`  Tokens inyectados (costo): ~${s.injectedTokens.toLocaleString()}`);
+  if (s.dedupSavedTokens > 0) console.log(`  No reinyectado (ya estaba en contexto): ~${s.dedupSavedTokens.toLocaleString()} tokens`);
+  if (s.folds > 0) {
+    const saved = Math.max(0, s.foldTokensOriginal - s.foldTokensServed);
+    console.log(
+      `  Salida de comandos plegada: ${s.folds} corridas \xB7 ~${s.foldTokensServed.toLocaleString()} tokens entregados vs ~${s.foldTokensOriginal.toLocaleString()} originales \u2192 ${pc.green(`~${saved.toLocaleString()} ahorrados`)}`
+    );
+  }
   if (s.docIngests + s.docReads > 0) {
     const saved = Math.max(0, s.docTokensOriginal - s.docTokensServed);
     const pct = s.docTokensOriginal ? Math.round(saved / s.docTokensOriginal * 100) : 0;
@@ -2168,11 +2218,55 @@ program.command("uninstall").description("Reversi\xF3n limpia: quita hooks, bloq
 program.command("serve-mcp").description("Correr el servidor MCP por stdio (lo usa Claude Code internamente)").action(async () => {
   await import("./mcp/server.js");
 });
-program.command("ingest").description("Convierte documentos (PDF, DOCX, XLSX, CSV, HTML, MD) a markdown por secciones y los indexa: el agente lee solo lo que necesita").argument("<paths...>", "archivos o carpetas").option("--force", "reconvertir aunque el archivo no haya cambiado").action(async (paths, opts) => {
+program.command("context").description("Medidor de contexto: qu\xE9 inyect\xF3 Alexandria por sesi\xF3n, cu\xE1nto cost\xF3 y cu\xE1nto ahorr\xF3 (plegado, no-reinyecci\xF3n)").option("--session <id>", "detalle de una sesi\xF3n (id o prefijo)").option("--last <n>", "sesiones a mostrar", "10").action((o) => {
+  const vault = getVault();
+  const all = readSessionUsage(vault);
+  const list = o.session ? all.filter((u) => u.session.startsWith(o.session)) : all.slice(0, parseInt(o.last, 10) || 10);
+  if (list.length === 0) return console.log(pc.dim("Sin datos por sesi\xF3n todav\xEDa (se registran desde 1.6)."));
+  let saved = 0;
+  console.log(pc.bold("\n\u{1F4CF} Contexto por sesi\xF3n\n"));
+  for (const u of list) {
+    const fold = Math.max(0, u.foldTokensOriginal - u.foldTokensServed);
+    saved += fold + u.dedupSavedTokens;
+    console.log(
+      `  ${pc.cyan(u.session.slice(0, 8))} ${pc.dim(u.last.slice(0, 16).replace("T", " "))}  inyecciones ${u.injections} (~${u.injectedTokens.toLocaleString()} tok)` + (u.dedupSavedTokens ? ` \xB7 no reinyectado ~${u.dedupSavedTokens.toLocaleString()}` : "") + (u.folds ? ` \xB7 plegado ${u.folds}\xD7 ~${u.foldTokensOriginal.toLocaleString()}\u2192${u.foldTokensServed.toLocaleString()}` : "")
+    );
+    if (o.session) for (const [rel, n] of u.topNotes) console.log(pc.dim(`      ${n}\xD7 ${rel}`));
+  }
+  console.log(pc.green(`
+  Ahorro medido en estas sesiones: ~${saved.toLocaleString()} tokens (plegado + no reinyecci\xF3n)
+`));
+});
+program.command("supersede").description("Marca una nota como reemplazada por otra: deja de inyectarse y rankea abajo (no se borra)").argument("<vieja>", "t\xEDtulo o ruta de la nota desactualizada").argument("<nueva>", "t\xEDtulo o ruta de la nota que la reemplaza").action(async (oldRef, newRef) => {
+  const { vault, idx } = await ensureReady();
+  const find = (r) => Object.values(idx.meta.notes).find((n) => [n.title.toLowerCase(), n.rel.toLowerCase()].includes(r.toLowerCase().trim()));
+  const a = find(oldRef);
+  const b = find(newRef);
+  if (!a || !b) return console.log(pc.yellow(`No encontr\xE9 ${!a ? `\xAB${oldRef}\xBB` : `\xAB${newRef}\xBB`}.`));
+  supersedeNote(path7.join(vault.root, a.rel), b.title);
+  await VaultIndex.load(vault).refresh();
+  console.log(pc.green(`\u2713 \xAB${a.title}\xBB reemplazada por \xAB${b.title}\xBB \u2014 ya no se inyecta; sigue buscable.`));
+});
+var codeCmd = program.command("code").description("Mapa de c\xF3digo por s\xEDmbolos: firmas sin cuerpos y cuerpo de un s\xEDmbolo puntual");
+codeCmd.command("outline").description("Firmas de un archivo (con rangos de l\xEDnea) o resumen de una carpeta").argument("<ruta>", "archivo o carpeta").option("--max-tokens <n>", "tope para carpetas", "2500").action((p, o) => {
+  const abs = path7.resolve(p);
+  if (!fs7.existsSync(abs)) return console.log(pc.yellow(`No existe: ${abs}`));
+  console.log(fs7.statSync(abs).isDirectory() ? outlineDir(abs, parseInt(o.maxTokens, 10) || 2500) : outlineFile(abs));
+});
+codeCmd.command("symbol").description("Cuerpo de un s\xEDmbolo (funci\xF3n, clase o Clase.metodo) con n\xFAmeros de l\xEDnea").argument("<archivo>").argument("<nombre>").action((f, name) => {
+  const abs = path7.resolve(f);
+  if (!fs7.existsSync(abs)) return console.log(pc.yellow(`No existe: ${abs}`));
+  console.log(symbolSource(abs, name));
+});
+program.command("ingest").description("Convierte documentos (PDF, DOCX, XLSX, CSV, HTML, MD) a markdown por secciones y los indexa: el agente lee solo lo que necesita").argument("<paths...>", "archivos, carpetas o URLs de documentaci\xF3n").option("--force", "reconvertir aunque el archivo no haya cambiado").action(async (paths, opts) => {
   const vault = getVault();
   ensureVaultStructure(vault);
   const files = [];
   for (const p of paths) {
+    if (isUrl(p)) {
+      files.push(p.trim());
+      continue;
+    }
     const abs = path7.resolve(p);
     if (!fs7.existsSync(abs)) {
       console.log(pc.yellow(`\u26A0 No existe: ${abs}`));
@@ -2227,15 +2321,64 @@ docsCmd.command("read").description("Lee secciones de un documento (por id o por
   });
   console.log("\n" + text + "\n");
 });
-program.command("hook").description("Corre un hook (lo usan los plugins de Claude Code/Codex): session-start | prompt | stop | read").argument("<event>", "session-start | prompt | stop | read").option("--harness <id>", "claude | codex | gemini | cursor | opencode", "claude").action(async (event) => {
+program.command("hook").description("Corre un hook (lo usan los plugins de Claude Code/Codex): session-start | prompt | stop | read | bash").argument("<event>", "session-start | prompt | stop | read | bash").option("--harness <id>", "claude | codex | gemini | cursor | opencode", "claude").action(async (event) => {
   const i = process.argv.indexOf("--harness");
   if (i > -1 && process.argv[i + 1]) process.argv.push(`--harness=${process.argv[i + 1]}`);
   if (event === "session-start") await import("./hooks/on-session-start.js");
   else if (event === "prompt") await import("./hooks/on-prompt.js");
   else if (event === "stop") await import("./hooks/on-stop.js");
   else if (event === "read") await import("./hooks/on-read.js");
+  else if (event === "bash") await import("./hooks/on-bash.js");
 });
-if (process.argv.length <= 2) {
+program.command("run").description("Ejecuta un comando y le entrega al agente su salida PLEGADA (errores, resumen, final); la completa queda en disco. Uso: ale run -- <comando>").addCommand(
+  new Command("show").description("Muestra una corrida guardada (completa, por l\xEDneas o filtrada)").argument("<id>", 'id de la corrida, o "last"').option("--grep <regex>", "solo l\xEDneas que coinciden").option("--lines <a-b>", "rango de l\xEDneas").option("--max-tokens <n>", "presupuesto", "2000").action((id, o) => {
+    console.log(showRun(id, { grep: o.grep, lines: o.lines, maxTokens: parseInt(o.maxTokens, 10) || 2e3 }));
+  })
+).addCommand(
+  new Command("list").description("\xDAltimas corridas guardadas").action(() => {
+    const runs = listRuns(15);
+    if (runs.length === 0) console.log(pc.dim("Sin corridas guardadas."));
+    for (const r of runs) {
+      console.log(`  ${pc.cyan(r.id)}  exit ${r.exitCode}  ${(r.ms / 1e3).toFixed(1)}s  ${Math.ceil(r.chars / 4).toLocaleString()} tok  ${pc.dim(r.command.slice(0, 70))}`);
+    }
+  })
+);
+async function runDispatch(args) {
+  const vault = getVault();
+  const log = (originalChars, servedChars) => {
+    if (vaultExists(vault)) logFold(vault, { originalChars, servedChars, session: process.env.ALEXANDRIA_SESSION });
+  };
+  if (args[0] === "--stdin") {
+    const ci = args.indexOf("--command");
+    const ei = args.indexOf("--exit");
+    const command3 = ci > -1 ? args[ci + 1] ?? "" : "";
+    const chunks = [];
+    for await (const c of process.stdin) chunks.push(c);
+    const output = Buffer.concat(chunks).toString("utf8");
+    if (!shouldFoldOutput(command3, output.length)) {
+      process.stdout.write(output);
+      return;
+    }
+    const { fold: fold2 } = saveRun({ command: command3, cwd: process.cwd(), output, exitCode: ei > -1 ? Number(args[ei + 1]) || 0 : 0, ms: 0 });
+    if (fold2.folded) log(fold2.originalChars, fold2.text.length);
+    process.stdout.write(fold2.text);
+    return;
+  }
+  const rest = args[0] === "--" ? args.slice(1) : args;
+  if (rest.length === 0) {
+    console.log("Uso: ale run -- <comando>   \xB7   ale run show <id|last>   \xB7   ale run list");
+    return;
+  }
+  const command2 = rest.length === 1 ? rest[0] : rest.map((a) => /[\s"'$`\\]/.test(a) ? JSON.stringify(a) : a).join(" ");
+  const { meta, fold } = await runCommand(command2);
+  if (fold.folded) log(fold.originalChars, fold.text.length);
+  process.stdout.write(fold.text.endsWith("\n") ? fold.text : fold.text + "\n");
+  process.exitCode = meta.exitCode;
+}
+var runArgs = process.argv.slice(3);
+if (process.argv[2] === "run" && !["show", "list", "--help", "-h"].includes(runArgs[0] ?? "--help")) {
+  await runDispatch(runArgs);
+} else if (process.argv.length <= 2) {
   await showBanner();
   program.outputHelp();
 } else {

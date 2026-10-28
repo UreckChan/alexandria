@@ -1,22 +1,26 @@
 #!/usr/bin/env node
 import {
+  forgetInjected,
+  loadCapsule
+} from "../chunk-ADA25MTF.js";
+import {
   emitContext,
   projectName,
   runHook,
   truncate
-} from "../chunk-ZDS6VULX.js";
+} from "../chunk-WVZQGLRI.js";
+import {
+  VaultIndex
+} from "../chunk-44QPE5IM.js";
 import {
   logInjection
-} from "../chunk-POA77JSS.js";
+} from "../chunk-X4V6SYYA.js";
 import {
   protocolEnabled,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-CEHNXDUE.js";
-import {
-  VaultIndex
-} from "../chunk-BV2KJV5W.js";
+} from "../chunk-YICWI3U3.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-session-start.ts
@@ -69,16 +73,21 @@ ${lines.join("\n")}`);
       `B\xF3veda joven (${distilled} notas destiladas): al descubrir decisiones, m\xF3dulos o vocabulario del dominio, gu\xE1rdalos compactos con vault_save \u2014 tokens gratis en sesiones futuras.`
     );
   }
-  const titles = toggleEnabled("digest.titleIndex") ? notes.filter((n) => n.type !== "prompt").sort((a, b) => (b.hits ?? 1) - (a.hits ?? 1)).slice(0, 25).map((n) => n.title) : [];
+  const titles = toggleEnabled("digest.titleIndex") ? notes.filter((n) => n.type !== "prompt" && n.status !== "superseded").sort((a, b) => (b.hits ?? 1) - (a.hits ?? 1)).slice(0, 25).map((n) => n.title) : [];
   if (titles.length > 0) {
     parts.push(`## La b\xF3veda ya tiene conocimiento sobre
 ${titles.join(" \xB7 ")}`);
   }
   if (parts.length === 0) return;
-  const digest = `<alexandria-digest>
+  let capsule = "";
+  if (input.session_id && (input.source === "compact" || input.source === "resume")) {
+    capsule = loadCapsule(vault.cache, input.session_id) ?? "";
+    if (input.source === "compact") forgetInjected(vault.cache, input.session_id);
+  }
+  const digest = (capsule ? capsule + "\n\n" : "") + `<alexandria-digest>
 B\xF3veda de conocimiento local activa (${notes.length} notas). ANTES de explorar c\xF3digo o re-derivar contexto, usa la herramienta MCP vault_search \u2014 ahorra tokens. Cuando descubras arquitectura o decisiones nuevas, gu\xE1rdalas con vault_save (title: "Mapa - ${proj}").
 
 ` + truncate(parts.join("\n\n"), MAX_CHARS) + `
 </alexandria-digest>`;
-  if (emitContext("session", digest) > 0) logInjection(vault, { kind: "session-start", injectedChars: digest.length });
+  if (emitContext("session", digest) > 0) logInjection(vault, { kind: "session-start", injectedChars: digest.length, session: input.session_id });
 }, "session");

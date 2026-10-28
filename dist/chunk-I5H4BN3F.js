@@ -129,7 +129,7 @@ Solo se extrajeron ${chars} caracteres en ${pdf.numPages} p\xE1gina(s): el conte
 async function htmlToMarkdown(html) {
   const TurndownService = (await import("turndown")).default;
   const td = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced", bulletListMarker: "-" });
-  td.remove(["script", "style", "nav", "footer", "aside", "noscript", "iframe", "svg"]);
+  td.remove(["script", "style", "nav", "footer", "aside", "noscript", "iframe", "svg", "title", "head"]);
   td.addRule("table", {
     filter: "table",
     replacement: (_content, node) => {
@@ -258,5 +258,6 @@ function parseCsv(text, delim = ",") {
 export {
   PDF_TOKENS_PER_PAGE,
   formatOf,
-  convertFile
+  convertFile,
+  htmlToMarkdown
 };

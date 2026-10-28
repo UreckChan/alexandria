@@ -1,26 +1,30 @@
 #!/usr/bin/env node
 import {
+  injectedInSession,
+  rememberInjected
+} from "../chunk-ADA25MTF.js";
+import {
   emitContext,
   projectName,
   runHook,
   truncate
-} from "../chunk-ZDS6VULX.js";
+} from "../chunk-WVZQGLRI.js";
 import {
   hybridSearch
-} from "../chunk-Y6S6SKH4.js";
+} from "../chunk-47S5I3D3.js";
+import {
+  createNote,
+  touchNote
+} from "../chunk-44QPE5IM.js";
 import {
   logInjection
-} from "../chunk-POA77JSS.js";
+} from "../chunk-X4V6SYYA.js";
 import {
   isHarnessInjected,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-CEHNXDUE.js";
-import {
-  createNote,
-  touchNote
-} from "../chunk-BV2KJV5W.js";
+} from "../chunk-YICWI3U3.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-prompt.ts
@@ -41,6 +45,7 @@ runHook(5e3, async (input) => {
   const rawResults = await hybridSearch(vault, prompt, 5, { expand: true, refresh: false });
   const STALE_DAYS = 60;
   const results = rawResults.filter((r) => {
+    if (r.note.status === "superseded") return false;
     if (r.note.type !== "prompt" && r.note.type !== "session") return true;
     if ((r.note.hits ?? 1) > 1) return true;
     const age = r.note.created ? (Date.now() - Date.parse(r.note.created)) / 864e5 : 0;
@@ -69,14 +74,24 @@ runHook(5e3, async (input) => {
 ${truncate(cached.excerpts.join("\n"), 2e3)}`
       );
     }
+    const session = input.session_id;
+    const dedupe = Boolean(session) && toggleEnabled("context.dedupe");
+    const already = dedupe ? injectedInSession(vault.cache, session) : /* @__PURE__ */ new Set();
+    let skipped = 0;
     if (promptSearchOn) {
       for (const r of relevant) {
         if (r === cached) continue;
+        if (already.has(r.note.rel)) {
+          lines.push(`\u21BA ya en contexto: \xAB${r.note.title}\xBB`);
+          skipped += Math.min(900, r.excerpts.join("\n").length);
+          continue;
+        }
         lines.push(`\u2022 \xAB${r.note.title}\xBB (${r.note.rel}):
 ${truncate(r.excerpts.join("\n"), 900)}`);
         if (lines.join("\n\n").length > MAX_INJECT_CHARS) break;
       }
     }
+    if (lines.length > 0 && lines.every((l) => l.startsWith("\u21BA"))) lines.length = 0;
     if (lines.length > 0) {
       injected = `<alexandria-contexto>
 Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o re-explorar):
@@ -84,11 +99,18 @@ Contexto recuperado de la b\xF3veda local (usa esto antes de releer archivos o r
 ` + truncate(lines.join("\n\n"), MAX_INJECT_CHARS) + `
 </alexandria-contexto>`;
       const written = emitContext("prompt", injected);
-      if (written > 0) logInjection(vault, {
-        kind: cached ? "solution-cache" : "inject",
-        injectedChars: injected.length,
-        promptChars: prompt.length
-      });
+      if (written > 0) {
+        const rels = relevant.filter((r) => !already.has(r.note.rel)).map((r) => r.note.rel);
+        logInjection(vault, {
+          kind: cached ? "solution-cache" : "inject",
+          injectedChars: injected.length,
+          promptChars: prompt.length,
+          session,
+          rels,
+          dedupSkippedChars: skipped || void 0
+        });
+        if (dedupe) rememberInjected(vault.cache, session, rels);
+      }
       for (const r of relevant) {
         if (r.note.type === "lesson" || r.note.type === "solution") {
           try {

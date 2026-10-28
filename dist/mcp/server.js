@@ -2,31 +2,39 @@
 import {
   architectBlock,
   ingestAndOutline,
+  isUrl,
+  outlineDir,
+  outlineFile,
   pkgVersion,
   planContext,
   planQualityHints,
-  readDoc
-} from "../chunk-SAKIVZMP.js";
+  readDoc,
+  symbolSource
+} from "../chunk-BXVNQVLX.js";
 import {
   hybridSearch
-} from "../chunk-Y6S6SKH4.js";
+} from "../chunk-47S5I3D3.js";
 import {
   searchArchive
-} from "../chunk-B7HCWKPJ.js";
-import "../chunk-POA77JSS.js";
-import "../chunk-UU4MGB2C.js";
-import {
-  ensureVaultStructure,
-  resolveVault,
-  toggleEnabled
-} from "../chunk-CEHNXDUE.js";
+} from "../chunk-WSVNMMNN.js";
 import {
   VaultIndex,
   createNote,
   setNoteStatus,
   slugify,
+  supersedeNote,
   upsertNote
-} from "../chunk-BV2KJV5W.js";
+} from "../chunk-44QPE5IM.js";
+import "../chunk-I5H4BN3F.js";
+import {
+  showRun
+} from "../chunk-OGVWOBYH.js";
+import "../chunk-X4V6SYYA.js";
+import {
+  ensureVaultStructure,
+  resolveVault,
+  toggleEnabled
+} from "../chunk-YICWI3U3.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/mcp/server.ts
@@ -89,7 +97,7 @@ server.registerTool(
       );
     }
     const out = results.map(
-      (r, i) => `${i + 1}. \xAB${r.note.title}\xBB (${r.note.rel}, tipo: ${r.note.type})
+      (r, i) => `${i + 1}. \xAB${r.note.title}\xBB (${r.note.rel}, tipo: ${r.note.type})${r.note.status === "superseded" ? ` [reemplazada por \xAB${r.note.supersededBy ?? "?"}\xBB]` : ""}
 ${r.excerpts.map((e) => "   " + e.replace(/\n/g, "\n   ").slice(0, 900)).join("\n")}`
     ).join("\n\n");
     return text(out);
@@ -98,14 +106,15 @@ ${r.excerpts.map((e) => "   " + e.replace(/\n/g, "\n   ").slice(0, 900)).join("\
 server.registerTool(
   "vault_save",
   {
-    description: 'Guarda conocimiento destilado en la b\xF3veda (decisiones, arquitectura, soluciones). Si title empieza con "Mapa - " actualiza/crea el mapa del proyecto (se inyecta al inicio de cada sesi\xF3n).',
+    description: 'Guarda conocimiento destilado en la b\xF3veda (decisiones, arquitectura, soluciones). Si title empieza con "Mapa - " actualiza/crea el mapa del proyecto (se inyecta al inicio de cada sesi\xF3n). Si esta nota CAMBIA una decisi\xF3n o hecho anterior, pasa `supersedes` con el t\xEDtulo de la vieja: queda marcada como reemplazada y deja de inyectarse (no se borra).',
     inputSchema: {
       title: z.string(),
       content: z.string().describe("Markdown; puede incluir [[wikilinks]] a otras notas"),
-      tags: z.array(z.string()).optional()
+      tags: z.array(z.string()).optional(),
+      supersedes: z.array(z.string()).optional().describe("T\xEDtulos o rutas de notas que esta reemplaza (decisi\xF3n cambiada, hecho desactualizado)")
     }
   },
-  async ({ title, content, tags }) => {
+  async ({ title, content, tags, supersedes }) => {
     ensureVaultStructure(vault);
     if (!title.startsWith("Mapa - ") && !/\[\[/.test(content)) {
       const map = findMap(VaultIndex.load(vault));
@@ -126,9 +135,22 @@ Proyecto: [[${map.title}]]`;
     } else {
       file = createNote(vault.managed, { title, content, tags: tags ?? [], type: "note" });
     }
+    const replaced = [];
+    if (supersedes?.length) {
+      const idxS = VaultIndex.load(vault);
+      for (const ref of supersedes) {
+        const old = findByTitle(idxS, ref);
+        if (old && path.join(vault.root, old.rel) !== file) {
+          supersedeNote(path.join(vault.root, old.rel), title);
+          replaced.push(old.title);
+        }
+      }
+    }
     await VaultIndex.load(vault).refresh().catch(() => {
     });
-    return text(`Guardado en ${path.relative(vault.root, file)}`);
+    return text(
+      `Guardado en ${path.relative(vault.root, file)}` + (replaced.length ? `. Reemplaza a: ${replaced.map((t) => `\xAB${t}\xBB`).join(", ")} (marcadas, ya no se inyectan).` : "") + (supersedes?.length && replaced.length < supersedes.length ? ` No encontr\xE9: ${supersedes.length - replaced.length}.` : "")
+    );
   }
 );
 server.registerTool(
@@ -177,15 +199,15 @@ server.registerTool(
 server.registerTool(
   "doc_ingest",
   {
-    description: "\xDAsala EN VEZ de leer directamente un PDF, DOCX, XLSX, CSV o HTML (leer un PDF cuesta ~2,000 tokens por p\xE1gina). La convierte localmente a markdown por secciones, la indexa y devuelve SOLO el \xEDndice de secciones (~200 tokens). Si el archivo no cambi\xF3, reutiliza la conversi\xF3n. Despu\xE9s pide lo que necesites con doc_read.",
+    description: "\xDAsala EN VEZ de leer directamente un PDF, DOCX, XLSX, CSV o HTML (leer un PDF cuesta ~2,000 tokens por p\xE1gina), o una p\xE1gina de documentaci\xF3n web por URL (se baja una vez y se reutiliza 7 d\xEDas). La convierte localmente a markdown por secciones, la indexa y devuelve SOLO el \xEDndice de secciones (~200 tokens). Si el archivo no cambi\xF3, reutiliza la conversi\xF3n. Despu\xE9s pide lo que necesites con doc_read.",
     inputSchema: {
-      path: z.string().describe("Ruta del archivo (absoluta o relativa al proyecto)"),
-      force: z.boolean().optional().describe("Reconvertir aunque no haya cambiado")
+      path: z.string().describe("Ruta del archivo (absoluta o relativa al proyecto) o URL http(s) de una p\xE1gina de documentaci\xF3n"),
+      force: z.boolean().optional().describe("Reconvertir (o volver a bajar la URL) aunque no haya cambiado")
     }
   },
   async ({ path: p, force }) => {
     try {
-      const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
+      const abs = isUrl(p) || path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
       const res = await ingestAndOutline(vault, abs, { force });
       return text(res.text);
     } catch (e) {
@@ -205,6 +227,51 @@ server.registerTool(
     }
   },
   async ({ doc, sections, query, max_tokens }) => text(await readDoc(vault, doc, { sections, query, maxTokens: max_tokens }))
+);
+var resolvePath = (p) => path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
+server.registerTool(
+  "code_outline",
+  {
+    description: "\xDAsala ANTES de leer un archivo de c\xF3digo completo: devuelve solo las firmas (funciones, clases, m\xE9todos, tipos) con su rango de l\xEDneas, sin cuerpos \u2014 una fracci\xF3n de los tokens del archivo. Con una carpeta, lista los s\xEDmbolos de primer nivel de cada archivo. Luego pide solo lo que necesites con code_symbol. JS/TS, Python, PHP, Go, Java, C#, Kotlin, Rust.",
+    inputSchema: {
+      path: z.string().describe("Archivo o carpeta (absoluta o relativa al proyecto)"),
+      max_tokens: z.number().int().min(200).max(2e4).optional().describe("Tope para carpetas (default 2500)")
+    }
+  },
+  async ({ path: p, max_tokens }) => {
+    const abs = resolvePath(p);
+    if (!fs.existsSync(abs)) return text(`No existe: ${abs}`);
+    return text(fs.statSync(abs).isDirectory() ? outlineDir(abs, max_tokens) : outlineFile(abs));
+  }
+);
+server.registerTool(
+  "code_symbol",
+  {
+    description: 'Devuelve SOLO el cuerpo de un s\xEDmbolo (funci\xF3n, clase o "Clase.metodo") con n\xFAmeros de l\xEDnea, en vez del archivo entero. Si no lo encuentra, sugiere nombres parecidos.',
+    inputSchema: {
+      path: z.string().describe("Archivo"),
+      name: z.string().describe("Nombre del s\xEDmbolo o Clase.metodo"),
+      max_tokens: z.number().int().min(200).max(2e4).optional()
+    }
+  },
+  async ({ path: p, name, max_tokens }) => {
+    const abs = resolvePath(p);
+    if (!fs.existsSync(abs)) return text(`No existe: ${abs}`);
+    return text(symbolSource(abs, name, max_tokens));
+  }
+);
+server.registerTool(
+  "run_output",
+  {
+    description: 'Lee la salida COMPLETA de una corrida plegada por Alexandria (ale run / hook) sin volver a ejecutarla: por rango de l\xEDneas o filtrada con regex, sin pasar de max_tokens. El id viene en la l\xEDnea "salida completa: ale run show <id>"; "last" = la \xFAltima.',
+    inputSchema: {
+      id: z.string().describe('Id de la corrida o "last"'),
+      grep: z.string().optional().describe("Regex: solo l\xEDneas que coinciden"),
+      lines: z.string().optional().describe('Rango "a-b"'),
+      max_tokens: z.number().int().min(100).max(2e4).optional()
+    }
+  },
+  async ({ id, grep, lines, max_tokens }) => text(showRun(id, { grep, lines, maxTokens: max_tokens }))
 );
 server.registerTool(
   "plan_create",

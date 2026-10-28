@@ -63,7 +63,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.5.0
+1.6.0
 ```
 
 ## Getting started
@@ -156,6 +156,30 @@ From any agent, the MCP tools `doc_ingest` (returns a ~200-token section outline
 - Unchanged files are never reconverted (sha256). Documents live in `Alexandria/docs/`, outside the vector index (a big spreadsheet would be thousands of chunks); section vectors are computed once per document version and cached.
 - `ale stats` shows the **measured** document savings: tokens of the originals vs tokens actually served.
 
+### Manage the context window (1.6)
+
+Most tokens don't go into your prompt — they go into **tool output** and **re-reading**. Alexandria trims both, locally, without a proxy and without rewriting history (which would break the provider's prompt cache):
+
+```bash
+ale run -- npm test                    # exit code preserved; agent gets errors + summary + tail
+ale run show last --grep "FAIL|Error"  # the full output stays on disk
+ale code outline src/                  # symbols per file, no bodies
+ale code symbol src/cli.ts runClean    # just that function, with line numbers
+ale context                            # what was injected per session, and what was saved
+ale supersede "Decision - MySQL" "Decision - Postgres"
+```
+
+| Feature | What it does | Measured |
+|---|---|---|
+| **Folded command output** | Large outputs of tests/builds/installs/logs → errors (with stack location) + test summary + tail; full output in `~/.cache/alexandria/runs`. Automatic in Claude Code (`PostToolUse` on Bash, successful commands) and OpenCode (plugin, also failures); `ale run -- <cmd>` everywhere else. Commands that *read* (`cat`, `git diff`, `grep`…) are never folded | test suite 12.1 KB → 1.4 KB; failing run 12.6 KB → 561 B keeping the failing test, assertion and `file:line` |
+| **Code map** | `code_outline` (signatures + line ranges, classes → methods, top-level constants) and `code_symbol` (one body). JS/TS, Python, PHP, Go, Java, C#, Kotlin, Rust — heuristic, no native deps | `src/cli.ts` ~13,600 tokens → outline ~253 |
+| **No re-injection** | A note already injected in this session is referenced in one line instead of re-sent (toggle `context.dedupe`) | shown in `ale context` / `ale stats` |
+| **Anti-compaction capsule** | Before compacting, a capsule (goal, last request, files edited/read, recent commands, what was saved, open plans) is built **without an LLM** and re-injected right after | real 8.4 MB transcript → ~576 tokens |
+| **Facts that expire** | `vault_save(..., supersedes: [...])` / `ale supersede`: the old note is marked, linked and no longer injected — never deleted | |
+| **Duplicate suggestions** | `ale clean` lists near-identical lessons/notes (cosine ≥ 0.96); applied only with `--dedupe` | |
+| **Context meter** | `ale context [--session id]`: injections, tokens, notes, folded runs, savings per session | |
+| **Docs by URL** | `doc_ingest`/`ale ingest` accept `https://…`: one page, fetched once, reused 7 days — the only network access, and only when asked | |
+
 ### Control what spends tokens (`ale toggles`)
 
 Every token-spending behavior is opt-out — before or after installing (the config is global, independent of the vault):
@@ -166,7 +190,7 @@ ale init --off architect.enrich,digest.map   # disable from the start
 ale config set tokens.solutionCache false    # scriptable, one by one
 ```
 
-The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), redirecting direct reads of large PDFs/spreadsheets to `doc_read` (`docs.interceptRead`), background index rebuild at session close, and weekly background cleanup `clean.auto` (neither costs tokens). All on by default; nothing changes unless you touch them.
+The toggles: Protocol manifest (~6% of the session digest), Architect enrichment in `plan_create` (~+90 tokens/plan), solution cache (up to ~500 tokens/prompt), per-prompt semantic search (the **main saving mechanism** — up to ~1500 tokens/prompt, disabling it defeats the point), project map in the digest (up to ~1000 tokens), title index (~200 tokens), redirecting direct reads of large PDFs/spreadsheets to `doc_read` (`docs.interceptRead`), folding large command output (`run.fold`), not re-injecting notes already in context (`context.dedupe`), background index rebuild at session close, and weekly background cleanup `clean.auto` (neither costs tokens). All on by default; nothing changes unless you touch them.
 
 ### Deep project context (`ale scan`)
 
@@ -314,6 +338,7 @@ AI agent session
   │                   └─ near-identical prompt already solved → injects the solution (cache)
   ├─ MCP tools ─────► vault_search · vault_save · vault_related · vault_link         (all agents)
   │                   doc_ingest · doc_read  (documents by section, token budget)
+  │                   code_outline · code_symbol · run_output  (code map, folded runs)
   │                   plan_create · task_verify · lesson_extract                     (the Protocol)
   └─ Stop/PreCompact► saves the session outcome into the vault                       (hooks)
      hooks: Claude Code · Codex · Gemini CLI · Cursor · OpenCode (one set of scripts, --harness=<id>)
@@ -345,13 +370,17 @@ AI agent session
 | `ale config <get\|set> <key> [value]` | Configuration (e.g. `protocol` true/false) |
 | `ale skills [-y] [--project]` | Recommends & installs Claude skills — semantic (e5) + keyword detection over your vault. Local source configurable with `ale config set skills.repo <path>`; otherwise installs from skills.sh |
 | `ale reindex [--force]` | Reindex (incremental by default) |
-| `ale clean [--yes] [--days n] [--backup f] [--keep-noise]` | Safe cleanup: compacts old unused prompts (full text kept, out of the vector index), drops harness noise, purges regenerable caches, rotates stats. Preview by default. Runs weekly in the background (toggle `clean.auto`) |
+| `ale clean [--yes] [--days n] [--backup f] [--keep-noise] [--dedupe]` | Safe cleanup: compacts old unused prompts (full text kept, out of the vector index), drops harness noise, purges regenerable caches, rotates stats. Preview by default. Runs weekly in the background (toggle `clean.auto`) |
 | `ale consolidate [--days n] [--dry]` | Alias of `ale clean --prompts-only` |
 | `ale doctor [--project]` | Check & repair: model, hooks, MCP, index |
 | `ale uninstall [--project]` | Remove hooks, MCP and instruction blocks from every agent (notes stay untouched) |
 | `ale ingest <paths...> [--force]` | Convert PDF/DOCX/XLSX/CSV/HTML/MD to markdown sections and store them in the vault |
 | `ale docs` / `ale docs read <doc> [-s ids] [-q question] [--max-tokens n]` | List ingested documents / read only the sections (or spreadsheet rows) you need |
-| `ale hook <session-start\|prompt\|stop\|read> [--harness id]` | Run a hook (used by the plugins) |
+| `ale run -- <cmd>` / `ale run show <id\|last> [--grep re] [--lines a-b]` / `ale run list` | Run a command with folded output (same exit code) / read the full output |
+| `ale code outline <file\|dir>` / `ale code symbol <file> <name>` | Code map: signatures without bodies / one symbol's body (`Class.method` works) |
+| `ale context [--session id] [--last n]` | Context meter per agent session |
+| `ale supersede <old> <new>` | Mark a note as replaced (stops being injected, never deleted) |
+| `ale hook <session-start\|prompt\|stop\|read\|bash> [--harness id]` | Run a hook (used by the plugins) |
 | `ale --vault <path> <cmd>` | Run any command against another vault |
 
 `alexandria` works as an alias of `ale`.

@@ -1,6 +1,6 @@
 {
   "name": "@ureck/alexandria",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Alexandria — bóveda de conocimiento local para agentes de IA (Claude Code, Codex, Gemini CLI, Cursor, OpenCode y más): captura automática por hooks, búsqueda semántica offline y grafo estilo Obsidian. Ahorra tokens inyectando solo el contexto relevante.",
   "type": "module",
   "license": "MIT",

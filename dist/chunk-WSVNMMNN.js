@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 import {
+  isoDate,
+  supersedeNote
+} from "./chunk-44QPE5IM.js";
+import {
   charsToTokens
-} from "./chunk-POA77JSS.js";
+} from "./chunk-X4V6SYYA.js";
 import {
   isHarnessInjected
-} from "./chunk-CEHNXDUE.js";
-import {
-  isoDate
-} from "./chunk-BV2KJV5W.js";
+} from "./chunk-YICWI3U3.js";
 import {
   MODEL_ID,
+  dot,
   modelCacheDir
 } from "./chunk-EDYBSJSS.js";
 
@@ -19,6 +21,8 @@ import path from "path";
 import matter from "gray-matter";
 var ARCHIVE_DIR = "archive";
 var STATS_KEEP_DAYS = 90;
+var DUPLICATE_COSINE = 0.96;
+var DEDUPE_TYPES = ["lesson", "note", "solution"];
 function archiveRoot(vault) {
   return path.join(vault.managed, ARCHIVE_DIR);
 }
@@ -100,7 +104,30 @@ function planClean(vault, notes, opts) {
     }
   } catch {
   }
-  return { bundles, noise, tmpFiles, staleModels, statsLinesToRotate: oldStatsLines(vault).length };
+  return { bundles, noise, tmpFiles, staleModels, statsLinesToRotate: oldStatsLines(vault).length, duplicates: findDuplicates(opts) };
+}
+function findDuplicates(opts) {
+  if (opts.dedupe === false || !opts.idx) return [];
+  const vecs = opts.idx.noteVectors(DEDUPE_TYPES);
+  const rels = [...vecs.keys()];
+  const used = /* @__PURE__ */ new Set();
+  const out = [];
+  for (let i = 0; i < rels.length; i++) {
+    for (let j = i + 1; j < rels.length; j++) {
+      const a = rels[i];
+      const b = rels[j];
+      if (used.has(a) || used.has(b)) continue;
+      const na = opts.idx.meta.notes[a];
+      const nb = opts.idx.meta.notes[b];
+      if (!na || !nb || na.type !== nb.type) continue;
+      const cos = dot(vecs.get(a), vecs.get(b));
+      if (cos < DUPLICATE_COSINE) continue;
+      const [older, newer] = (na.created ?? "") <= (nb.created ?? "") ? [na, nb] : [nb, na];
+      out.push({ older, newer, cos: Math.round(cos * 1e3) / 1e3 });
+      used.add(older.rel);
+    }
+  }
+  return out;
 }
 function oldStatsLines(vault) {
   const cutoff = Date.now() - STATS_KEEP_DAYS * 864e5;
@@ -108,7 +135,7 @@ function oldStatsLines(vault) {
     return fs.readFileSync(path.join(vault.cache, "stats.jsonl"), "utf8").split("\n").filter((l) => {
       try {
         const o = JSON.parse(l);
-        return o.t !== "summary" && o.kind !== "doc" && Date.parse(o.t ?? "") < cutoff;
+        return o.t !== "summary" && ["inject", "session-start", "solution-cache"].includes(o.kind ?? "inject") && Date.parse(o.t ?? "") < cutoff;
       } catch {
         return false;
       }
@@ -128,8 +155,8 @@ function section(n, text) {
 ${text}
 `;
 }
-function applyClean(vault, plan) {
-  const res = { compacted: 0, dropped: 0, bundlesWritten: 0, removedDerived: 0, bytesFreed: 0 };
+function applyClean(vault, plan, opts = {}) {
+  const res = { compacted: 0, dropped: 0, bundlesWritten: 0, removedDerived: 0, bytesFreed: 0, superseded: 0 };
   for (const [key, list] of plan.bundles) {
     const [proj, month] = key.split("/");
     const file = path.join(archiveRoot(vault), proj, `${month}.md`);
@@ -170,6 +197,13 @@ Proyecto: [[Mapa - ${proj}]]
     res.bytesFreed += sizeOf(p);
     fs.rmSync(p, { recursive: true, force: true });
     res.removedDerived++;
+  }
+  for (const d of opts.applyDuplicates ? plan.duplicates : []) {
+    try {
+      supersedeNote(path.join(vault.root, d.older.rel), d.newer.title);
+      res.superseded++;
+    } catch {
+    }
   }
   rotateStats(vault);
   return res;

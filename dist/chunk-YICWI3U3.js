@@ -155,6 +155,18 @@ var TOKEN_TOGGLES = [
     impact: "ahorra ~2,000 tokens por p\xE1gina de PDF; desact\xEDvalo si sueles necesitar ver im\xE1genes/gr\xE1ficas"
   },
   {
+    key: "run.fold",
+    label: "Plegar salida grande de comandos",
+    desc: "Builds/tests/installs/logs largos: el agente recibe errores + resumen + final; la salida completa queda en disco (ale run show)",
+    impact: "ahorra la mayor parte de un build o test suite (miles de tokens por corrida); desact\xEDvalo si quieres ver siempre todo"
+  },
+  {
+    key: "context.dedupe",
+    label: "No reinyectar lo ya inyectado",
+    desc: "Si una nota ya se inyect\xF3 en esta sesi\xF3n, se manda una referencia de 1 l\xEDnea en vez del extracto completo",
+    impact: "ahorra hasta ~1500 tokens por prompt en conversaciones largas sobre el mismo tema"
+  },
+  {
     key: "clean.auto",
     label: "Limpieza autom\xE1tica semanal",
     desc: "Al cerrar sesi\xF3n (m\xE1x. 1 vez por semana, en segundo plano): compacta prompts viejos sin reuso y purga cach\xE9s \u2014 nunca toca lecciones, planes, mapas ni sesiones",
@@ -185,7 +197,11 @@ function normalizeInput(raw) {
     answer: raw.last_assistant_message ?? raw.prompt_response ?? raw.text,
     compact: /^(PreCompact|PreCompress|preCompact)$/.test(event) || Boolean(raw.trigger),
     toolName: raw.tool_name,
-    filePath: raw.tool_input?.file_path
+    filePath: raw.tool_input?.file_path,
+    command: typeof raw.tool_input?.command === "string" ? raw.tool_input.command : void 0,
+    toolResponse: raw.tool_response,
+    durationMs: raw.duration_ms,
+    source: raw.source
   };
 }
 function formatContext(harness, kind, text) {
@@ -234,7 +250,9 @@ function lastExchange(lines) {
   return { user, assistant };
 }
 function isHarnessInjected(prompt) {
-  return /^<(task-notification|system-reminder|command-|local-command|user-prompt-submit-hook|ide_)/i.test(prompt.trim());
+  const p = prompt.trim();
+  return /^<(task-notification|system-reminder|command-|local-command|user-prompt-submit-hook|ide_)/i.test(p) || // mensajes que el arnés escribe como si fueran del usuario
+  /^(Tool loaded\.|Your response above was cut off|This session is being continued from a previous conversation|\[Request interrupted|Caveat: The messages below were generated)/i.test(p);
 }
 
 export {

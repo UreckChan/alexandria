@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 import {
   runHook
-} from "../chunk-ZDS6VULX.js";
+} from "../chunk-WVZQGLRI.js";
 import {
   PDF_TOKENS_PER_PAGE,
   formatOf
-} from "../chunk-UU4MGB2C.js";
+} from "../chunk-I5H4BN3F.js";
 import {
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-CEHNXDUE.js";
+} from "../chunk-YICWI3U3.js";
 
 // src/hooks/on-read.ts
 import fs from "fs";

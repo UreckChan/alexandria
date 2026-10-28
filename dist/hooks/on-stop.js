@@ -1,25 +1,31 @@
 #!/usr/bin/env node
 import {
+  buildCapsule,
+  extractSession,
+  forgetInjected,
+  saveCapsule
+} from "../chunk-ADA25MTF.js";
+import {
   projectName,
   runHook,
   truncate
-} from "../chunk-ZDS6VULX.js";
+} from "../chunk-WVZQGLRI.js";
 import {
   autoCleanDue,
   markCleaned
-} from "../chunk-B7HCWKPJ.js";
-import "../chunk-POA77JSS.js";
+} from "../chunk-WSVNMMNN.js";
+import {
+  VaultIndex,
+  appendToNote
+} from "../chunk-44QPE5IM.js";
+import "../chunk-X4V6SYYA.js";
 import {
   ensureVaultStructure,
   lastExchange,
   resolveVault,
   toggleEnabled,
   vaultExists
-} from "../chunk-CEHNXDUE.js";
-import {
-  VaultIndex,
-  appendToNote
-} from "../chunk-BV2KJV5W.js";
+} from "../chunk-YICWI3U3.js";
 import "../chunk-EDYBSJSS.js";
 
 // src/hooks/on-stop.ts
@@ -32,6 +38,18 @@ runHook(25e3, async (input) => {
   if (!vaultExists(vault)) return;
   let lastUser = input.prompt?.trim() ?? "";
   let lastAssistant = input.answer?.trim() ?? "";
+  if (input.compact && input.session_id) {
+    forgetInjected(vault.cache, input.session_id);
+    if (input.transcript_path && fs.existsSync(input.transcript_path)) {
+      try {
+        const all = fs.readFileSync(input.transcript_path, "utf8").split("\n").filter(Boolean);
+        const proj2 = projectName(input.cwd);
+        const openPlans = VaultIndex.load(vault).notesByTag("plan").filter((n) => n.status === "active" && n.tags.some((t) => t.toLowerCase() === proj2.toLowerCase())).map((n) => n.title);
+        saveCapsule(vault.cache, input.session_id, buildCapsule(extractSession(all), { cwd: input.cwd, openPlans }));
+      } catch {
+      }
+    }
+  }
   if (!lastAssistant && input.transcript_path && fs.existsSync(input.transcript_path)) {
     const lines = fs.readFileSync(input.transcript_path, "utf8").split("\n").filter(Boolean);
     const ex = lastExchange(lines.slice(-200));
