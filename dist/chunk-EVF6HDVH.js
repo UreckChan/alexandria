@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import {
   modelCacheDir
-} from "./chunk-EDYBSJSS.js";
+} from "./chunk-LUAVB3CA.js";
 
 // src/run/fold.ts
 var FOLD_THRESHOLD = 2048;

@@ -9,7 +9,7 @@ import {
   getEmbedder,
   modelCacheDir,
   modelPresent
-} from "./chunk-EDYBSJSS.js";
+} from "./chunk-LUAVB3CA.js";
 export {
   DIM,
   MODEL_ID,

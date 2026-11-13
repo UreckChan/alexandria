@@ -10,13 +10,13 @@ import {
   planQualityHints,
   readDoc,
   symbolSource
-} from "../chunk-YNCL5JSF.js";
+} from "../chunk-MKGNA7ZC.js";
 import {
   hybridSearch
-} from "../chunk-47S5I3D3.js";
+} from "../chunk-WSKQM5XI.js";
 import {
   searchArchive
-} from "../chunk-WSVNMMNN.js";
+} from "../chunk-VCVBX3VT.js";
 import {
   VaultIndex,
   createNote,
@@ -24,18 +24,18 @@ import {
   slugify,
   supersedeNote,
   upsertNote
-} from "../chunk-44QPE5IM.js";
+} from "../chunk-DELBYC3Y.js";
 import "../chunk-NUG7HLOU.js";
 import {
   showRun
-} from "../chunk-OGVWOBYH.js";
+} from "../chunk-EVF6HDVH.js";
 import "../chunk-X4V6SYYA.js";
 import {
   ensureVaultStructure,
   resolveVault,
   toggleEnabled
 } from "../chunk-YICWI3U3.js";
-import "../chunk-EDYBSJSS.js";
+import "../chunk-LUAVB3CA.js";
 
 // src/mcp/server.ts
 import path from "path";

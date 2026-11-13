@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 import {
   serveGraph
-} from "./chunk-SSTG2NOO.js";
+} from "./chunk-AAHJNPLB.js";
+import {
+  acquireReindexLock,
+  reindexLockHolder,
+  releaseReindexLock
+} from "./chunk-KRMDWHCZ.js";
 import {
   architectBlock,
   distDir,
@@ -24,11 +29,11 @@ import {
   serverCommand,
   symbolSource,
   unregisterHooks
-} from "./chunk-YNCL5JSF.js";
+} from "./chunk-MKGNA7ZC.js";
 import {
   hybridSearch,
   protocolChain
-} from "./chunk-47S5I3D3.js";
+} from "./chunk-WSKQM5XI.js";
 import {
   ARCHIVE_DIR,
   applyClean,
@@ -36,14 +41,14 @@ import {
   markCleaned,
   planClean,
   searchArchive
-} from "./chunk-WSVNMMNN.js";
+} from "./chunk-VCVBX3VT.js";
 import {
   VaultIndex,
   createNote,
   slugify,
   supersedeNote,
   upsertNote
-} from "./chunk-44QPE5IM.js";
+} from "./chunk-DELBYC3Y.js";
 import {
   formatOf
 } from "./chunk-NUG7HLOU.js";
@@ -53,7 +58,7 @@ import {
   saveRun,
   shouldFoldOutput,
   showRun
-} from "./chunk-OGVWOBYH.js";
+} from "./chunk-EVF6HDVH.js";
 import {
   logFold,
   readSessionUsage,
@@ -80,7 +85,7 @@ import {
   embed,
   getEmbedder,
   modelPresent
-} from "./chunk-EDYBSJSS.js";
+} from "./chunk-LUAVB3CA.js";
 
 // src/cli.ts
 import fs7 from "fs";
@@ -1980,14 +1985,24 @@ program.command("scan").description("Escanea el proyecto (API, env-nombres, dato
 program.command("reindex").description("Reindexar la b\xF3veda (incremental; --force para todo)").option("--force", "reindexar todo desde cero").action(async (opts) => {
   const vault = getVault();
   ensureVaultStructure(vault);
-  await downloadModelIfMissing();
-  const idx = VaultIndex.load(vault);
-  const res = await idx.refresh(modelPresent(), opts.force);
-  console.log(
-    pc.green(
-      `\u2713 ${res.changed} notas reindexadas, ${res.removed} eliminadas \u2014 ${Object.keys(idx.meta.notes).length} notas, ${idx.meta.links.length} conexiones${res.embedded ? "" : " (keyword-only)"}`
-    )
-  );
+  const parent = Number.parseInt(process.env.ALEXANDRIA_REINDEX_PARENT ?? "", 10);
+  if (!acquireReindexLock(vault, { adoptFrom: Number.isNaN(parent) ? void 0 : parent })) {
+    console.log(pc.yellow(`\u26A0 Ya hay un reindex en curso (pid ${reindexLockHolder(vault) ?? "?"}) \u2014 espera a que termine`));
+    process.exitCode = 1;
+    return;
+  }
+  try {
+    await downloadModelIfMissing();
+    const idx = VaultIndex.load(vault);
+    const res = await idx.refresh(modelPresent(), opts.force);
+    console.log(
+      pc.green(
+        `\u2713 ${res.changed} notas reindexadas, ${res.removed} eliminadas \u2014 ${Object.keys(idx.meta.notes).length} notas, ${idx.meta.links.length} conexiones${res.embedded ? "" : " (keyword-only)"}`
+      )
+    );
+  } finally {
+    releaseReindexLock(vault);
+  }
 });
 program.command("graph").description("Visor del grafo de conocimiento (local, estilo Obsidian/Graphify)").option("--out <file>", "escribir HTML autocontenido en vez de servir").option("--no-open", "no abrir el navegador").action(async (opts) => {
   const { vault } = await ensureReady();
@@ -2169,11 +2184,20 @@ program.command("doctor").description("Verifica y repara la instalaci\xF3n (mode
   } else if (idx.emb) {
     console.log(`${pc.green("\u2713")} Embeddings alineados (${idx.meta.chunks.length} chunks)`);
   } else if (idx.meta.chunks.length > 0 && model) {
-    console.log(pc.yellow(`\u26A0 \xCDndice SIN vectores (${idx.meta.chunks.length} chunks) \u2014 b\xFAsqueda degradada a keyword. Reconstruyendo\u2026`));
-    const rebuilt = await idx.refresh(true, true);
-    console.log(
-      idx.emb ? `${pc.green("\u2713")} \xCDndice sem\xE1ntico reconstruido (${rebuilt.changed} notas)` : pc.yellow("\u26A0 No se pudo reconstruir \u2014 corre `ale reindex --force` y revisa el modelo")
-    );
+    const holder = reindexLockHolder(vault);
+    if (holder !== null || !acquireReindexLock(vault)) {
+      console.log(pc.yellow(`\u26A0 \xCDndice SIN vectores \u2014 ya hay un reindex en curso (pid ${holder ?? "?"}); se repara solo al terminar`));
+    } else {
+      try {
+        console.log(pc.yellow(`\u26A0 \xCDndice SIN vectores (${idx.meta.chunks.length} chunks) \u2014 b\xFAsqueda degradada a keyword. Reconstruyendo\u2026`));
+        const rebuilt = await idx.refresh(true, true);
+        console.log(
+          idx.emb ? `${pc.green("\u2713")} \xCDndice sem\xE1ntico reconstruido (${rebuilt.changed} notas)` : pc.yellow("\u26A0 No se pudo reconstruir \u2014 corre `ale reindex --force` y revisa el modelo")
+        );
+      } finally {
+        releaseReindexLock(vault);
+      }
+    }
   }
   try {
     const name = path7.basename(cwd);

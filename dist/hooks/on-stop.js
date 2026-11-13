@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 import {
+  acquireReindexLock,
+  releaseReindexLock,
+  transferReindexLock
+} from "../chunk-KRMDWHCZ.js";
+import {
   buildCapsule,
   extractSession,
   forgetInjected,
@@ -9,15 +14,15 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-WVZQGLRI.js";
+} from "../chunk-JJ62U6UP.js";
 import {
   autoCleanDue,
   markCleaned
-} from "../chunk-WSVNMMNN.js";
+} from "../chunk-VCVBX3VT.js";
 import {
   VaultIndex,
   appendToNote
-} from "../chunk-44QPE5IM.js";
+} from "../chunk-DELBYC3Y.js";
 import "../chunk-X4V6SYYA.js";
 import {
   ensureVaultStructure,
@@ -26,11 +31,12 @@ import {
   toggleEnabled,
   vaultExists
 } from "../chunk-YICWI3U3.js";
-import "../chunk-EDYBSJSS.js";
+import "../chunk-LUAVB3CA.js";
 
 // src/hooks/on-stop.ts
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 runHook(25e3, async (input) => {
@@ -96,23 +102,36 @@ function maybeCleanInBackground(vault) {
   } catch {
   }
 }
-async function maybeRebuildInBackground(vault) {
+async function maybeRebuildInBackground(vault, cli = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "cli.js")) {
+  let locked = false;
   try {
     if (!toggleEnabled("index.autoRebuild")) return;
     const idx = VaultIndex.load(vault);
     if (!idx.needsRebuild() && !idx.isDegraded()) return;
-    const cli = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "cli.js");
     if (!fs.existsSync(cli)) return;
+    if (!acquireReindexLock(vault)) return;
+    locked = true;
     const child = spawn(process.execPath, [cli, "--vault", vault.root, "reindex", "--force"], {
       detached: true,
       stdio: "ignore",
       windowsHide: true,
       // Windows: sin esto puede parpadear una consola al cerrar sesión
-      env: { ...process.env, ALEXANDRIA_HOOK: "" }
-      // proceso CLI: sí puede reconstruir
+      // proceso CLI: sí puede reconstruir; ALEXANDRIA_REINDEX_PARENT le permite adoptar el candado
+      env: { ...process.env, ALEXANDRIA_HOOK: "", ALEXANDRIA_REINDEX_PARENT: String(process.pid) }
     });
+    if (!child.pid) {
+      releaseReindexLock(vault);
+      return;
+    }
+    transferReindexLock(vault, child.pid);
+    locked = false;
+    try {
+      os.setPriority(child.pid, 10);
+    } catch {
+    }
     child.unref();
   } catch {
+    if (locked) releaseReindexLock(vault);
   }
 }
 export {

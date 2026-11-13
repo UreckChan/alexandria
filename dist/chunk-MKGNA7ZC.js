@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 import {
   hybridSearch
-} from "./chunk-47S5I3D3.js";
+} from "./chunk-WSKQM5XI.js";
 import {
   slugify
-} from "./chunk-44QPE5IM.js";
+} from "./chunk-DELBYC3Y.js";
 import {
   convertFile,
   htmlToMarkdown
@@ -20,7 +20,7 @@ import {
   dot,
   embed,
   modelPresent
-} from "./chunk-EDYBSJSS.js";
+} from "./chunk-LUAVB3CA.js";
 
 // src/core/planning.ts
 var MAX_ITEMS = 2;

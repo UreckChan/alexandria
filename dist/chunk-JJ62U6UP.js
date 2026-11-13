@@ -49,7 +49,7 @@ function runHook(budgetMs, body, kind = "stop") {
   process.env.ALEXANDRIA_HOOK = "1";
   const cleanup = async () => {
     try {
-      const { disposeEmbedder } = await import("./embedder-7Z4XNL6H.js");
+      const { disposeEmbedder } = await import("./embedder-JBYRHKR4.js");
       await disposeEmbedder();
     } catch {
     }

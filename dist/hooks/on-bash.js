@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import {
   runHook
-} from "../chunk-WVZQGLRI.js";
+} from "../chunk-JJ62U6UP.js";
 import {
   saveRun,
   shouldFoldOutput
-} from "../chunk-OGVWOBYH.js";
+} from "../chunk-EVF6HDVH.js";
 import {
   logFold
 } from "../chunk-X4V6SYYA.js";
@@ -14,7 +14,7 @@ import {
   toggleEnabled,
   vaultExists
 } from "../chunk-YICWI3U3.js";
-import "../chunk-EDYBSJSS.js";
+import "../chunk-LUAVB3CA.js";
 
 // src/hooks/on-bash.ts
 runHook(3e3, async (input) => {

@@ -112,7 +112,7 @@ Verify:
 
 ```bash
 $ ale --version
-1.6.1
+1.6.2
 ```
 
 One command installs everything (embedding model ~130MB downloaded once, hooks, MCP registration, index):
@@ -394,6 +394,8 @@ ale uninstall                 # removes hooks + MCP from every agent; your notes
 ```
 
 Every command self-repairs before running: missing model → downloads it; stale index → updates it.
+
+**Background reindex is single-flight.** If the index loses its vectors, the session-close hook rebuilds it in a detached, low-priority (`nice 10`) process — at most one at a time, guarded by `<vault>/.vault/reindex.lock` (holder pid; a dead or 3h-old holder is replaced). `ale reindex` and `ale doctor` respect the same lock, so two manual reindexes never run together. Notes indexed without the model (e.g. at session start) keep the existing vectors and are embedded incrementally later — no full rebuild. A full reindex of ~5,300 chunks takes ~6 min (e5-small q8, length-sorted batches).
 
 </details>
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import {
   VaultIndex
-} from "./chunk-44QPE5IM.js";
+} from "./chunk-DELBYC3Y.js";
 import {
   dot,
   embed,
   modelPresent
-} from "./chunk-EDYBSJSS.js";
+} from "./chunk-LUAVB3CA.js";
 
 // src/core/search.ts
 import MiniSearch from "minisearch";

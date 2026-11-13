@@ -8,10 +8,10 @@ import {
   projectName,
   runHook,
   truncate
-} from "../chunk-WVZQGLRI.js";
+} from "../chunk-JJ62U6UP.js";
 import {
   VaultIndex
-} from "../chunk-44QPE5IM.js";
+} from "../chunk-DELBYC3Y.js";
 import {
   logInjection
 } from "../chunk-X4V6SYYA.js";
@@ -21,7 +21,7 @@ import {
   toggleEnabled,
   vaultExists
 } from "../chunk-YICWI3U3.js";
-import "../chunk-EDYBSJSS.js";
+import "../chunk-LUAVB3CA.js";
 
 // src/hooks/on-session-start.ts
 import fs from "fs";

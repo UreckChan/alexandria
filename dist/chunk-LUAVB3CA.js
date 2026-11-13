@@ -55,15 +55,19 @@ async function embed(texts, kind = "passage", onProgress) {
   if (texts.length === 0) return [];
   const pipe = await getEmbedder(onProgress);
   const prefixed = texts.map((t) => `${kind}: ${t}`);
-  const rows = [];
-  const BATCH = 16;
-  for (let i = 0; i < prefixed.length; i += BATCH) {
-    const batch = prefixed.slice(i, i + BATCH);
-    const out = await pipe(batch, { pooling: "mean", normalize: true });
+  const rows = new Array(prefixed.length);
+  const order = prefixed.map((_, i) => i).sort((a, b) => prefixed[a].length - prefixed[b].length);
+  const BATCH = 8;
+  for (let i = 0; i < order.length; i += BATCH) {
+    const ids = order.slice(i, i + BATCH);
+    const out = await pipe(
+      ids.map((k) => prefixed[k]),
+      { pooling: "mean", normalize: true }
+    );
     const dim = out.dims[out.dims.length - 1];
-    for (let j = 0; j < batch.length; j++) {
-      rows.push(out.data.slice(j * dim, (j + 1) * dim));
-    }
+    ids.forEach((k, j) => {
+      rows[k] = out.data.slice(j * dim, (j + 1) * dim);
+    });
   }
   return rows;
 }

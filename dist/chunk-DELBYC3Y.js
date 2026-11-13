@@ -6,7 +6,7 @@ import {
   dot,
   embed,
   modelPresent
-} from "./chunk-EDYBSJSS.js";
+} from "./chunk-LUAVB3CA.js";
 
 // src/core/notes.ts
 import fs from "fs";
@@ -326,10 +326,13 @@ var VaultIndex = class _VaultIndex {
         withEmbeddings = false;
       }
     }
+    const pending = new Set((this.meta.pending ?? []).filter((rel) => onDisk.has(rel)));
     const changed = [];
     for (const [rel, info] of onDisk) {
       if (force || this.meta.mtimes[rel] !== info.mtime) changed.push(rel);
+      else if (withEmbeddings && this.emb !== null && pending.has(rel)) changed.push(rel);
     }
+    const changedSet = new Set(changed);
     const removed = Object.keys(this.meta.mtimes).filter((rel) => !onDisk.has(rel));
     if (changed.length === 0 && removed.length === 0) {
       return { changed: 0, removed: 0, embedded: this.emb !== null };
@@ -338,7 +341,7 @@ var VaultIndex = class _VaultIndex {
     const keep = new Set(
       this.meta.chunks.map((_, i) => i).filter((i) => {
         const rel = this.meta.chunks[i].note;
-        return onDisk.has(rel) && !changed.includes(rel);
+        return onDisk.has(rel) && !changedSet.has(rel);
       })
     );
     const newChunks = [];
@@ -406,19 +409,27 @@ ${c.text}`),
       embedded = false;
     }
     this.meta.chunks = [...newChunks, ...freshChunks];
+    for (const rel of changed) pending.delete(rel);
     if (embedded && (hadEmb || newChunks.length === 0) && freshRows.length === freshChunks.length) {
       const all = new Float32Array(this.meta.chunks.length * this.meta.dim);
       [...keptRows, ...freshRows].forEach((r, i) => all.set(r, i * this.meta.dim));
       this.emb = all;
+    } else if (hadEmb && freshChunks.length > 0) {
+      const all = new Float32Array(this.meta.chunks.length * this.meta.dim);
+      keptRows.forEach((r, i) => all.set(r, i * this.meta.dim));
+      this.emb = all;
+      for (const c of freshChunks) pending.add(c.note);
     } else if (freshChunks.length > 0 && !embedded) {
       this.emb = null;
     }
+    if (pending.size > 0 && this.emb !== null) this.meta.pending = [...pending];
+    else delete this.meta.pending;
     this.rebuildLinks();
     this.save();
     if (this.emb !== null) this.clearNeedsRebuild();
     else if (this.meta.chunks.length > 0 && modelPresent()) this.markNeedsRebuild();
     if (!isHookProcess()) try {
-      const { writeStaticGraph } = await import("./viewer-T2SEBP6Z.js");
+      const { writeStaticGraph } = await import("./viewer-V7WGXOFM.js");
       writeStaticGraph(this);
     } catch {
     }
